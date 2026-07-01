@@ -12,6 +12,7 @@ export const MODULES = {
   MASTER_SETTINGS: "MASTER_SETTINGS",
   ROLES: "ROLES",
   USERS: "USERS",
+  ASSIGN_TARGET: "ASSIGN_TARGET",
 } as const;
 
 export const PERMISSIONS = {
