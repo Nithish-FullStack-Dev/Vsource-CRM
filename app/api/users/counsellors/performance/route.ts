@@ -178,6 +178,9 @@ export async function GET(req: NextRequest) {
         db.student.groupBy({
           by: ["counselorId"],
           where: studentWhere,
+          orderBy: {
+            counselorId: "asc",
+          },
           _count: {
             _all: true,
           },
@@ -186,6 +189,9 @@ export async function GET(req: NextRequest) {
         db.lead.groupBy({
           by: ["createdById"],
           where: leadWhere,
+          orderBy: {
+            createdById: "asc",
+          },
           _count: {
             _all: true,
           },
@@ -206,17 +212,21 @@ export async function GET(req: NextRequest) {
     const achievementMap = new Map<string, number>();
 
     for (const item of achievements) {
-      if (item.counselorId) {
-        achievementMap.set(item.counselorId, item._count._all);
-      }
+      if (!item.counselorId) continue;
+
+      const count = (item._count as { _all: number } | undefined)?._all ?? 0;
+
+      achievementMap.set(item.counselorId, count);
     }
 
     const leadsCreatedMap = new Map<string, number>();
 
     for (const item of createdLeads) {
-      if (item.createdById) {
-        leadsCreatedMap.set(item.createdById, item._count._all);
-      }
+      if (!item.createdById) continue;
+
+      const count = (item._count as { _all: number } | undefined)?._all ?? 0;
+
+      leadsCreatedMap.set(item.createdById, count);
     }
 
     const targetMap = new Map<string, number>();
