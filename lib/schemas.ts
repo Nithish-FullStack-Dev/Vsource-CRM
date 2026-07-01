@@ -49,6 +49,7 @@ export const UserCreateSchema = z.object({
   password: z.string().min(6),
   roleId: uuid,
   branchIds: z.array(uuid).optional(),
+  target: z.number().int().min(0).optional(),
 });
 
 export const UserUpdateSchema = z.object({
@@ -57,6 +58,7 @@ export const UserUpdateSchema = z.object({
   password: z.string().min(6).optional(),
   roleId: optUuid,
   branchIds: z.array(uuid).optional(),
+  target: z.number().int().min(0).optional(),
 });
 
 // ---------------------------------------------------------------------------

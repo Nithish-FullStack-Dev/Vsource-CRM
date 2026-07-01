@@ -23,4 +23,6 @@ export interface User {
   branches: Branch[];
 
   role: Role;
+
+  target?: number | null;
 }

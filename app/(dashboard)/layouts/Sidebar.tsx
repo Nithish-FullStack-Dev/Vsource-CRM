@@ -26,6 +26,7 @@ import {
   DoorClosedIcon,
   PanelLeftInactive,
   PanelLeftIcon,
+  TargetIcon,
 } from "lucide-react";
 import { useAuth, useUi } from "@/store";
 import { cn } from "@/lib/utils";
@@ -83,10 +84,16 @@ const items = [
   {
     moduleCode: "PERFORMANCES",
     to: "/performances",
-    label: "Performances",
+    label: "Performance",
     icon: GraduationCap,
   },
   { moduleCode: "BRANCHES", to: "/branches", label: "Branches", icon: MapPin },
+  {
+    moduleCode: "ASSIGN_TARGET",
+    to: "/assign-target",
+    label: "Assign Target",
+    icon: TargetIcon,
+  },
   {
     moduleCode: "UNIVERSITIES",
     to: "/universities",

@@ -19,6 +19,8 @@ model User {
   email    String @unique
   password String
 
+  target Int?
+
   branches Branch[]
 
   leadAssignments        LeadCounselor[]
@@ -50,6 +52,8 @@ model User {
 
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
+
+  monthlyTargets CounsellorMonthlyTarget[] @relation("CounsellorMonthlyTargets")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -109,6 +113,23 @@ model RoleModulePermission {
   module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@id([roleId, moduleId])
+}
+
+model CounsellorMonthlyTarget {
+  id String @id @default(uuid())
+
+  counsellorId String
+  counsellor   User   @relation("CounsellorMonthlyTargets", fields: [counsellorId], references: [id], onDelete: Cascade)
+
+  periodStart DateTime @db.Date
+
+  target Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([counsellorId, periodStart])
+  @@index([periodStart])
 }
 
 enum LeadStatus {

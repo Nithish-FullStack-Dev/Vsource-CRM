@@ -9,6 +9,8 @@ import {
   LayoutDashboard,
   Building2,
   GraduationCap,
+  BarChart3,
+  TargetIcon,
 } from "lucide-react";
 
 export const navigationItems = [
@@ -45,7 +47,7 @@ export const navigationItems = [
   {
     moduleCode: "PERFORMANCES",
     to: "/performances",
-    label: "Performances",
+    label: "Performance",
     icon: GraduationCap,
   },
   {
@@ -53,6 +55,12 @@ export const navigationItems = [
     to: "/branches",
     label: "Branches",
     icon: MapPin,
+  },
+  {
+    moduleCode: "ASSIGN_TARGET",
+    to: "/assign-target",
+    label: "Assign Target",
+    icon: TargetIcon,
   },
   {
     moduleCode: "UNIVERSITIES",
