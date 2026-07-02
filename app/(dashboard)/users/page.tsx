@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+import { useDebouncedValue } from "@/hooks/assign-target/useDebouncedValue";
 import AddUserSheet from "@/users/components/AddUserSheet";
 import DeleteUserDialog from "@/users/components/DeleteUserDialog";
 import EditUserSheet from "@/users/components/EditUserSheet";
@@ -7,10 +9,23 @@ import UserTable from "@/users/components/UserTable";
 import ViewUserSheet from "@/users/components/ViewUserSheet";
 import { useUsers } from "@/users/hooks/useUsers";
 import { User } from "@/users/types/user";
-import { useState } from "react";
+import { Search } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function UsersPage() {
-  const { data, isLoading } = useUsers();
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const limit = 10;
+
+  const debouncedSearch = useDebouncedValue(search);
+
+  const { data, isLoading } = useUsers({
+    search: debouncedSearch,
+    page,
+    limit,
+  });
+
   const [viewOpen, setViewOpen] = useState(false);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -18,6 +33,10 @@ export default function UsersPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   const handleView = (user: User) => {
     setSelectedUser(user);
@@ -47,11 +66,25 @@ export default function UsersPage() {
           <p className="text-muted-foreground">Manage users and roles</p>
         </div>
 
+        <div className="relative w-80">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+          <Input
+            placeholder="Search users..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         <AddUserSheet />
       </div>
 
       <UserTable
-        users={data ?? []}
+        users={data?.data ?? []}
+        meta={data?.meta}
+        page={page}
+        onPageChange={setPage}
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
