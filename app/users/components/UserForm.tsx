@@ -79,7 +79,6 @@ export default function UserForm({
       password: "",
       branchIds: [],
       roleId: "",
-      target: undefined,
       ...defaultValues,
     },
   });
@@ -98,7 +97,6 @@ export default function UserForm({
         password: "",
         branchIds: defaultValues.branchIds ?? [],
         roleId: defaultValues.roleId ?? "",
-        target: defaultValues.target,
       });
     }
   }, [defaultValues, form]);
@@ -236,36 +234,6 @@ export default function UserForm({
             </FormItem>
           )}
         />
-
-        {isCounsellor && (
-          <FormField
-            control={form.control}
-            name="target"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Monthly Target</FormLabel>
-
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Enter monthly target"
-                    value={field.value ?? ""}
-                    onChange={(e) =>
-                      field.onChange(
-                        e.target.value === ""
-                          ? undefined
-                          : Number(e.target.value),
-                      )
-                    }
-                  />
-                </FormControl>
-
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
 
         <Button type="submit" disabled={isLoading} className="w-full">
           {isLoading

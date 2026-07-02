@@ -19,8 +19,6 @@ model User {
   email    String @unique
   password String
 
-  target Int?
-
   branches Branch[]
 
   leadAssignments        LeadCounselor[]

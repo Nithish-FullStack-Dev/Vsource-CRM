@@ -34,6 +34,9 @@ import {
   getPerformanceStatus,
 } from "@/services/performance/performance";
 import type { CounsellorPerformance } from "@/types/counsellor-performance";
+import { MODULES } from "@/lib/module-codes";
+import { Branch } from "@/types";
+import type { CellContext } from "@tanstack/react-table";
 
 type PerformanceTableProps = {
   data: CounsellorPerformance[];
@@ -44,6 +47,8 @@ type PerformanceTableProps = {
   canSetTarget: boolean;
   onSortingChange: OnChangeFn<SortingState>;
   onSetTarget: (counsellor: CounsellorPerformance) => void;
+  canCreate: (moduleCode: string) => boolean;
+  canUpdate: (moduleCode: string) => boolean;
 };
 
 export function PerformanceTable({
@@ -55,6 +60,8 @@ export function PerformanceTable({
   canSetTarget,
   onSortingChange,
   onSetTarget,
+  canCreate,
+  canUpdate,
 }: PerformanceTableProps) {
   const columns = useMemo<ColumnDef<CounsellorPerformance>[]>(
     () => [
@@ -62,7 +69,7 @@ export function PerformanceTable({
         id: "rank",
         header: "#",
         enableSorting: false,
-        cell: ({ row }) => (
+        cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
           <span className="font-medium text-muted-foreground">
             {row.index + 1}
           </span>
@@ -80,7 +87,7 @@ export function PerformanceTable({
             <ArrowUpDown className="ml-2 size-4" />
           </Button>
         ),
-        cell: ({ row }) => (
+        cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
           <div className="min-w-52.5">
             <p className="font-medium">{row.original.name}</p>
             <p className="text-xs text-muted-foreground">
@@ -96,7 +103,7 @@ export function PerformanceTable({
         id: "branches",
         header: "Branches",
         enableSorting: false,
-        cell: ({ row }) => {
+        cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => {
           if (!row.original.branches.length) {
             return (
               <span className="text-sm text-muted-foreground">
@@ -128,7 +135,7 @@ export function PerformanceTable({
             <ArrowUpDown className="ml-2 size-4" />
           </Button>
         ),
-        cell: ({ row }) => (
+        cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
           <span className="font-semibold">{row.original.target}</span>
         ),
       },
@@ -144,7 +151,7 @@ export function PerformanceTable({
             <ArrowUpDown className="ml-2 size-4" />
           </Button>
         ),
-        cell: ({ row }) => (
+        cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
           <span className="font-medium">{row.original.leadsCreated}</span>
         ),
       },
@@ -160,7 +167,7 @@ export function PerformanceTable({
             <ArrowUpDown className="ml-2 size-4" />
           </Button>
         ),
-        cell: ({ row }) => (
+        cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
           <span className="font-semibold">{row.original.achieved}</span>
         ),
       },
@@ -176,7 +183,7 @@ export function PerformanceTable({
             <ArrowUpDown className="ml-2 size-4" />
           </Button>
         ),
-        cell: ({ row }) => (
+        cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
           <div className="min-w-47.5 space-y-2">
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium">
@@ -197,31 +204,33 @@ export function PerformanceTable({
         id: "status",
         header: "Status",
         enableSorting: false,
-        cell: ({ row }) => {
+        cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => {
           const status = getPerformanceStatus(row.original);
 
           return <Badge variant={status.variant}>{status.label}</Badge>;
         },
       },
-      {
-        id: "actions",
-        header: "",
-        enableSorting: false,
-        cell: ({ row }) =>
-          canSetTarget ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onSetTarget(row.original)}
-            >
-              <Target className="mr-2 size-4" />
-              Set target
-            </Button>
-          ) : null,
-      },
+      ...(canUpdate(MODULES.ASSIGN_TARGET)
+        ? [
+            {
+              id: "actions",
+              header: "",
+              enableSorting: false,
+              cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onSetTarget(row.original)}
+                >
+                  <Target className="mr-2 h-4 w-4" />
+                  Set Target
+                </Button>
+              ),
+            },
+          ]
+        : []),
     ],
-    [canSetTarget, onSetTarget],
+    [canSetTarget, onSetTarget, canUpdate],
   );
 
   const table = useReactTable({
@@ -266,7 +275,7 @@ export function PerformanceTable({
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell colSpan={9}>
+                    <TableCell colSpan={columns.length}>
                       <Skeleton className="h-12 w-full" />
                     </TableCell>
                   </TableRow>

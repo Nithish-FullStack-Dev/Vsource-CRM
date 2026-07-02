@@ -340,7 +340,7 @@ export function StudentTable({
                       {getText(lead?.twelfthPercentage, "Not provided")}
                     </td>
                     <td className="px-4 py-3.5 font-mono font-bold text-slate-600 dark:text-slate-400">
-                      {getText(lead?.bachelorsCourse, "Not provided")}
+                      {getText(student?.applications?.length, "Not provided")}
                     </td>
                     <td className="px-4 py-3.5 font-mono text-[11px] font-semibold text-slate-500">
                       {getDate(visaLoanProfile?.depositDeadlineDate)}

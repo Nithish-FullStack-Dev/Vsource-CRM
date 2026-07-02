@@ -27,6 +27,7 @@ import { PerformanceFilters } from "@/components/assign-target/performance-filte
 import { PerformanceTable } from "@/components/assign-target/performance-table";
 import { TargetDialog } from "@/components/assign-target/target-dialog";
 import { useDebouncedValue } from "@/hooks/assign-target/useDebouncedValue";
+import { useAuth } from "@/store";
 
 const DEFAULT_SUMMARY = {
   totalCounsellors: 0,
@@ -69,6 +70,8 @@ export default function CounsellorPerformancePage() {
   );
 
   const [customEndDate, setCustomEndDate] = useState(() => getCurrentIstDate());
+
+  const { canCreate, canUpdate } = useAuth();
 
   const debouncedSearch = useDebouncedValue(search);
 
@@ -252,6 +255,8 @@ export default function CounsellorPerformancePage() {
         canSetTarget={period === "monthly"}
         onSortingChange={setSorting}
         onSetTarget={openTargetDialog}
+        canCreate={canCreate}
+        canUpdate={canUpdate}
       />
 
       <TargetDialog

@@ -24,7 +24,6 @@ const USER_SELECT = {
   email: true,
   createdAt: true,
   updatedAt: true,
-  target: true,
   role: { select: { id: true, name: true } },
   branches: { select: { id: true, name: true, code: true } },
 } as const;
