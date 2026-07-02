@@ -153,6 +153,7 @@ enum MbbsLeadStatus {
 enum StudentStatus {
   active
   inactive
+  drop
 }
 
 enum LeadType {

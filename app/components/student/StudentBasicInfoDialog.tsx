@@ -262,7 +262,8 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
                   >
                     <option value="">Select Status</option>
                     <option value="active">Active</option>
-                    <option value="inactive">in Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="drop">Drop</option>
                   </select>
                 </FormItem>
               )}

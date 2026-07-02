@@ -22,7 +22,7 @@ export const updateStudentBasicInfoSchema = z.object({
 
   currentStage: z.string().optional(),
 
-  status: z.enum(["active", "inactive"]).optional(),
+  status: z.enum(["active", "inactive", "drop"]).optional(),
 });
 
 export type UpdateStudentBasicInfoForm = z.infer<

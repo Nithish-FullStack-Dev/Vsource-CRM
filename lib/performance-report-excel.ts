@@ -147,13 +147,19 @@ function addSummarySheet(
 
   const summaryRows: Array<[string, string | number]> = [
     ["Generated At", new Date(report.generatedAt).toLocaleString("en-IN")],
-    ["Pipeline Records", report.summary.totalPipelineRecords],
+    ["All Walk-in Records", report.summary.totalPipelineRecords],
+    ["Leads Added", report.summary.totalLeadsCreated],
     ["Active / Unconverted Leads", report.summary.totalLeads],
-    ["Converted Students", report.summary.totalStudents],
-    ["Student Applications", report.summary.totalApplications],
     ["Qualified Leads", report.summary.qualifiedLeads],
     ["Lost Leads", report.summary.lostLeads],
+    ["Converted Students", report.summary.totalStudents],
+    ["Dropped Students", report.summary.droppedStudents],
+    ["Student Target", report.summary.totalTarget],
+    ["Target Achieved", report.summary.totalAchieved],
+    ["Target Completion", `${report.summary.targetCompletionPercentage}%`],
+    ["Target Months Included", report.summary.targetMonths],
     ["Lead to Student Conversion Rate", `${report.summary.conversionRate}%`],
+    ["Student Applications", report.summary.totalApplications],
     ["Offer Applications", report.summary.offerApplications],
     ["Visa Approved Students", report.summary.visaApprovedStudents],
     ["CAS Received Students", report.summary.casReceivedStudents],
@@ -163,12 +169,18 @@ function addSummarySheet(
     ["Total Disbursed Amount", report.summary.totalDisbursedAmount],
   ];
 
-  for (const [metric, value] of summaryRows) {
-    worksheet.addRow({ metric, value });
-  }
+  const currencyMetrics = new Set([
+    "Total Applied Amount",
+    "Total Sanctioned Amount",
+    "Total Disbursed Amount",
+  ]);
 
-  for (const rowNumber of [14, 15, 16]) {
-    worksheet.getCell(`B${rowNumber}`).numFmt = "₹#,##0.00";
+  for (const [metric, value] of summaryRows) {
+    const row = worksheet.addRow({ metric, value });
+
+    if (currencyMetrics.has(metric)) {
+      row.getCell(2).numFmt = "₹#,##0.00";
+    }
   }
 
   styleWorksheet(worksheet);
@@ -404,8 +416,18 @@ function addBranchSheet(
 
   worksheet.columns = [
     { header: "Branch", key: "branch", width: 28 },
-    { header: "Leads", key: "leads", width: 16 },
+    { header: "Leads Added", key: "leadsCreated", width: 18 },
+    { header: "Active Leads", key: "leads", width: 16 },
+    { header: "Lost Leads", key: "lostLeads", width: 16 },
     { header: "Students", key: "students", width: 16 },
+    { header: "Dropped Students", key: "droppedStudents", width: 20 },
+    { header: "Student Target", key: "target", width: 18 },
+    { header: "Target Achieved", key: "achieved", width: 18 },
+    {
+      header: "Target Completion",
+      key: "targetCompletionPercentage",
+      width: 20,
+    },
     { header: "Applications", key: "applications", width: 18 },
     { header: "Conversion Rate", key: "conversionRate", width: 20 },
     { header: "Visa Approved", key: "visaApproved", width: 18 },
@@ -416,6 +438,7 @@ function addBranchSheet(
   for (const row of report.branchPerformance) {
     worksheet.addRow({
       ...row,
+      targetCompletionPercentage: `${row.targetCompletionPercentage}%`,
       conversionRate: `${row.conversionRate}%`,
     });
   }
@@ -423,6 +446,77 @@ function addBranchSheet(
   worksheet.getColumn("sanctionedAmount").numFmt = "₹#,##0.00";
   worksheet.getColumn("disbursedAmount").numFmt = "₹#,##0.00";
   styleWorksheet(worksheet);
+}
+
+function addCounselorSheet(
+  workbook: ExcelJS.Workbook,
+  report: PerformanceReportData,
+): void {
+  const worksheet = workbook.addWorksheet("Counsellor Performance");
+
+  worksheet.columns = [
+    { header: "Branch", key: "branch", width: 26 },
+    { header: "Counsellor", key: "counselor", width: 26 },
+    { header: "Total Walk-ins", key: "totalWalkins", width: 18 },
+    { header: "Leads Added", key: "leadsCreated", width: 16 },
+    { header: "Active Leads", key: "leads", width: 16 },
+    { header: "Qualified Leads", key: "qualifiedLeads", width: 18 },
+    { header: "Lost Leads", key: "lostLeads", width: 16 },
+    { header: "Students", key: "students", width: 16 },
+    { header: "Dropped Students", key: "droppedStudents", width: 20 },
+    { header: "Student Target", key: "target", width: 18 },
+    { header: "Target Achieved", key: "achieved", width: 18 },
+    {
+      header: "Target Completion",
+      key: "targetCompletionPercentage",
+      width: 20,
+    },
+    { header: "Applications", key: "applications", width: 16 },
+    { header: "Offers", key: "offers", width: 14 },
+    { header: "Conversion Rate", key: "conversionRate", width: 18 },
+    { header: "CAS Received", key: "casReceived", width: 16 },
+    { header: "Visa Approved", key: "visaApproved", width: 16 },
+    { header: "Loan Sanctioned", key: "loanSanctioned", width: 18 },
+    { header: "Sanctioned Amount", key: "sanctionedAmount", width: 22 },
+    { header: "Disbursed Amount", key: "disbursedAmount", width: 22 },
+  ];
+
+  for (const row of report.counselorPerformance) {
+    worksheet.addRow({
+      ...row,
+      targetCompletionPercentage: `${row.targetCompletionPercentage}%`,
+      conversionRate: `${row.conversionRate}%`,
+    });
+  }
+
+  worksheet.getColumn("sanctionedAmount").numFmt = "₹#,##0.00";
+  worksheet.getColumn("disbursedAmount").numFmt = "₹#,##0.00";
+  styleWorksheet(worksheet);
+
+  let groupStart = 2;
+
+  while (groupStart <= worksheet.rowCount) {
+    const branch = worksheet.getCell(groupStart, 1).value;
+    let groupEnd = groupStart;
+
+    while (
+      groupEnd + 1 <= worksheet.rowCount &&
+      worksheet.getCell(groupEnd + 1, 1).value === branch
+    ) {
+      groupEnd += 1;
+    }
+
+    if (groupEnd > groupStart) {
+      worksheet.mergeCells(groupStart, 1, groupEnd, 1);
+      worksheet.getCell(groupStart, 1).alignment = {
+        vertical: "middle",
+        horizontal: "left",
+        wrapText: true,
+      };
+    }
+
+    groupStart = groupEnd + 1;
+  }
 }
 
 function addStatusSheet(
@@ -490,6 +584,7 @@ export async function buildPerformanceReportWorkbook(
   addMonthlySheet(workbook, report);
   addCountrySheet(workbook, report);
   addBranchSheet(workbook, report);
+  addCounselorSheet(workbook, report);
   addLeadSourceSheet(workbook, report);
   addStatusSheet(workbook, "Lead Status", report.leadStatusBreakdown);
   addStatusSheet(

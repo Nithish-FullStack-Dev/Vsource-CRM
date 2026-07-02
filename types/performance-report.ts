@@ -91,6 +91,12 @@ export type PerformanceReportSummary = {
   totalApplications: number;
   qualifiedLeads: number;
   lostLeads: number;
+  droppedStudents: number;
+  totalTarget: number;
+  totalAchieved: number;
+  totalLeadsCreated: number;
+  targetMonths: number;
+  targetCompletionPercentage: number;
   conversionRate: number;
   offerApplications: number;
   visaApprovedStudents: number;
@@ -132,10 +138,41 @@ export type PerformanceReportBranchPoint = {
   branchId: string;
   branch: string;
   leads: number;
+  lostLeads: number;
   students: number;
+  droppedStudents: number;
+  leadsCreated: number;
+  target: number;
+  achieved: number;
+  targetCompletionPercentage: number;
   applications: number;
   conversionRate: number;
   visaApproved: number;
+  sanctionedAmount: number;
+  disbursedAmount: number;
+};
+
+export type PerformanceReportCounselorPoint = {
+  branchId: string;
+  branch: string;
+  counselorId: string;
+  counselor: string;
+  totalWalkins: number;
+  leadsCreated: number;
+  leads: number;
+  qualifiedLeads: number;
+  lostLeads: number;
+  students: number;
+  droppedStudents: number;
+  target: number;
+  achieved: number;
+  targetCompletionPercentage: number;
+  applications: number;
+  offers: number;
+  conversionRate: number;
+  casReceived: number;
+  visaApproved: number;
+  loanSanctioned: number;
   sanctionedAmount: number;
   disbursedAmount: number;
 };
@@ -223,6 +260,7 @@ export type PerformanceReportData = {
   visaStatusBreakdown: PerformanceReportStatusPoint[];
   loanStatusBreakdown: PerformanceReportStatusPoint[];
   branchPerformance: PerformanceReportBranchPoint[];
+  counselorPerformance: PerformanceReportCounselorPoint[];
   rows: PerformanceReportRow[];
   applicationRows?: PerformanceApplicationExportRow[];
   pagination: {
