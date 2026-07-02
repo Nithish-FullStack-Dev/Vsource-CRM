@@ -43,6 +43,26 @@ export async function GET(req: NextRequest) {
     const from = sp.get("from") ? new Date(sp.get("from")!) : undefined;
     const to = sp.get("to") ? new Date(sp.get("to")!) : undefined;
 
+    const andFilters: Prisma.LeadWhereInput[] = [];
+
+    if (currentUser.role.name === "Counsellor") {
+      andFilters.push({
+        OR: [
+          { createdById: currentUser.id },
+          { counselors: { some: { counselorId: currentUser.id } } },
+        ],
+      });
+    }
+
+    if (
+      currentUser.role.name === "Jr Associate" ||
+      currentUser.role.name === "Sr Associate"
+    ) {
+      andFilters.push({
+        createdById: currentUser.id,
+      });
+    }
+
     const where: Prisma.LeadWhereInput = {
       ...(branchId && { branchId }),
       ...(status && { status }),
@@ -64,18 +84,11 @@ export async function GET(req: NextRequest) {
           { leadNumber: { contains: search, mode: "insensitive" as const } },
         ],
       }),
-    };
 
-    if (currentUser.role.name === "Counsellor") {
-      where.AND = [
-        {
-          OR: [
-            { createdById: currentUser.id },
-            { counselors: { some: { counselorId: currentUser.id } } },
-          ],
-        },
-      ];
-    }
+      ...(andFilters.length > 0 && {
+        AND: andFilters,
+      }),
+    };
 
     const [leads, total] = await Promise.all([
       db.lead.findMany({

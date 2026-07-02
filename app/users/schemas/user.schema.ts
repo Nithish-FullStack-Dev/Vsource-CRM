@@ -6,11 +6,6 @@ export const createUserSchema = z.object({
   password: z.string().min(8, "Minimum 8 characters"),
   branchIds: z.array(z.string()).optional(),
   roleId: z.string().min(1, "Role is required"),
-  target: z.coerce
-    .number()
-    .int()
-    .min(0, "Target cannot be negative")
-    .optional(),
 });
 
 export const updateUserSchema = z.object({
@@ -28,11 +23,6 @@ export const updateUserSchema = z.object({
       (val) => val === undefined || val.length >= 8,
       "Minimum 8 characters",
     ),
-  target: z.coerce
-    .number()
-    .int()
-    .min(0, "Target cannot be negative")
-    .optional(),
 });
 
 export type UserFormValues = {
@@ -41,7 +31,6 @@ export type UserFormValues = {
   password?: string;
   branchIds?: string[];
   roleId?: string;
-  target?: number;
 };
 
 export type CreateUserFormValues = z.infer<typeof createUserSchema>;

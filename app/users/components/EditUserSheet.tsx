@@ -46,7 +46,6 @@ export default function EditUserSheet({ open, onOpenChange, user }: Props) {
               email: user.email,
               branchIds: user.branches.map((branch) => branch.id) || [],
               roleId: user.role.id,
-              target: user.target ?? undefined,
             }}
             onSubmit={(values) => {
               const payload = {
