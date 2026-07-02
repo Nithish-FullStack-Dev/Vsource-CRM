@@ -18,6 +18,7 @@ import {
 import { getUserColumns } from "./UserColumns";
 import { User } from "../types/user";
 import { useAuth } from "@/store";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   users: User[];
@@ -27,6 +28,16 @@ interface Props {
   onEdit: (user: User) => void;
 
   onDelete: (user: User) => void;
+  meta: {
+    page: number;
+    totalPages: number;
+    total: number;
+    limit: number;
+  };
+
+  page: number;
+
+  onPageChange: (page: number) => void;
 }
 
 export default function UserTable({
@@ -37,8 +48,11 @@ export default function UserTable({
   onEdit,
 
   onDelete,
+  meta,
+  page,
+  onPageChange,
 }: Props) {
-  const { canUpdate, canDelete } = useAuth();
+  const { canUpdate } = useAuth();
 
   const columns = getUserColumns({
     onView,
@@ -90,6 +104,31 @@ export default function UserTable({
           )}
         </TableBody>
       </Table>
+      <div className="flex items-center justify-between border-t px-4 py-3">
+        <p className="text-sm text-muted-foreground">
+          Showing page {meta.page} of {meta.totalPages}
+        </p>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page === 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            Previous
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= meta.totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
