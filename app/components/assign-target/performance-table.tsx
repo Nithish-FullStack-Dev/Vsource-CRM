@@ -1,11 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  ArrowUpDown,
-  CheckCircle2,
-  Target,
-} from "lucide-react";
+import { ArrowUpDown, CheckCircle2, Target } from "lucide-react";
 import {
   ColumnDef,
   OnChangeFn,
@@ -128,7 +124,7 @@ export function PerformanceTable({
             className="-ml-3"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Monthly Target
+            Assigned Target
             <ArrowUpDown className="ml-2 size-4" />
           </Button>
         ),

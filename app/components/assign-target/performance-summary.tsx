@@ -24,9 +24,9 @@ export function PerformanceSummary({
       icon: Users,
     },
     {
-      title: "Monthly Target",
+      title: "Assigned Target",
+      description: "Assigned target for the selected reporting period",
       value: summary.totalTarget,
-      description: "Assigned target for the selected month",
       icon: Target,
     },
     {

@@ -112,7 +112,12 @@ export async function buildCounsellorPerformanceReport(
   currentUser: AuthorizedUser,
   params: PerformanceQueryParams,
 ): Promise<PerformanceResponse> {
-  const period = getPerformancePeriod(params.period, params.date);
+  const period = getPerformancePeriod(
+    params.period,
+    params.date,
+    params.startDate,
+    params.endDate,
+  );
   const roleName = normalizeRoleName(currentUser.role?.name);
   const isCounsellor = roleName === "counsellor" || roleName === "counselor";
   const isBranchManager = roleName === "branch manager";
@@ -269,7 +274,10 @@ export async function buildCounsellorPerformanceReport(
           }),
           db.counsellorMonthlyTarget.findMany({
             where: {
-              periodStart: period.targetPeriodStart,
+              periodStart: {
+                gte: period.targetPeriodStart,
+                lt: period.targetPeriodEnd,
+              },
               counsellorId: {
                 in: counsellorIds,
               },
@@ -299,7 +307,9 @@ export async function buildCounsellorPerformanceReport(
   }
 
   for (const item of targets) {
-    targetMap.set(item.counsellorId, item.target);
+    const currentTarget = targetMap.get(item.counsellorId) ?? 0;
+
+    targetMap.set(item.counsellorId, currentTarget + item.target);
   }
 
   const counsellorData = counsellors
@@ -359,6 +369,7 @@ export async function buildCounsellorPerformanceReport(
       end: period.end.toISOString(),
       label: period.label,
       targetPeriodStart: period.targetPeriodStart.toISOString(),
+      targetPeriodEnd: period.targetPeriodEnd.toISOString(),
     },
     summary: {
       totalCounsellors: counsellorData.length,
