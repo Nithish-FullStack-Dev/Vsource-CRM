@@ -48,8 +48,7 @@ function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
 
 function toIstInstant(date: CalendarDate) {
   return new Date(
-    Date.UTC(date.year, date.month - 1, date.day, 0, 0, 0, 0) -
-      IST_OFFSET_MS,
+    Date.UTC(date.year, date.month - 1, date.day, 0, 0, 0, 0) - IST_OFFSET_MS,
   );
 }
 
@@ -146,45 +145,105 @@ export function getIstMonthRange(year: number, month: number) {
 export function getPerformancePeriod(
   type: PerformancePeriodType,
   dateInput?: string,
+  customStartDateInput?: string,
+  customEndDateInput?: string,
 ) {
-  const anchor = dateInput
-    ? toCalendarDate(dateInput)
-    : toCalendarDate(getCurrentIstDate());
-
-  if (!anchor) {
-    throw new Error("Invalid date");
-  }
-
+  let anchor: CalendarDate;
   let startDate: CalendarDate;
   let endDate: CalendarDate;
+  let targetPeriodStartDate: CalendarDate;
+  let targetPeriodEndDate: CalendarDate;
+  let label: string;
 
-  if (type === "daily") {
-    startDate = anchor;
-    endDate = addCalendarDays(anchor, 1);
-  } else if (type === "weekly") {
-    const utcDay = new Date(
-      Date.UTC(anchor.year, anchor.month - 1, anchor.day),
-    ).getUTCDay();
-    const daysFromMonday = (utcDay + 6) % 7;
+  if (type === "custom") {
+    const customStartDate = customStartDateInput
+      ? toCalendarDate(customStartDateInput)
+      : null;
 
-    startDate = addCalendarDays(anchor, -daysFromMonday);
-    endDate = addCalendarDays(startDate, 7);
+    const customEndDate = customEndDateInput
+      ? toCalendarDate(customEndDateInput)
+      : null;
+
+    if (!customStartDate || !customEndDate) {
+      throw new Error("Start date and end date are required");
+    }
+
+    const customStartValue = Date.UTC(
+      customStartDate.year,
+      customStartDate.month - 1,
+      customStartDate.day,
+    );
+
+    const customEndValue = Date.UTC(
+      customEndDate.year,
+      customEndDate.month - 1,
+      customEndDate.day,
+    );
+
+    if (customEndValue < customStartValue) {
+      throw new Error("End date cannot be before start date");
+    }
+
+    anchor = customStartDate;
+    startDate = customStartDate;
+
+    endDate = addCalendarDays(customEndDate, 1);
+
+    targetPeriodStartDate = getMonthStart(customStartDate);
+    targetPeriodEndDate = getNextMonthStart(customEndDate);
+
+    const start = toIstInstant(startDate);
+    const end = toIstInstant(endDate);
+    const inclusiveEnd = new Date(end.getTime() - 1);
+
+    label = `${formatDate(start)} - ${formatDate(inclusiveEnd)}`;
   } else {
-    startDate = getMonthStart(anchor);
-    endDate = getNextMonthStart(anchor);
+    const parsedAnchor = dateInput
+      ? toCalendarDate(dateInput)
+      : toCalendarDate(getCurrentIstDate());
+
+    if (!parsedAnchor) {
+      throw new Error("Invalid date");
+    }
+
+    anchor = parsedAnchor;
+
+    if (type === "daily") {
+      startDate = anchor;
+      endDate = addCalendarDays(anchor, 1);
+    } else if (type === "weekly") {
+      const utcDay = new Date(
+        Date.UTC(anchor.year, anchor.month - 1, anchor.day),
+      ).getUTCDay();
+
+      const daysFromMonday = (utcDay + 6) % 7;
+
+      startDate = addCalendarDays(anchor, -daysFromMonday);
+      endDate = addCalendarDays(startDate, 7);
+    } else {
+      startDate = getMonthStart(anchor);
+      endDate = getNextMonthStart(anchor);
+    }
+
+    targetPeriodStartDate = getMonthStart(anchor);
+    targetPeriodEndDate = getNextMonthStart(anchor);
+
+    const start = toIstInstant(startDate);
+    const end = toIstInstant(endDate);
+    const inclusiveEnd = new Date(end.getTime() - 1);
+
+    label =
+      type === "monthly"
+        ? formatMonth(start)
+        : type === "daily"
+          ? formatDate(start)
+          : `${formatDate(start)} - ${formatDate(inclusiveEnd)}`;
   }
 
   const start = toIstInstant(startDate);
   const end = toIstInstant(endDate);
-  const inclusiveEnd = new Date(end.getTime() - 1);
-  const targetPeriodStart = toIstInstant(getMonthStart(anchor));
-
-  const label =
-    type === "monthly"
-      ? formatMonth(start)
-      : type === "daily"
-        ? formatDate(start)
-        : `${formatDate(start)} - ${formatDate(inclusiveEnd)}`;
+  const targetPeriodStart = toIstInstant(targetPeriodStartDate);
+  const targetPeriodEnd = toIstInstant(targetPeriodEndDate);
 
   return {
     type,
@@ -195,5 +254,6 @@ export function getPerformancePeriod(
     end,
     label,
     targetPeriodStart,
+    targetPeriodEnd,
   };
 }

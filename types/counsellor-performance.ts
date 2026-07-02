@@ -1,4 +1,4 @@
-export type PerformancePeriodType = "daily" | "weekly" | "monthly";
+export type PerformancePeriodType = "daily" | "weekly" | "monthly" | "custom";
 
 export type PerformanceSortField =
   | "name"
@@ -52,6 +52,7 @@ export type PerformancePeriod = {
   end: string;
   label: string;
   targetPeriodStart: string;
+  targetPeriodEnd: string;
 };
 
 export type PerformanceAccess = {
@@ -72,6 +73,8 @@ export type PerformanceResponse = {
 export type PerformanceQueryParams = {
   period: PerformancePeriodType;
   date: string;
+  startDate?: string;
+  endDate?: string;
   branchId?: string;
   search?: string;
   sortBy?: PerformanceSortField;

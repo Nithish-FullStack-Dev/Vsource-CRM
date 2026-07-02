@@ -31,6 +31,7 @@ const PERIOD_TYPES = new Set<PerformancePeriodType>([
   "daily",
   "weekly",
   "monthly",
+  "custom",
 ]);
 const SORT_FIELDS = new Set<PerformanceSortField>([
   "name",
@@ -100,9 +101,16 @@ export async function GET(req: NextRequest) {
     );
 
     const searchParams = req.nextUrl.searchParams;
+    const requestedStartDate =
+      searchParams.get("startDate")?.trim() || undefined;
+
+    const requestedEndDate = searchParams.get("endDate")?.trim() || undefined;
+
     const report = await buildCounsellorPerformanceReport(currentUser, {
       period: parsePeriod(searchParams.get("period")),
       date: searchParams.get("date")?.trim() || getCurrentIstDate(),
+      startDate: requestedStartDate,
+      endDate: requestedEndDate,
       branchId: searchParams.get("branchId")?.trim() || undefined,
       search: searchParams.get("search")?.trim() || undefined,
       sortBy: parseSortField(searchParams.get("sortBy")),
@@ -111,7 +119,13 @@ export async function GET(req: NextRequest) {
 
     if (searchParams.get("format") === "xlsx") {
       const workbook = await createCounsellorPerformanceWorkbook(report);
-      const filename = `counsellor-performance-${report.period.type}-${report.period.date}.xlsx`;
+
+      const filename =
+        report.period.type === "custom" &&
+        requestedStartDate &&
+        requestedEndDate
+          ? `counsellor-performance-custom-${requestedStartDate}-to-${requestedEndDate}.xlsx`
+          : `counsellor-performance-${report.period.type}-${report.period.date}.xlsx`;
 
       return new Response(Buffer.from(workbook), {
         status: 200,

@@ -26,6 +26,10 @@ function buildRequestParams(params: PerformanceQueryParams) {
   return {
     period: params.period,
     date: params.date,
+    startDate:
+      params.period === "custom" ? params.startDate || undefined : undefined,
+    endDate:
+      params.period === "custom" ? params.endDate || undefined : undefined,
     branchId:
       params.branchId && params.branchId !== "all"
         ? params.branchId

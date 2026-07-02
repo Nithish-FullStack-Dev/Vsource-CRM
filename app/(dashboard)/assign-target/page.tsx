@@ -64,18 +64,34 @@ export default function CounsellorPerformancePage() {
   const [targetDialogCounsellor, setTargetDialogCounsellor] =
     useState<TargetDialogCounsellor | null>(null);
 
+  const [customStartDate, setCustomStartDate] = useState(() =>
+    getCurrentIstDate(),
+  );
+
+  const [customEndDate, setCustomEndDate] = useState(() => getCurrentIstDate());
+
   const debouncedSearch = useDebouncedValue(search);
 
   const queryParams = useMemo<PerformanceQueryParams>(
     () => ({
       period,
       date,
+      startDate: period === "custom" ? customStartDate : undefined,
+      endDate: period === "custom" ? customEndDate : undefined,
       branchId,
       search: debouncedSearch,
       sortBy: getSortField(sorting),
       sortOrder: sorting[0]?.desc === false ? "asc" : "desc",
     }),
-    [branchId, date, debouncedSearch, period, sorting],
+    [
+      branchId,
+      customEndDate,
+      customStartDate,
+      date,
+      debouncedSearch,
+      period,
+      sorting,
+    ],
   );
 
   const performanceQuery = usePerformance(queryParams);
@@ -85,6 +101,30 @@ export default function CounsellorPerformancePage() {
   const isInitialLoading = performanceQuery.isPending && !performanceData;
   const isRefreshing = performanceQuery.isFetching && Boolean(performanceData);
   const periodLabel = performanceData?.period.label ?? "selected period";
+
+  const handleCustomStartDateChange = useCallback((value: string) => {
+    if (!value) {
+      return;
+    }
+
+    setCustomStartDate(value);
+
+    setCustomEndDate((currentEndDate) =>
+      currentEndDate < value ? value : currentEndDate,
+    );
+  }, []);
+
+  const handleCustomEndDateChange = useCallback((value: string) => {
+    if (!value) {
+      return;
+    }
+
+    setCustomEndDate(value);
+
+    setCustomStartDate((currentStartDate) =>
+      currentStartDate > value ? value : currentStartDate,
+    );
+  }, []);
 
   const openTargetDialog = useCallback((counsellor: CounsellorPerformance) => {
     setTargetDialogCounsellor({
@@ -129,12 +169,29 @@ export default function CounsellorPerformancePage() {
     }
   };
 
+  const handleClearFilters = useCallback(() => {
+    const today = getCurrentIstDate();
+
+    setPeriod("monthly");
+    setDate(today);
+    setCustomStartDate(today);
+    setCustomEndDate(today);
+    setBranchId("all");
+    setSearch("");
+    setSorting([
+      {
+        id: "completionPercentage",
+        desc: true,
+      },
+    ]);
+  }, []);
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            Counsellor Performance
+            Assign Target
           </h1>
           {isRefreshing && (
             <Loader2 className="size-4 animate-spin text-muted-foreground" />
@@ -168,13 +225,18 @@ export default function CounsellorPerformancePage() {
       <PerformanceFilters
         period={period}
         date={date}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
         branchId={branchId}
+        onClearFilters={handleClearFilters}
         search={search}
         branches={performanceData?.availableBranches ?? []}
         isRefreshing={performanceQuery.isFetching}
         isExporting={exportMutation.isPending}
         onPeriodChange={setPeriod}
         onDateChange={setDate}
+        onCustomStartDateChange={handleCustomStartDateChange}
+        onCustomEndDateChange={handleCustomEndDateChange}
         onBranchChange={setBranchId}
         onSearchChange={setSearch}
         onRefresh={() => void performanceQuery.refetch()}
