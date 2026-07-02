@@ -35,7 +35,7 @@ const KANBAN_COLUMNS = [
   },
   {
     id: "Applied",
-    label: "Applied",
+    label: "Uni Applied",
     headerStyle:
       "border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-300 bg-rose-50/60 dark:bg-rose-950/15",
     badgeStyle: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
@@ -637,7 +637,7 @@ export default function ApplicationsTrackerPage() {
                             <div className="mt-5">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-[11px] font-semibold text-slate-500">
-                                  Compliance & Checklists
+                                  Progress
                                 </span>
                                 <span className="text-[11px] font-bold">
                                   {progressPercent}%

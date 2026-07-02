@@ -1,12 +1,23 @@
-// app\api\users\counsellors\performance\route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@/generated/prisma/client";
 import db from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
 import { getAuthorizedUser } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
-import { getCurrentIstMonth, getIstMonthRange } from "@/lib/month-range";
+import { getCurrentIstDate, getIstMonthRange } from "@/lib/performance-period";
+import {
+  buildCounsellorPerformanceReport,
+  PerformanceAccessError,
+} from "@/services/performance/counsellor-performance.server";
+import { createCounsellorPerformanceWorkbook } from "@/services/performance/counsellor-performance-excel.server";
+import type {
+  PerformancePeriodType,
+  PerformanceSortField,
+  SortOrder,
+} from "@/types/counsellor-performance";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type UpdateMonthlyTargetBody = {
   counsellorId?: string;
@@ -16,6 +27,19 @@ type UpdateMonthlyTargetBody = {
 };
 
 const COUNSELLOR_ROLE_NAMES = ["Counsellor", "Counselor"];
+const PERIOD_TYPES = new Set<PerformancePeriodType>([
+  "daily",
+  "weekly",
+  "monthly",
+]);
+const SORT_FIELDS = new Set<PerformanceSortField>([
+  "name",
+  "target",
+  "achieved",
+  "leadsCreated",
+  "completionPercentage",
+]);
+const SORT_ORDERS = new Set<SortOrder>(["asc", "desc"]);
 
 function normalizeRoleName(value: string | null | undefined) {
   return value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
@@ -32,7 +56,7 @@ function getAssignedBranchIds(
   return Array.from(
     new Set(
       (branches ?? [])
-        .map((branch) => branch?.id?.trim())
+        .map((branch) => branch.id?.trim())
         .filter((branchId): branchId is string => Boolean(branchId)),
     ),
   );
@@ -51,6 +75,22 @@ function forbidden(message: string) {
   );
 }
 
+function parsePeriod(value: string | null): PerformancePeriodType {
+  return PERIOD_TYPES.has(value as PerformancePeriodType)
+    ? (value as PerformancePeriodType)
+    : "monthly";
+}
+
+function parseSortField(value: string | null): PerformanceSortField {
+  return SORT_FIELDS.has(value as PerformanceSortField)
+    ? (value as PerformanceSortField)
+    : "completionPercentage";
+}
+
+function parseSortOrder(value: string | null): SortOrder {
+  return SORT_ORDERS.has(value as SortOrder) ? (value as SortOrder) : "desc";
+}
+
 export async function GET(req: NextRequest) {
   try {
     const currentUser = await getAuthorizedUser(
@@ -60,248 +100,45 @@ export async function GET(req: NextRequest) {
     );
 
     const searchParams = req.nextUrl.searchParams;
-    const currentMonth = getCurrentIstMonth();
+    const report = await buildCounsellorPerformanceReport(currentUser, {
+      period: parsePeriod(searchParams.get("period")),
+      date: searchParams.get("date")?.trim() || getCurrentIstDate(),
+      branchId: searchParams.get("branchId")?.trim() || undefined,
+      search: searchParams.get("search")?.trim() || undefined,
+      sortBy: parseSortField(searchParams.get("sortBy")),
+      sortOrder: parseSortOrder(searchParams.get("sortOrder")),
+    });
 
-    const year = Number(searchParams.get("year") ?? currentMonth.year);
+    if (searchParams.get("format") === "xlsx") {
+      const workbook = await createCounsellorPerformanceWorkbook(report);
+      const filename = `counsellor-performance-${report.period.type}-${report.period.date}.xlsx`;
 
-    const month = Number(searchParams.get("month") ?? currentMonth.month);
-
-    const requestedBranchId = searchParams.get("branchId")?.trim() || undefined;
-
-    const { start, end, periodStart } = getIstMonthRange(year, month);
-
-    const roleName = normalizeRoleName(currentUser.role?.name);
-
-    const isCounsellor = roleName === "counsellor" || roleName === "counselor";
-
-    const isBranchManager = roleName === "branch manager";
-
-    const assignedBranchIds = getAssignedBranchIds(currentUser.branches);
-
-    let effectiveBranchIds: string[] | undefined;
-
-    if (isBranchManager) {
-      if (requestedBranchId && !assignedBranchIds.includes(requestedBranchId)) {
-        return forbidden("You do not have access to the selected branch");
-      }
-
-      effectiveBranchIds = requestedBranchId
-        ? [requestedBranchId]
-        : assignedBranchIds;
-    } else if (requestedBranchId) {
-      effectiveBranchIds = [requestedBranchId];
-    }
-
-    const counsellorWhere: Prisma.UserWhereInput = {
-      role: {
-        name: {
-          in: COUNSELLOR_ROLE_NAMES,
+      return new Response(Buffer.from(workbook), {
+        status: 200,
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Cache-Control": "no-store",
         },
-      },
-      ...(isCounsellor
-        ? {
-            id: currentUser.id,
-          }
-        : {}),
-      ...(effectiveBranchIds !== undefined
-        ? {
-            branches: {
-              some: {
-                id: {
-                  in: effectiveBranchIds,
-                },
-              },
-            },
-          }
-        : {}),
-    };
-
-    const studentWhere: Prisma.StudentWhereInput = {
-      counselorId: isCounsellor
-        ? currentUser.id
-        : {
-            not: null,
-          },
-      createdAt: {
-        gte: start,
-        lt: end,
-      },
-      ...(effectiveBranchIds !== undefined
-        ? {
-            branchId: {
-              in: effectiveBranchIds,
-            },
-          }
-        : {}),
-    };
-
-    const leadWhere: Prisma.LeadWhereInput = {
-      createdById: isCounsellor
-        ? currentUser.id
-        : {
-            not: null,
-          },
-      createdAt: {
-        gte: start,
-        lt: end,
-      },
-      ...(effectiveBranchIds !== undefined
-        ? {
-            branchId: {
-              in: effectiveBranchIds,
-            },
-          }
-        : {}),
-    };
-
-    const [counsellors, achievements, createdLeads, targets] =
-      await db.$transaction([
-        db.user.findMany({
-          where: counsellorWhere,
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            createdAt: true,
-            branches: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-          orderBy: {
-            name: "asc",
-          },
-        }),
-
-        db.student.groupBy({
-          by: ["counselorId"],
-          where: studentWhere,
-          orderBy: {
-            counselorId: "asc",
-          },
-          _count: {
-            _all: true,
-          },
-        }),
-
-        db.lead.groupBy({
-          by: ["createdById"],
-          where: leadWhere,
-          orderBy: {
-            createdById: "asc",
-          },
-          _count: {
-            _all: true,
-          },
-        }),
-
-        db.counsellorMonthlyTarget.findMany({
-          where: {
-            periodStart,
-            counsellor: counsellorWhere,
-          },
-          select: {
-            counsellorId: true,
-            target: true,
-          },
-        }),
-      ]);
-
-    const achievementMap = new Map<string, number>();
-
-    for (const item of achievements) {
-      if (!item.counselorId) continue;
-
-      const count = (item._count as { _all: number } | undefined)?._all ?? 0;
-
-      achievementMap.set(item.counselorId, count);
+      });
     }
 
-    const leadsCreatedMap = new Map<string, number>();
-
-    for (const item of createdLeads) {
-      if (!item.createdById) continue;
-
-      const count = (item._count as { _all: number } | undefined)?._all ?? 0;
-
-      leadsCreatedMap.set(item.createdById, count);
-    }
-
-    const targetMap = new Map<string, number>();
-
-    for (const item of targets) {
-      targetMap.set(item.counsellorId, item.target);
-    }
-
-    const counsellorData = counsellors.map((counsellor) => {
-      const target = targetMap.get(counsellor.id) ?? 0;
-
-      const achieved = achievementMap.get(counsellor.id) ?? 0;
-
-      const leadsCreated = leadsCreatedMap.get(counsellor.id) ?? 0;
-
-      return {
-        id: counsellor.id,
-        name: counsellor.name,
-        email: counsellor.email,
-        branches: counsellor.branches ?? [],
-        joinedAt: counsellor.createdAt,
-        year,
-        month,
-        periodStart,
-        target,
-        achieved,
-        leadsCreated,
-        completionPercentage:
-          target > 0 ? Math.round((achieved / target) * 100) : 0,
-        targetAchieved: target > 0 && achieved >= target,
-      };
-    });
-
-    const summary = counsellorData.reduce(
-      (result, counsellor) => {
-        result.totalTarget += counsellor.target;
-
-        result.totalAchieved += counsellor.achieved;
-
-        result.totalLeadsCreated += counsellor.leadsCreated;
-
-        return result;
-      },
-      {
-        totalTarget: 0,
-        totalAchieved: 0,
-        totalLeadsCreated: 0,
-      },
-    );
-
-    return ok({
-      access: {
-        role: currentUser.role?.name ?? "Unknown",
-        selfOnly: isCounsellor,
-        assignedBranchIds: isBranchManager ? assignedBranchIds : [],
-        selectedBranchIds: effectiveBranchIds ?? [],
-      },
-      period: {
-        year,
-        month,
-        start,
-        end,
-      },
-      summary: {
-        totalTarget: summary.totalTarget,
-        totalAchieved: summary.totalAchieved,
-        totalLeadsCreated: summary.totalLeadsCreated,
-        completionPercentage:
-          summary.totalTarget > 0
-            ? Math.round((summary.totalAchieved / summary.totalTarget) * 100)
-            : 0,
-      },
-      counsellors: counsellorData,
-    });
+    return ok(report);
   } catch (error) {
+    if (error instanceof PerformanceAccessError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: error.message,
+          data: null,
+        },
+        {
+          status: error.status,
+        },
+      );
+    }
+
     return handleError(error);
   }
 }
@@ -320,7 +157,6 @@ export async function PUT(req: NextRequest) {
 
     const counsellorId =
       typeof body?.counsellorId === "string" ? body.counsellorId.trim() : "";
-
     const year = Number(body?.year);
     const month = Number(body?.month);
     const target = Number(body?.target);
@@ -342,11 +178,8 @@ export async function PUT(req: NextRequest) {
     }
 
     const roleName = normalizeRoleName(currentUser.role?.name);
-
     const isCounsellor = roleName === "counsellor" || roleName === "counselor";
-
     const isBranchManager = roleName === "branch manager";
-
     const assignedBranchIds = getAssignedBranchIds(currentUser.branches);
 
     if (isCounsellor && counsellorId !== currentUser.id) {
@@ -364,6 +197,7 @@ export async function PUT(req: NextRequest) {
       role: {
         name: {
           in: COUNSELLOR_ROLE_NAMES,
+          mode: "insensitive",
         },
       },
       ...(isBranchManager
