@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 
 import { ok, handleError } from "@/lib/api-helpers";
-import bcrypt from "bcryptjs";
+import { encrypt } from "@/lib/encryption";
 import { Prisma } from "@/generated/prisma/client";
 
 export async function PATCH(
@@ -49,7 +49,7 @@ export async function PATCH(
     };
 
     if (body.password?.trim()) {
-      updateData.password = await bcrypt.hash(body.password, 10);
+      updateData.password = encrypt(body.password.trim());
     }
 
     const student = await db.student.update({

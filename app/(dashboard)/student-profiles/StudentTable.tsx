@@ -189,8 +189,8 @@ export function StudentTable({
               <th className={`px-4 py-3 ${thBgClass}`}>DATE OF ADMISSION</th>
               <th className={`px-4 py-3 ${thBgClass}`}>PASSPORT NO</th>
               <th className={`px-4 py-3 ${thBgClass}`}>MOBILE NUMBER</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>EMAIL ID</th>
-              {/* <th className={`px-4 py-3 ${thBgClass}`}>PASSWORD</th> */}
+              <th className={`px-4 py-3 ${thBgClass}`}>VSTU EMAIL</th>
+              <th className={`px-4 py-3 ${thBgClass}`}>PASSWORD</th>
               <th className={`px-4 py-3 ${thBgClass}`}>COUNTRY</th>
               <th className={`px-4 py-3 text-center ${thBgClass}`}>INTAKE</th>
               <th className={`px-4 py-3 ${thBgClass}`}>12TH ENGLISH & MOI</th>
@@ -293,7 +293,7 @@ export function StudentTable({
                       {getText(student?.emailId, "Not provided")}
                     </td>
 
-                    {/* <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                    <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-400">
                       <div className="flex items-center gap-1.5">
                         <span>
                           {visiblePasswords[student.id]
@@ -324,7 +324,7 @@ export function StudentTable({
                           </button>
                         )}
                       </div>
-                    </td> */}
+                    </td>
 
                     <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300">
                       {getText(lead?.preferredCountry, "Not selected")}

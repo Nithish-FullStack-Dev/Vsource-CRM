@@ -7,6 +7,7 @@ import { ok, handleError } from "@/lib/api-helpers";
 import { Prisma } from "@/generated/prisma/client";
 import { getAuthorizedUser } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
+import { decrypt } from "@/lib/encryption";
 
 export async function GET(req: NextRequest) {
   try {
@@ -219,7 +220,24 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return ok(students, "Students fetched successfully");
+    const studentsWithPassword = students.map((student) => {
+      let password = student.password;
+
+      if (password) {
+        try {
+          password = decrypt(password);
+        } catch {
+          password = null;
+        }
+      }
+
+      return {
+        ...student,
+        password,
+      };
+    });
+
+    return ok(studentsWithPassword, "Students fetched successfully");
   } catch (err) {
     return handleError(err);
   }

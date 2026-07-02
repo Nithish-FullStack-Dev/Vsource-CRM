@@ -437,7 +437,7 @@ export default function Home() {
                               icon: Globe2,
                             },
                             {
-                              label: "Email Address",
+                              label: "VSTU Email",
                               val: selectedStudent?.emailId,
                               icon: FileText,
                             },

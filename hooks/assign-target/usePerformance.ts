@@ -1,38 +1,49 @@
-import { getCounsellorPerformance } from "@/services/performance/performance";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  exportCounsellorPerformance,
+  getCounsellorPerformance,
+  updateMonthlyTarget,
+} from "@/services/performance/performance";
+import type {
+  PerformanceQueryParams,
+  UpdateMonthlyTargetPayload,
+} from "@/types/counsellor-performance";
 
-export const usePerformance = (year: number, month: number) => {
+export const PERFORMANCE_QUERY_KEY = ["counsellor-performance"] as const;
+
+export function usePerformance(params: PerformanceQueryParams) {
   return useQuery({
-    queryKey: ["counsellor-performance", year, month, "all"],
-    queryFn: () =>
-      getCounsellorPerformance({
-        year,
-        month,
-      }),
+    queryKey: [...PERFORMANCE_QUERY_KEY, params],
+    queryFn: () => getCounsellorPerformance(params),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
     retry: 1,
     refetchOnWindowFocus: false,
   });
-};
+}
 
-export const useBranchPerformance = (
-  year: number,
-  month: number,
-  branchId: string,
-) => {
-  return useQuery({
-    queryKey: ["counsellor-performance", year, month, branchId],
-    queryFn: () =>
-      getCounsellorPerformance({
-        year,
-        month,
-        branchId,
-      }),
-    enabled: branchId !== "all",
-    placeholderData: keepPreviousData,
-    staleTime: 60_000,
-    retry: 1,
-    refetchOnWindowFocus: false,
+export function useUpdateMonthlyTarget() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateMonthlyTargetPayload) =>
+      updateMonthlyTarget(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: PERFORMANCE_QUERY_KEY,
+      });
+    },
   });
-};
+}
+
+export function useExportPerformance() {
+  return useMutation({
+    mutationFn: (params: PerformanceQueryParams) =>
+      exportCounsellorPerformance(params),
+  });
+}

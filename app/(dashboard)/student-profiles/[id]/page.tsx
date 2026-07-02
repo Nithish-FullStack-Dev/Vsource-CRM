@@ -17,6 +17,8 @@ import {
   FolderOpen,
   LayoutGrid,
   TableProperties,
+  ShieldOff,
+  Shield,
 } from "lucide-react";
 import { DMSSection } from "../DMSSection";
 import { StudentTable } from "../StudentTable";
@@ -84,7 +86,9 @@ const tabs = [
 export default function Home() {
   const queryClient = useQueryClient();
   const { canUpdate, canCreate } = useAuth();
-
+  const [visiblePasswords, setVisiblePasswords] = useState<
+    Record<string, boolean>
+  >({});
   const params = useParams();
   const router = useRouter();
   const studentId = params.id as string;
@@ -204,6 +208,13 @@ export default function Home() {
         );
       }
     }
+  };
+
+  const togglePassword = (studentId: string) => {
+    setVisiblePasswords((previous) => ({
+      ...previous,
+      [studentId]: !previous[studentId],
+    }));
   };
 
   const handleAddRemark = async (e: React.FormEvent) => {
@@ -425,15 +436,16 @@ export default function Home() {
                               icon: Globe2,
                             },
                             {
-                              label: "Email Address",
+                              label: "VSTU Email",
                               val: selectedStudent?.emailId,
                               icon: FileText,
                             },
-                            // {
-                            //   label: "Password",
-                            //   val: selectedStudent?.password,
-                            //   icon: FileText,
-                            // },
+                            {
+                              label: "Password",
+                              val: selectedStudent?.password,
+                              icon: FileText,
+                              isPassword: true,
+                            },
                             {
                               label: "Course",
                               val: selectedStudent?.lead?.bachelorsCourse,
@@ -488,9 +500,47 @@ export default function Home() {
                                     {v.label}
                                   </span>
 
-                                  <span className="text-xs font-extrabold text-slate-850 dark:text-slate-150">
-                                    {v.val || "Not provided"}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-extrabold text-slate-850 dark:text-slate-150 font-mono">
+                                      {v.isPassword
+                                        ? visiblePasswords[
+                                            selectedStudent?.id ?? ""
+                                          ]
+                                          ? v.val || "Not set"
+                                          : v.val
+                                            ? "••••••••"
+                                            : "Not set"
+                                        : v.val || "Not provided"}
+                                    </span>
+
+                                    {v.isPassword && v.val && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (selectedStudent?.id) {
+                                            togglePassword(selectedStudent.id);
+                                          }
+                                        }}
+                                        className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+                                        aria-label={
+                                          visiblePasswords[
+                                            selectedStudent?.id ?? ""
+                                          ]
+                                            ? "Hide password"
+                                            : "Show password"
+                                        }
+                                      >
+                                        {visiblePasswords[
+                                          selectedStudent?.id ?? ""
+                                        ] ? (
+                                          <ShieldOff className="h-3.5 w-3.5" />
+                                        ) : (
+                                          <Shield className="h-3.5 w-3.5" />
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             );

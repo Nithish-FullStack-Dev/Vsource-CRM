@@ -1,211 +1,14 @@
+import axios from "axios";
 import { api } from "@/lib/api";
-import {
+import type {
   ApiEnvelope,
-  Branch,
   CounsellorPerformance,
+  PerformanceQueryParams,
   PerformanceResponse,
-  RawBranch,
-  RawPerformanceResponse,
   UpdateMonthlyTargetPayload,
 } from "@/types/counsellor-performance";
-import axios from "axios";
 
 export const API_URL = "/users/counsellors/performance";
-
-function safeNumber(value: number | null | undefined, fallback = 0) {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function safeString(value: string | null | undefined, fallback = "") {
-  return typeof value === "string" && value.trim() ? value.trim() : fallback;
-}
-
-function normalizeBranches(branches: RawBranch[] | null | undefined): Branch[] {
-  if (!Array.isArray(branches)) {
-    return [];
-  }
-
-  return branches.reduce<Branch[]>((result, branch) => {
-    const id = safeString(branch?.id);
-    const name = safeString(branch?.name, "Unnamed branch");
-
-    if (!id) {
-      return result;
-    }
-
-    result.push({
-      id,
-      name,
-    });
-
-    return result;
-  }, []);
-}
-
-export function updateTargetInCachedReport(
-  report: PerformanceResponse,
-  counsellorId: string,
-  target: number,
-): PerformanceResponse {
-  const safeCounsellors = Array.isArray(report?.counsellors)
-    ? report.counsellors
-    : [];
-
-  const counsellors = safeCounsellors.map((counsellor) => {
-    if (counsellor.id !== counsellorId) {
-      return counsellor;
-    }
-
-    const achieved = Math.max(counsellor.achieved ?? 0, 0);
-
-    const completionPercentage =
-      target > 0 ? Math.round((achieved / target) * 100) : 0;
-
-    return {
-      ...counsellor,
-      target,
-      completionPercentage,
-      targetAchieved: target > 0 && achieved >= target,
-    };
-  });
-
-  const totalTarget = counsellors.reduce(
-    (total, counsellor) => total + (counsellor.target ?? 0),
-    0,
-  );
-
-  const totalAchieved = counsellors.reduce(
-    (total, counsellor) => total + (counsellor.achieved ?? 0),
-    0,
-  );
-
-  const totalLeadsCreated = counsellors.reduce(
-    (total, counsellor) => total + (counsellor.leadsCreated ?? 0),
-    0,
-  );
-
-  return {
-    ...report,
-    counsellors,
-    summary: {
-      totalTarget,
-      totalAchieved,
-      totalLeadsCreated,
-      completionPercentage:
-        totalTarget > 0 ? Math.round((totalAchieved / totalTarget) * 100) : 0,
-    },
-  };
-}
-
-function normalizePerformanceResponse(
-  payload: RawPerformanceResponse,
-  requestedYear: number,
-  requestedMonth: number,
-): PerformanceResponse {
-  const rawCounsellors = Array.isArray(payload?.counsellors)
-    ? payload.counsellors
-    : [];
-
-  const counsellors = rawCounsellors.reduce<CounsellorPerformance[]>(
-    (result, item) => {
-      const id = safeString(item?.id);
-
-      if (!id) {
-        return result;
-      }
-
-      const target = Math.max(safeNumber(item?.target), 0);
-
-      const achieved = Math.max(safeNumber(item?.achieved), 0);
-
-      const leadsCreated = Math.max(safeNumber(item?.leadsCreated), 0);
-
-      const completionPercentage = Math.max(
-        safeNumber(
-          item?.completionPercentage,
-          target > 0 ? Math.round((achieved / target) * 100) : 0,
-        ),
-        0,
-      );
-
-      result.push({
-        id,
-        name: safeString(item?.name, "Unnamed counsellor"),
-        email: safeString(item?.email, "Email not available"),
-        branches: normalizeBranches(item?.branches),
-        joinedAt: safeString(item?.joinedAt),
-        year: safeNumber(item?.year, requestedYear),
-        month: safeNumber(item?.month, requestedMonth),
-        periodStart: safeString(item?.periodStart),
-        target,
-        achieved,
-        leadsCreated,
-        completionPercentage,
-        targetAchieved:
-          typeof item?.targetAchieved === "boolean"
-            ? item.targetAchieved
-            : target > 0 && achieved >= target,
-      });
-
-      return result;
-    },
-    [],
-  );
-
-  const calculatedTarget = counsellors.reduce(
-    (total, item) => total + item.target,
-    0,
-  );
-
-  const calculatedAchieved = counsellors.reduce(
-    (total, item) => total + item.achieved,
-    0,
-  );
-
-  const calculatedLeadsCreated = counsellors.reduce(
-    (total, item) => total + item.leadsCreated,
-    0,
-  );
-
-  const totalTarget = safeNumber(
-    payload?.summary?.totalTarget,
-    calculatedTarget,
-  );
-
-  const totalAchieved = safeNumber(
-    payload?.summary?.totalAchieved,
-    calculatedAchieved,
-  );
-
-  const totalLeadsCreated = safeNumber(
-    payload?.summary?.totalLeadsCreated,
-    calculatedLeadsCreated,
-  );
-
-  const completionPercentage = Math.max(
-    safeNumber(
-      payload?.summary?.completionPercentage,
-      totalTarget > 0 ? Math.round((totalAchieved / totalTarget) * 100) : 0,
-    ),
-    0,
-  );
-
-  return {
-    period: {
-      year: safeNumber(payload?.period?.year, requestedYear),
-      month: safeNumber(payload?.period?.month, requestedMonth),
-      start: safeString(payload?.period?.start),
-      end: safeString(payload?.period?.end),
-    },
-    summary: {
-      totalTarget,
-      totalAchieved,
-      totalLeadsCreated,
-      completionPercentage,
-    },
-    counsellors,
-  };
-}
 
 export function unwrapResponse<T>(payload: ApiEnvelope<T>): T | null {
   if (!payload) {
@@ -219,58 +22,109 @@ export function unwrapResponse<T>(payload: ApiEnvelope<T>): T | null {
   return payload as T;
 }
 
-export async function getCounsellorPerformance(params: {
-  year: number;
-  month: number;
-  branchId?: string;
-}) {
-  const response = await api.get<ApiEnvelope<RawPerformanceResponse>>(API_URL, {
-    params: {
-      year: params.year,
-      month: params.month,
-      branchId: params.branchId,
-    },
+function buildRequestParams(params: PerformanceQueryParams) {
+  return {
+    period: params.period,
+    date: params.date,
+    branchId:
+      params.branchId && params.branchId !== "all"
+        ? params.branchId
+        : undefined,
+    search: params.search?.trim() || undefined,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
+  };
+}
+
+export async function getCounsellorPerformance(params: PerformanceQueryParams) {
+  const response = await api.get<ApiEnvelope<PerformanceResponse>>(API_URL, {
+    params: buildRequestParams(params),
   });
 
   const payload = unwrapResponse(response.data);
 
-  if (!payload) {
-    throw new Error("Performance data was not returned by the server");
-  }
-
-  if (!Array.isArray(payload.counsellors)) {
+  if (!payload || !Array.isArray(payload.counsellors)) {
     throw new Error("Invalid counsellor performance response");
   }
 
-  return normalizePerformanceResponse(payload, params.year, params.month);
+  return payload;
 }
 
-export function getCurrentIstPeriod() {
+export async function exportCounsellorPerformance(
+  params: PerformanceQueryParams,
+) {
   try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: "Asia/Kolkata",
-      year: "numeric",
-      month: "numeric",
-    }).formatToParts(new Date());
+    const response = await api.get<Blob>(API_URL, {
+      params: {
+        ...buildRequestParams(params),
+        format: "xlsx",
+      },
+      responseType: "blob",
+    });
 
-    const year = Number(parts.find((part) => part.type === "year")?.value);
-
-    const month = Number(parts.find((part) => part.type === "month")?.value);
+    const disposition = response.headers["content-disposition"] as
+      | string
+      | undefined;
+    const filenameMatch = disposition?.match(/filename="?([^";]+)"?/i);
 
     return {
-      year:
-        Number.isInteger(year) && year > 0 ? year : new Date().getFullYear(),
-      month:
-        Number.isInteger(month) && month >= 1 && month <= 12
-          ? month
-          : new Date().getMonth() + 1,
+      blob: response.data,
+      filename:
+        filenameMatch?.[1] ??
+        `counsellor-performance-${params.period}-${params.date}.xlsx`,
     };
-  } catch {
-    return {
-      year: new Date().getFullYear(),
-      month: new Date().getMonth() + 1,
-    };
+  } catch (error) {
+    if (
+      axios.isAxiosError(error) &&
+      error.response?.data instanceof Blob &&
+      error.response.data.type.includes("application/json")
+    ) {
+      const text = await error.response.data.text();
+      let payload: {
+        message?: string;
+        error?: string | { message?: string };
+      } | null = null;
+
+      try {
+        payload = JSON.parse(text) as {
+          message?: string;
+          error?: string | { message?: string };
+        };
+      } catch {
+        throw new Error("Unable to export performance data");
+      }
+
+      if (typeof payload.error === "object" && payload.error?.message) {
+        throw new Error(payload.error.message);
+      }
+
+      if (typeof payload.error === "string") {
+        throw new Error(payload.error);
+      }
+
+      throw new Error(payload.message || "Unable to export performance data");
+    }
+
+    throw error;
   }
+}
+
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function updateMonthlyTarget(payload: UpdateMonthlyTargetPayload) {
+  await api.put(API_URL, payload);
+
+  return payload;
 }
 
 export function formatDate(date: string | null | undefined) {
@@ -285,6 +139,7 @@ export function formatDate(date: string | null | undefined) {
   }
 
   return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -296,11 +151,7 @@ export function getErrorMessage(error: unknown) {
     const responseData = error.response?.data as
       | {
           message?: string;
-          error?:
-            | string
-            | {
-                message?: string;
-              };
+          error?: string | { message?: string };
         }
       | null
       | undefined;
@@ -327,10 +178,7 @@ export function getErrorMessage(error: unknown) {
 }
 
 export function getPerformanceStatus(counsellor: CounsellorPerformance) {
-  const target = counsellor.target ?? 0;
-  const percentage = counsellor.completionPercentage ?? 0;
-
-  if (target <= 0) {
+  if (counsellor.target <= 0) {
     return {
       label: "Target not set",
       variant: "outline" as const,
@@ -344,7 +192,7 @@ export function getPerformanceStatus(counsellor: CounsellorPerformance) {
     };
   }
 
-  if (percentage >= 75) {
+  if (counsellor.completionPercentage >= 75) {
     return {
       label: "On track",
       variant: "secondary" as const,
@@ -355,10 +203,4 @@ export function getPerformanceStatus(counsellor: CounsellorPerformance) {
     label: "Behind",
     variant: "destructive" as const,
   };
-}
-
-export async function updateMonthlyTarget(payload: UpdateMonthlyTargetPayload) {
-  await api.put(API_URL, payload);
-
-  return payload;
 }

@@ -141,7 +141,7 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
               name="emailId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>VSTU Email</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
