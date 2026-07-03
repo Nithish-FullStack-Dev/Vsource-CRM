@@ -242,8 +242,9 @@ export function getPerformancePeriod(
 
   const start = toIstInstant(startDate);
   const end = toIstInstant(endDate);
-  const targetPeriodStart = toIstInstant(targetPeriodStartDate);
-  const targetPeriodEnd = toIstInstant(targetPeriodEndDate);
+
+  const targetPeriodStart = toDatabaseDate(targetPeriodStartDate);
+  const targetPeriodEnd = toDatabaseDate(targetPeriodEndDate);
 
   return {
     type,
@@ -256,4 +257,12 @@ export function getPerformancePeriod(
     targetPeriodStart,
     targetPeriodEnd,
   };
+}
+
+function toDatabaseDate(date: CalendarDate) {
+  return new Date(Date.UTC(date.year, date.month - 1, date.day));
+}
+
+export function getTargetPeriodStart(year: number, month: number) {
+  return new Date(Date.UTC(year, month - 1, 1));
 }
