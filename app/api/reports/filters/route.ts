@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { handleError, ok } from "@/lib/api-helpers";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { getPerformanceReportFilterOptions } from "@/lib/performance-reports";
-import { getAuthorizedUser } from "@/lib/rbac";
+import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const options = await getPerformanceReportFilterOptions();
 
-    if (currentUser.role.name === "Counsellor") {
+    if (currentUser.role.name === ROLES.COUNSELLOR) {
       options.counselors = options.counselors.filter(
         (counselor) => counselor.value === currentUser.id,
       );

@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
 import { Prisma } from "@/generated/prisma/client";
-import { getAuthorizedUser } from "@/lib/rbac";
+import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { decrypt } from "@/lib/encryption";
 
@@ -80,10 +80,11 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    if (currentUser.role.name === "Counsellor") {
+    if (currentUser.role.name !== ROLES.SUPER_ADMIN) {
       where.AND = [
+        ...(where.AND && Array.isArray(where.AND) ? where.AND : []),
         {
-          OR: [{ counselorId: currentUser.id }],
+          counselorId: currentUser.id,
         },
       ];
     }
@@ -117,6 +118,12 @@ export async function GET(req: NextRequest) {
           select: {
             id: true,
             name: true,
+            role: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
 

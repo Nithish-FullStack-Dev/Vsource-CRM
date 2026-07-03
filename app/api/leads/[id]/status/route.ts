@@ -35,8 +35,7 @@ export async function PATCH(
       throw new Error("Lead not found");
     }
 
-    const counselorId =
-      currentUser?.role?.name === "Counsellor" ? currentUser.id : null;
+    const counselorId = currentUser.id || null;
 
     const result = await db.$transaction(
       async (tx: Prisma.TransactionClient) => {

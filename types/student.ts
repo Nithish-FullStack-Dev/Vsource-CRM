@@ -1,6 +1,6 @@
 // types\student.ts
 import { User } from "@/users/types/user";
-import { Lead } from ".";
+import { Lead, Role } from ".";
 
 export interface StudentRecord {
   id: string;
@@ -38,6 +38,7 @@ export interface StudentRecord {
   counselor?: {
     id: string;
     name: string;
+    role?: Role;
   };
 
   applications: Applications[];

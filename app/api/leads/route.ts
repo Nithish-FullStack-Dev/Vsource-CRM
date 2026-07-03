@@ -15,7 +15,7 @@ import {
 } from "@/lib/api-helpers";
 import { LeadCreateSchema } from "@/lib/schemas";
 import { LeadStatus, LeadType } from "@/generated/prisma/enums";
-import { getAuthorizedUser } from "@/lib/rbac";
+import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
     const andFilters: Prisma.LeadWhereInput[] = [];
 
-    if (currentUser.role.name === "Counsellor") {
+    if (currentUser.role.name === ROLES.COUNSELLOR) {
       andFilters.push({
         OR: [
           { createdById: currentUser.id },
@@ -55,8 +55,12 @@ export async function GET(req: NextRequest) {
     }
 
     if (
-      currentUser.role.name === "Jr Associate" ||
-      currentUser.role.name === "Sr Associate"
+      currentUser.role.name === ROLES.JR_ASSOCIATE ||
+      currentUser.role.name === ROLES.SR_ASSOCIATE ||
+      currentUser.role.name === ROLES.JR_ASSOCIATE_BACKEND ||
+      currentUser.role.name === ROLES.SR_ASSOCIATE_BACKEND ||
+      currentUser.role.name === ROLES.JR_ASSOCIATE_FINTECH ||
+      currentUser.role.name === ROLES.SR_ASSOCIATE_FINTECH
     ) {
       andFilters.push({
         createdById: currentUser.id,
@@ -165,7 +169,7 @@ export async function POST(req: NextRequest) {
         updatedById: currentUser.id,
 
         counselors:
-          currentUser.role.name === "Counsellor"
+          currentUser.role.name === ROLES.COUNSELLOR
             ? {
                 create: {
                   counselorId: currentUser.id,

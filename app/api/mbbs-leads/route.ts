@@ -15,7 +15,7 @@ import {
 } from "@/lib/api-helpers";
 import { MbbsLeadCreateSchema } from "@/lib/schemas";
 import { MbbsLeadStatus } from "@/generated/prisma/enums";
-import { getAuthorizedUser } from "@/lib/rbac";
+import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { Prisma } from "@/generated/prisma/client";
 // import type { MbbsLeadStatus } from "@/generated/prisma";
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       }),
     };
 
-    if (currentUser.role.name === "Counsellor") {
+    if (currentUser.role.name === ROLES.COUNSELLOR) {
       where.AND = [
         {
           OR: [
@@ -116,7 +116,6 @@ export async function POST(req: NextRequest) {
       data: body as any,
       include: {
         branch: { select: { id: true, name: true } },
-   
       },
     });
     return created(lead, "MBBS Lead created successfully");

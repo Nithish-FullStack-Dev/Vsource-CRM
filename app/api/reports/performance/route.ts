@@ -6,7 +6,7 @@ import {
   parsePerformanceReportFilters,
   parsePerformanceReportPagination,
 } from "@/lib/performance-reports";
-import { getAuthorizedUser } from "@/lib/rbac";
+import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     const filters = parsePerformanceReportFilters(req.nextUrl.searchParams);
 
-    if (currentUser.role.name === "Counsellor") {
+    if (currentUser.role.name === ROLES.COUNSELLOR) {
       filters.counselorId = currentUser.id;
     }
 

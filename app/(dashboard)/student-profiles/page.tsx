@@ -427,7 +427,7 @@ export default function Home() {
                               icon: User,
                             },
                             {
-                              label: "Assigned Counsellor",
+                              label: "Assigned Counsellor/Others",
                               val: selectedStudent?.counselor?.name ?? "-",
                               icon: Briefcase,
                             },
