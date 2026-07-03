@@ -184,6 +184,20 @@ type FilterLookup = {
   intakeName: string;
 };
 
+export type PerformanceReportAccessScope =
+  | {
+      kind: "all";
+    }
+  | {
+      kind: "branches";
+      branchIds: string[];
+    }
+  | {
+      kind: "user";
+      userId: string;
+      userName: string;
+    };
+
 type BranchAccumulator = {
   branchId: string;
   branch: string;
@@ -253,6 +267,83 @@ const DROPPED_STUDENT_STATUSES = new Set([
   "dropped",
   "student_dropped",
 ]);
+
+const FULL_PERFORMANCE_ACCESS: PerformanceReportAccessScope = {
+  kind: "all",
+};
+
+function buildLeadAccessWhere(
+  accessScope: PerformanceReportAccessScope,
+): Prisma.LeadWhereInput | null {
+  if (accessScope.kind === "branches") {
+    return {
+      branchId: {
+        in: accessScope.branchIds,
+      },
+    };
+  }
+
+  if (accessScope.kind === "user") {
+    return {
+      OR: [
+        {
+          createdById: accessScope.userId,
+        },
+        {
+          counselors: {
+            some: {
+              counselorId: accessScope.userId,
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  return null;
+}
+
+function buildStudentAccessWhere(
+  accessScope: PerformanceReportAccessScope,
+): Prisma.StudentWhereInput | null {
+  if (accessScope.kind === "branches") {
+    return {
+      branchId: {
+        in: accessScope.branchIds,
+      },
+    };
+  }
+
+  if (accessScope.kind === "user") {
+    return {
+      OR: [
+        {
+          counselorId: accessScope.userId,
+        },
+        {
+          lead: {
+            is: {
+              OR: [
+                {
+                  createdById: accessScope.userId,
+                },
+                {
+                  counselors: {
+                    some: {
+                      counselorId: accessScope.userId,
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  return null;
+}
 
 function clean(value: string | null): string {
   return value?.trim() ?? "";
@@ -437,6 +528,7 @@ function getTargetMonthRange(
 
 async function getTargetMetrics(
   filters: PerformanceReportFilters,
+  accessScope: PerformanceReportAccessScope,
 ): Promise<TargetMetrics> {
   const dateRange = getDateRange(
     filters.datePreset,
@@ -444,27 +536,81 @@ async function getTargetMetrics(
     filters.endDate,
   );
   const targetMonthRange = getTargetMonthRange(dateRange);
-  const branchFilter = filters.branchId ? { branchId: filters.branchId } : {};
+
+  const counselorConditions: Prisma.UserWhereInput[] = [
+    {
+      role: {
+        is: {
+          name: {
+            in: COUNSELLOR_ROLE_NAMES,
+            mode: "insensitive",
+          },
+        },
+      },
+    },
+  ];
+
+  const achievementConditions: Prisma.StudentWhereInput[] = [];
+  const createdLeadConditions: Prisma.LeadWhereInput[] = [];
+
+  if (filters.counselorId && accessScope.kind !== "user") {
+    counselorConditions.push({ id: filters.counselorId });
+    achievementConditions.push({ counselorId: filters.counselorId });
+    createdLeadConditions.push({ createdById: filters.counselorId });
+  }
+
+  if (filters.branchId) {
+    counselorConditions.push({
+      branches: {
+        some: {
+          id: filters.branchId,
+        },
+      },
+    });
+    achievementConditions.push({ branchId: filters.branchId });
+    createdLeadConditions.push({ branchId: filters.branchId });
+  }
+
+  if (accessScope.kind === "branches") {
+    counselorConditions.push({
+      branches: {
+        some: {
+          id: {
+            in: accessScope.branchIds,
+          },
+        },
+      },
+    });
+    achievementConditions.push({
+      branchId: {
+        in: accessScope.branchIds,
+      },
+    });
+    createdLeadConditions.push({
+      branchId: {
+        in: accessScope.branchIds,
+      },
+    });
+  } else if (accessScope.kind === "user") {
+    counselorConditions.push({ id: accessScope.userId });
+
+    const studentAccessWhere = buildStudentAccessWhere(accessScope);
+
+    if (studentAccessWhere) {
+      achievementConditions.push(studentAccessWhere);
+    }
+
+    // "Leads Added" remains creator-based. Assigned leads are still included
+    // in All Leads / Students / Applications through the report access scope.
+    createdLeadConditions.push({ createdById: accessScope.userId });
+  }
 
   const [targets, achievements, createdLeads] = await Promise.all([
     db.counsellorMonthlyTarget.findMany({
       where: {
         ...(targetMonthRange && { periodStart: targetMonthRange }),
         counsellor: {
-          role: {
-            name: {
-              in: COUNSELLOR_ROLE_NAMES,
-              mode: "insensitive",
-            },
-          },
-          ...(filters.counselorId && { id: filters.counselorId }),
-          ...(filters.branchId && {
-            branches: {
-              some: {
-                id: filters.branchId,
-              },
-            },
-          }),
+          AND: counselorConditions,
         },
       },
       select: {
@@ -490,9 +636,10 @@ async function getTargetMetrics(
     db.student.groupBy({
       by: ["branchId", "counselorId"],
       where: {
-        counselorId: filters.counselorId ? filters.counselorId : { not: null },
-        ...branchFilter,
         ...(dateRange && { createdAt: dateRange }),
+        ...(achievementConditions.length > 0 && {
+          AND: achievementConditions,
+        }),
       },
       _count: {
         _all: true,
@@ -502,9 +649,10 @@ async function getTargetMetrics(
       by: ["branchId", "createdById"],
       where: {
         leadType: STUDY_ABROAD_LEAD_TYPE as Prisma.LeadWhereInput["leadType"],
-        createdById: filters.counselorId ? filters.counselorId : { not: null },
-        ...branchFilter,
         ...(dateRange && { createdAt: dateRange }),
+        ...(createdLeadConditions.length > 0 && {
+          AND: createdLeadConditions,
+        }),
       },
       _count: {
         _all: true,
@@ -520,10 +668,25 @@ async function getTargetMetrics(
   const counselorLeadsCreated = new Map<string, number>();
   const counselorDetails = new Map<string, CounselorDetails>();
   const targetPeriods = new Set<string>();
+  const allowedBranchIds =
+    accessScope.kind === "branches"
+      ? new Set(accessScope.branchIds)
+      : null;
   let totalTarget = 0;
 
   for (const item of targets) {
     const counselorId = item.counsellor.id;
+    const visibleBranches = item.counsellor.branches.filter((branch) => {
+      if (filters.branchId && branch.id !== filters.branchId) {
+        return false;
+      }
+
+      if (allowedBranchIds && !allowedBranchIds.has(branch.id)) {
+        return false;
+      }
+
+      return true;
+    });
 
     totalTarget += item.target;
     targetPeriods.add(monthKey(item.periodStart));
@@ -533,14 +696,10 @@ async function getTargetMetrics(
     );
     counselorDetails.set(counselorId, {
       name: item.counsellor.name,
-      branches: item.counsellor.branches,
+      branches: visibleBranches,
     });
 
-    for (const branch of item.counsellor.branches) {
-      if (filters.branchId && branch.id !== filters.branchId) {
-        continue;
-      }
-
+    for (const branch of visibleBranches) {
       branchTargets.set(
         branch.id,
         (branchTargets.get(branch.id) ?? 0) + item.target,
@@ -554,10 +713,16 @@ async function getTargetMetrics(
       (branchAchievements.get(item.branchId) ?? 0) + item._count._all,
     );
 
-    if (item.counselorId) {
+    const performanceCounselorId =
+      accessScope.kind === "user"
+        ? accessScope.userId
+        : item.counselorId;
+
+    if (performanceCounselorId) {
       counselorAchievements.set(
-        item.counselorId,
-        (counselorAchievements.get(item.counselorId) ?? 0) + item._count._all,
+        performanceCounselorId,
+        (counselorAchievements.get(performanceCounselorId) ?? 0) +
+          item._count._all,
       );
     }
   }
@@ -729,8 +894,35 @@ function groupApplicationsByStudent(
   return map;
 }
 
-function mapLeadToRow(lead: PerformanceLeadRecord): PerformanceReportRow {
+type PerformanceCounselorOverride = {
+  id: string;
+  name: string;
+};
+
+function getPerformanceCounselorOverride(
+  accessScope: PerformanceReportAccessScope,
+): PerformanceCounselorOverride | null {
+  if (accessScope.kind !== "user") {
+    return null;
+  }
+
+  return {
+    id: accessScope.userId,
+    name: accessScope.userName,
+  };
+}
+
+function mapLeadToRow(
+  lead: PerformanceLeadRecord,
+  counselorOverride: PerformanceCounselorOverride | null,
+): PerformanceReportRow {
   const counselorAssignment = getPrimaryLeadCounselor(lead);
+  const counselorId =
+    counselorOverride?.id ?? counselorAssignment?.counselorId ?? null;
+  const counselorName =
+    counselorOverride?.name ??
+    counselorAssignment?.counselor?.name ??
+    "Not Assigned";
 
   return {
     recordType: "lead",
@@ -743,8 +935,8 @@ function mapLeadToRow(lead: PerformanceLeadRecord): PerformanceReportRow {
     mobileNumber: lead.mobileNumber ?? "",
     branchId: lead.branchId,
     branchName: lead.branch?.name ?? "Not Assigned",
-    counselorId: counselorAssignment?.counselorId ?? null,
-    counselorName: counselorAssignment?.counselor?.name ?? "Not Assigned",
+    counselorId,
+    counselorName,
     source: lead.source ?? "Not Set",
     countryName: lead.preferredCountry ?? "Not Set",
     intakeName: lead.preferredIntake ?? "Not Set",
@@ -773,9 +965,13 @@ function mapLeadToRow(lead: PerformanceLeadRecord): PerformanceReportRow {
 function mapStudentToRow(
   student: PerformanceStudentRecord,
   studentApplications: PerformanceApplicationRecord[],
+  counselorOverride: PerformanceCounselorOverride | null,
 ): PerformanceReportRow {
   const latestApplication = studentApplications[0] ?? null;
   const profile = student.visaLoanProfile;
+  const counselorId = counselorOverride?.id ?? student.counselorId;
+  const counselorName =
+    counselorOverride?.name ?? student.counselor?.name ?? "Not Assigned";
 
   return {
     recordType: "student",
@@ -788,8 +984,8 @@ function mapStudentToRow(
     mobileNumber: student.mobileNumber,
     branchId: student.branchId,
     branchName: student.branch?.name ?? "Not Assigned",
-    counselorId: student.counselorId,
-    counselorName: student.counselor?.name ?? "Not Assigned",
+    counselorId,
+    counselorName,
     source: student.lead.source ?? "Not Set",
     countryName: latestApplication
       ? getApplicationCountry(latestApplication)
@@ -833,8 +1029,11 @@ function mapStudentToRow(
 function mapApplicationToExportRow(
   application: PerformanceApplicationRecord,
   student: PerformanceStudentRecord,
+  counselorOverride: PerformanceCounselorOverride | null,
 ): PerformanceApplicationExportRow {
   const profile = student.visaLoanProfile;
+  const counselorName =
+    counselorOverride?.name ?? student.counselor?.name ?? "Not Assigned";
 
   return {
     applicationId: application.id,
@@ -844,7 +1043,7 @@ function mapApplicationToExportRow(
     emailId: student.emailId,
     mobileNumber: student.mobileNumber,
     branchName: student.branch?.name ?? "Not Assigned",
-    counselorName: student.counselor?.name ?? "Not Assigned",
+    counselorName,
     source: student.lead.source ?? "Not Set",
     countryName: getApplicationCountry(application),
     universityName: getApplicationUniversity(application),
@@ -1188,9 +1387,11 @@ function buildCounselorPerformance(
   applications: PerformanceApplicationRecord[],
   targetMetrics: TargetMetrics,
   selectedBranchId: string,
+  accessScope: PerformanceReportAccessScope,
 ): PerformanceReportCounselorPoint[] {
   const map = new Map<string, CounselorAccumulator>();
   const studentMap = new Map(students.map((student) => [student.id, student]));
+  const counselorOverride = getPerformanceCounselorOverride(accessScope);
 
   const ensureCounselor = (
     counselorId: string,
@@ -1233,8 +1434,10 @@ function buildCounselorPerformance(
 
   for (const lead of leads) {
     const assignment = getPrimaryLeadCounselor(lead);
-    const counselorId = assignment?.counselorId ?? "unassigned";
-    const counselor = assignment?.counselor?.name ?? "Unassigned";
+    const counselorId =
+      counselorOverride?.id ?? assignment?.counselorId ?? "unassigned";
+    const counselor =
+      counselorOverride?.name ?? assignment?.counselor?.name ?? "Unassigned";
     const current = ensureCounselor(
       counselorId,
       counselor,
@@ -1254,8 +1457,10 @@ function buildCounselorPerformance(
   }
 
   for (const student of students) {
-    const counselorId = student.counselorId ?? "unassigned";
-    const counselor = student.counselor?.name ?? "Unassigned";
+    const counselorId =
+      counselorOverride?.id ?? student.counselorId ?? "unassigned";
+    const counselor =
+      counselorOverride?.name ?? student.counselor?.name ?? "Unassigned";
     const current = ensureCounselor(
       counselorId,
       counselor,
@@ -1296,8 +1501,10 @@ function buildCounselorPerformance(
       continue;
     }
 
-    const counselorId = student.counselorId ?? "unassigned";
-    const counselor = student.counselor?.name ?? "Unassigned";
+    const counselorId =
+      counselorOverride?.id ?? student.counselorId ?? "unassigned";
+    const counselor =
+      counselorOverride?.name ?? student.counselor?.name ?? "Unassigned";
     const current = ensureCounselor(counselorId, counselor);
 
     current.applications += 1;
@@ -1519,7 +1726,9 @@ function shouldIncludeStudents(filters: PerformanceReportFilters): boolean {
 function buildLeadWhere(
   filters: PerformanceReportFilters,
   lookup: FilterLookup,
+  accessScope: PerformanceReportAccessScope,
 ): Prisma.LeadWhereInput {
+  const andConditions: Prisma.LeadWhereInput[] = [];
   const where: Prisma.LeadWhereInput = {
     leadType: STUDY_ABROAD_LEAD_TYPE as Prisma.LeadWhereInput["leadType"],
     isConverted: false,
@@ -1573,7 +1782,7 @@ function buildLeadWhere(
     where.branchId = filters.branchId;
   }
 
-  if (filters.counselorId) {
+  if (filters.counselorId && accessScope.kind !== "user") {
     where.counselors = {
       some: {
         counselorId: filters.counselorId,
@@ -1616,6 +1825,16 @@ function buildLeadWhere(
     where.createdAt = dateRange;
   }
 
+  const accessWhere = buildLeadAccessWhere(accessScope);
+
+  if (accessWhere) {
+    andConditions.push(accessWhere);
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
+  }
+
   return where;
 }
 
@@ -1646,7 +1865,9 @@ function buildApplicationWhere(
 
 function buildStudentWhere(
   filters: PerformanceReportFilters,
+  accessScope: PerformanceReportAccessScope,
 ): Prisma.StudentWhereInput {
+  const andConditions: Prisma.StudentWhereInput[] = [];
   const where: Prisma.StudentWhereInput = {};
   const leadWhere: Prisma.LeadWhereInput = {};
   const visaLoanWhere: Prisma.StudentVisaLoanProfileWhereInput = {};
@@ -1719,7 +1940,7 @@ function buildStudentWhere(
     where.branchId = filters.branchId;
   }
 
-  if (filters.counselorId) {
+  if (filters.counselorId && accessScope.kind !== "user") {
     where.counselorId = filters.counselorId;
   }
 
@@ -1780,6 +2001,16 @@ function buildStudentWhere(
 
   if (dateRange) {
     where.createdAt = dateRange;
+  }
+
+  const accessWhere = buildStudentAccessWhere(accessScope);
+
+  if (accessWhere) {
+    andConditions.push(accessWhere);
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
   }
 
   return where;
@@ -1889,6 +2120,7 @@ export async function getPerformanceReport(
   page: number,
   limit: number,
   includeApplicationRows = false,
+  accessScope: PerformanceReportAccessScope = FULL_PERFORMANCE_ACCESS,
 ): Promise<PerformanceReportData> {
   const lookup = await getFilterLookup(filters);
   const includeLeads = shouldIncludeLeads(filters);
@@ -1897,7 +2129,7 @@ export async function getPerformanceReport(
   const [leads, students, targetMetrics] = await Promise.all([
     includeLeads
       ? db.lead.findMany({
-          where: buildLeadWhere(filters, lookup),
+          where: buildLeadWhere(filters, lookup, accessScope),
           select: performanceLeadSelect,
           orderBy: {
             createdAt: "desc",
@@ -1906,14 +2138,14 @@ export async function getPerformanceReport(
       : Promise.resolve([] as PerformanceLeadRecord[]),
     includeStudents
       ? db.student.findMany({
-          where: buildStudentWhere(filters),
+          where: buildStudentWhere(filters, accessScope),
           select: performanceStudentSelect,
           orderBy: {
             createdAt: "desc",
           },
         })
       : Promise.resolve([] as PerformanceStudentRecord[]),
-    getTargetMetrics(filters),
+    getTargetMetrics(filters, accessScope),
   ]);
 
   const studentIds = students.map((student) => student.id);
@@ -1939,10 +2171,15 @@ export async function getPerformanceReport(
         });
 
   const applicationsByStudent = groupApplicationsByStudent(applications);
+  const counselorOverride = getPerformanceCounselorOverride(accessScope);
   const allRows = [
-    ...leads.map(mapLeadToRow),
+    ...leads.map((lead) => mapLeadToRow(lead, counselorOverride)),
     ...students.map((student) =>
-      mapStudentToRow(student, applicationsByStudent.get(student.id) ?? []),
+      mapStudentToRow(
+        student,
+        applicationsByStudent.get(student.id) ?? [],
+        counselorOverride,
+      ),
     ),
   ].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -1959,7 +2196,9 @@ export async function getPerformanceReport(
     ? applications.flatMap((application) => {
         const student = studentMap.get(application.studentId);
 
-        return student ? [mapApplicationToExportRow(application, student)] : [];
+        return student
+          ? [mapApplicationToExportRow(application, student, counselorOverride)]
+          : [];
       })
     : undefined;
 
@@ -1991,6 +2230,7 @@ export async function getPerformanceReport(
       applications,
       targetMetrics,
       filters.branchId,
+      accessScope,
     ),
     rows,
     ...(applicationRows && { applicationRows }),
@@ -2005,8 +2245,15 @@ export async function getPerformanceReport(
 
 export async function getPerformanceReportForExport(
   filters: PerformanceReportFilters,
+  accessScope: PerformanceReportAccessScope = FULL_PERFORMANCE_ACCESS,
 ): Promise<PerformanceReportData> {
-  return getPerformanceReport(filters, 1, Number.MAX_SAFE_INTEGER, true);
+  return getPerformanceReport(
+    filters,
+    1,
+    Number.MAX_SAFE_INTEGER,
+    true,
+    accessScope,
+  );
 }
 
 export async function getPerformanceReportFilterOptions(): Promise<PerformanceReportFilterOptions> {

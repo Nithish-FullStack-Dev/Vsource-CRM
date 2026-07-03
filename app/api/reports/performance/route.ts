@@ -5,6 +5,7 @@ import {
   getPerformanceReport,
   parsePerformanceReportFilters,
   parsePerformanceReportPagination,
+  type PerformanceReportAccessScope,
 } from "@/lib/performance-reports";
 import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 
@@ -20,16 +21,37 @@ export async function GET(req: NextRequest) {
     );
 
     const filters = parsePerformanceReportFilters(req.nextUrl.searchParams);
-
-    if (currentUser.role.name === ROLES.COUNSELLOR) {
-      filters.counselorId = currentUser.id;
-    }
-
     const { page, limit } = parsePerformanceReportPagination(
       req.nextUrl.searchParams,
     );
 
-    const report = await getPerformanceReport(filters, page, limit);
+    let accessScope: PerformanceReportAccessScope = {
+      kind: "all",
+    };
+
+    if (currentUser.role.name === ROLES.BRANCH_MANAGER) {
+      accessScope = {
+        kind: "branches",
+        branchIds: currentUser.branches.map((branch) => branch.id),
+      };
+    } else if (
+      currentUser.role.name !== ROLES.SUPER_ADMIN &&
+      currentUser.role.name !== ROLES.DIRECTOR
+    ) {
+      accessScope = {
+        kind: "user",
+        userId: currentUser.id,
+        userName: currentUser.name,
+      };
+    }
+
+    const report = await getPerformanceReport(
+      filters,
+      page,
+      limit,
+      false,
+      accessScope,
+    );
 
     return ok(report, "Performance report fetched successfully");
   } catch (error) {
