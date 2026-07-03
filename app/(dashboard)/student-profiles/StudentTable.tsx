@@ -161,75 +161,199 @@ export function StudentTable({
   }
 
   const thBgClass = isDarkMode
-    ? "bg-slate-950 border-slate-800 text-slate-400"
-    : "bg-slate-100 border-slate-200 text-slate-500";
+    ? "bg-slate-950 border-slate-800 text-slate-300"
+    : "bg-slate-100 border-slate-200 text-slate-600";
+
+  const stickyCellClass =
+    "sticky z-20 border-r border-slate-200 bg-white shadow-[2px_0_8px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-900";
+
+  const normalCellClass =
+    "border-r border-slate-100 px-4 py-3.5 align-middle dark:border-slate-800/50";
 
   return (
     <div className="space-y-4" id="student-module-master-table">
       <div className="relative max-h-[70vh] overflow-auto rounded-3xl border border-slate-200/85 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <table className="relative w-full border-collapse text-left text-xs">
-          <thead className="sticky top-0  select-none whitespace-nowrap border-b text-[10px] font-black uppercase tracking-wider">
+        <table className="w-max min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
+          <colgroup>
+            <col className="w-16" />
+            <col className="w-28" />
+            <col className="w-55" />
+            <col className="w-48" />
+            <col className="w-38" />
+            <col className="w-38" />
+            <col className="w-38" />
+            <col className="w-58" />
+            <col className="w-38" />
+            <col className="w-38" />
+            <col className="w-38" />
+            <col className="w-48" />
+            <col className="w-38" />
+            <col className="w-48" />
+            <col className="w-38" />
+            <col className="w-48" />
+            <col className="w-38" />
+            <col className="w-55" />
+            <col className="w-48" />
+            <col className="w-48" />
+            <col className="w-55" />
+            <col className="w-55" />
+            <col className="w-55" />
+            <col className="w-55" />
+            <col className="w-55" />
+            <col className="w-58" />
+            <col className="w-48" />
+          </colgroup>
+
+          <thead className="select-none whitespace-nowrap text-[10px] font-black uppercase tracking-wider">
             <tr>
               <th
-                className={`sticky left-0 top-0 z-[40] w-12 border-r px-3 py-3 text-center shadow-[2px_0_5px_rgba(0,0,0,0.05)] ${thBgClass}`}
+                className={`sticky left-0 top-0 z-50 border-b border-r px-3 py-3 text-center align-middle ${thBgClass}`}
               >
                 SNO
               </th>
               <th
-                className={`sticky left-12 top-0 z-[40] w-20 border-r px-3 py-3 shadow-[2px_0_5px_rgba(0,0,0,0.05)] ${thBgClass}`}
+                className={`sticky left-16 top-0 z-50 border-b border-r px-3 py-3 align-middle ${thBgClass}`}
               >
                 STUD ID
               </th>
               <th
-                className={`sticky left-32 top-0 z-[40] w-40 min-w-[160px] border-r px-3 py-3 shadow-[2px_0_5px_rgba(0,0,0,0.05)] ${thBgClass}`}
+                className={`sticky left-44 top-0 z-50 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
               >
                 STUDENT NAME
               </th>
-              <th className={`px-4 py-3 ${thBgClass}`}>COUNSELLOR NAME</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>DATE OF ADMISSION</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>PASSPORT NO</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>MOBILE NUMBER</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>VSTU EMAIL</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>PASSWORD</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>COUNTRY</th>
-              <th className={`px-4 py-3 text-center ${thBgClass}`}>INTAKE</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>12TH ENGLISH & MOI</th>
-              <th className={`min-w-[150px] px-4 py-3 ${thBgClass}`}>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                COUNSELLOR/OTHERS
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                DATE OF ADMISSION
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                PASSPORT NO
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                MOBILE NUMBER
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                VSTU EMAIL
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                PASSWORD
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                COUNTRY
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 text-center align-middle ${thBgClass}`}
+              >
+                INTAKE
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                12TH ENGLISH & MOI
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
                 APP STATUS
               </th>
-              <th className={`px-4 py-3 ${thBgClass}`}>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
                 DEPOSIT DEADLINE DATE
               </th>
-              <th className={`px-4 py-3 ${thBgClass}`}>DEPOSIT STATUS</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                DEPOSIT STATUS
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
                 IHS & VISA PAID STATUS
               </th>
-              <th className={`px-4 py-3 ${thBgClass}`}>CAS DEADLINE DATE</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>CAS STATUS</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>VISA STATUS</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>UNIV START DATE</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>FINTECH ASSIGNEE</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>NBFC</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>LOAN STATUS</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>PF STATUS</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>SANCTIONED</th>
-              <th className={`px-4 py-3 ${thBgClass}`}>DISBURSED</th>
-              <th className={`min-w-[185px] px-4 py-3 ${thBgClass}`}>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                CAS DEADLINE DATE
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                CAS STATUS
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                VISA STATUS
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                UNIV START DATE
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                FINTECH ASSIGNEE
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                NBFC
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                LOAN STATUS
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                PF STATUS
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                SANCTIONED
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
+                DISBURSED
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
                 REMARKS
               </th>
               <th
-                className={`sticky right-0 top-0 z-[40] border-l px-5 py-3 text-right ${thBgClass}`}
+                className={`sticky right-0 top-0 z-50 border-b border-l px-5 py-3 text-right align-middle shadow-[-2px_0_8px_rgba(15,23,42,0.08)] ${thBgClass}`}
               >
                 ACTIONS
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100 whitespace-nowrap dark:divide-slate-800/50">
+          <tbody className="whitespace-nowrap">
             {students.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={28}
                   className="bg-white py-12 text-center text-xs font-bold text-slate-400 dark:bg-slate-900"
                 >
                   No students found.
@@ -251,16 +375,20 @@ export function StudentTable({
                     key={student?.id ?? `student-${index}`}
                     className="bg-white transition-colors hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/40"
                   >
-                    <td className="sticky left-0 z-10 w-12 border-r border-slate-200 bg-white px-3 py-3.5 text-center font-mono font-bold text-slate-400 shadow-[2px_0_5px_rgba(0,0,0,0.03)] dark:border-slate-800 dark:bg-slate-900">
+                    <td
+                      className={`${stickyCellClass} left-0 w-[64px] px-3 py-3.5 text-center align-middle font-mono font-bold text-slate-400`}
+                    >
                       {index + 1}
                     </td>
 
-                    <td className="sticky left-12 z-10 w-20 border-r border-slate-200 bg-white px-3 py-3.5 font-mono text-[11px] font-black tracking-wider text-slate-500 shadow-[2px_0_5px_rgba(0,0,0,0.03)] dark:border-slate-800 dark:bg-slate-900">
+                    <td
+                      className={`${stickyCellClass} left-[64px] w-[112px] px-3 py-3.5 align-middle font-mono text-[11px] font-black tracking-wider text-slate-500`}
+                    >
                       {student?.id ? student.id.slice(0, 8).toUpperCase() : "-"}
                     </td>
 
                     <td
-                      className="sticky left-32 z-10 w-40 min-w-[160px] cursor-pointer truncate border-r border-slate-200 bg-white px-4 py-3.5 font-extrabold text-slate-900 shadow-[2px_0_5px_rgba(0,0,0,0.03)] hover:underline dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                      className={`${stickyCellClass} left-[176px] w-[220px] cursor-pointer truncate px-4 py-3.5 align-middle font-extrabold text-slate-900 hover:underline dark:text-white`}
                       onClick={() => student?.id && onSelectStudent(student.id)}
                       title={getText(
                         student?.studentName,
@@ -273,29 +401,51 @@ export function StudentTable({
                       )}
                     </td>
 
-                    <td className="px-4 py-3.5 font-semibold text-slate-600 dark:text-slate-300">
-                      {getText(counselor?.name, "Not assigned")}
+                    <td
+                      className={`${normalCellClass} font-semibold text-slate-600 dark:text-slate-300`}
+                    >
+                      <div className="truncate">
+                        {getText(counselor?.name, "Not assigned")}
+                      </div>
+                      <div className="truncate text-[11px] font-normal text-slate-400 dark:text-slate-500">
+                        {getText(counselor?.role?.name, "Not assigned")}
+                      </div>
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono text-[11px] font-semibold text-slate-500">
+                    <td
+                      className={`${normalCellClass} font-mono text-[11px] font-semibold text-slate-500`}
+                    >
                       {getDate(student?.applicationDate)}
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                    <td
+                      className={`${normalCellClass} font-mono text-[11px] text-slate-600 dark:text-slate-400`}
+                    >
                       {getText(lead?.passport, "Not provided")}
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                    <td
+                      className={`${normalCellClass} font-mono text-[11px] text-slate-600 dark:text-slate-400`}
+                    >
                       {getText(student?.mobileNumber, "Not provided")}
                     </td>
 
-                    <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400">
-                      {getText(student?.emailId, "Not provided")}
+                    <td
+                      className={`${normalCellClass} text-slate-600 dark:text-slate-400`}
+                    >
+                      <div
+                        className="truncate"
+                        title={getText(student?.emailId, "Not provided")}
+                      >
+                        {getText(student?.emailId, "Not provided")}
+                      </div>
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                    <td
+                      className={`${normalCellClass} font-mono text-[11px] text-slate-600 dark:text-slate-400`}
+                    >
                       <div className="flex items-center gap-1.5">
-                        <span>
+                        <span className="max-w-[105px] truncate">
                           {visiblePasswords[student.id]
                             ? password
                             : password === "Not set"
@@ -326,119 +476,155 @@ export function StudentTable({
                       </div>
                     </td>
 
-                    <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300">
+                    <td
+                      className={`${normalCellClass} text-slate-600 dark:text-slate-300`}
+                    >
                       {getText(lead?.preferredCountry, "Not selected")}
                     </td>
 
-                    <td className="px-4 py-3.5 text-center font-bold">
+                    <td className={`${normalCellClass} text-center font-bold`}>
                       <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] dark:bg-slate-800">
                         {getText(lead?.preferredIntake, "Not selected")}
                       </span>
                     </td>
 
-                    <td className="px-4 py-3.5 font-medium text-slate-500">
+                    <td
+                      className={`${normalCellClass} font-medium text-slate-500`}
+                    >
                       {getText(lead?.twelfthPercentage, "Not provided")}
                     </td>
-                    <td className="px-4 py-3.5 font-mono font-bold text-slate-600 dark:text-slate-400">
+
+                    <td
+                      className={`${normalCellClass} font-mono font-bold text-slate-600 dark:text-slate-400`}
+                    >
                       {getText(student?.applications?.length, "Not provided")}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-[11px] font-semibold text-slate-500">
+
+                    <td
+                      className={`${normalCellClass} font-mono text-[11px] font-semibold text-slate-500`}
+                    >
                       {getDate(visaLoanProfile?.depositDeadlineDate)}
                     </td>
 
-                    <td className="px-4 py-3.5 text-center">
+                    <td className={`${normalCellClass} text-center`}>
                       <span
-                        className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(visaLoanProfile?.depositStatus)}`}
+                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                          visaLoanProfile?.depositStatus,
+                        )}`}
                       >
                         {getText(visaLoanProfile?.depositStatus, "Not updated")}
                       </span>
                     </td>
 
-                    <td className="px-4 py-3.5 text-center">
+                    <td className={`${normalCellClass} text-center`}>
                       <span
-                        className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(visaLoanProfile?.ihsPaidStatus)}`}
+                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                          visaLoanProfile?.ihsPaidStatus,
+                        )}`}
                       >
                         {getText(visaLoanProfile?.ihsPaidStatus, "Not updated")}
                       </span>
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono text-[11px] font-semibold text-slate-500">
+                    <td
+                      className={`${normalCellClass} font-mono text-[11px] font-semibold text-slate-500`}
+                    >
                       {getDate(visaLoanProfile?.casDeadlineDate)}
                     </td>
 
-                    <td className="px-4 py-3.5 text-center">
+                    <td className={`${normalCellClass} text-center`}>
                       <span
-                        className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(visaLoanProfile?.casStatus)}`}
+                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                          visaLoanProfile?.casStatus,
+                        )}`}
                       >
                         {getText(visaLoanProfile?.casStatus, "Not updated")}
                       </span>
                     </td>
 
-                    <td className="px-4 py-3.5 text-center">
+                    <td className={`${normalCellClass} text-center`}>
                       <span
-                        className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(visaLoanProfile?.visaStatus)}`}
+                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                          visaLoanProfile?.visaStatus,
+                        )}`}
                       >
                         {getText(visaLoanProfile?.visaStatus, "Not updated")}
                       </span>
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono text-[11px] font-semibold text-slate-500">
+                    <td
+                      className={`${normalCellClass} font-mono text-[11px] font-semibold text-slate-500`}
+                    >
                       {getDate(visaLoanProfile?.universityStartDate)}
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono text-[11px] font-medium text-slate-600 dark:text-slate-400">
-                      {getText(
-                        visaLoanProfile?.fintechAssignee?.name,
-                        "Not assigned",
-                      )}
+                    <td
+                      className={`${normalCellClass} font-mono text-[11px] font-medium text-slate-600 dark:text-slate-400`}
+                    >
+                      <div className="truncate">
+                        {getText(
+                          visaLoanProfile?.fintechAssignee?.name,
+                          "Not assigned",
+                        )}
+                      </div>
                     </td>
 
-                    <td className="px-4 py-3.5 font-bold text-slate-600 dark:text-slate-300">
+                    <td
+                      className={`${normalCellClass} font-bold text-slate-600 dark:text-slate-300`}
+                    >
                       {getText(visaLoanProfile?.nbfc, "Not selected")}
                     </td>
 
-                    <td className="px-4 py-3.5 text-center">
+                    <td className={`${normalCellClass} text-center`}>
                       <span
-                        className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(visaLoanProfile?.loanStatus)}`}
+                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                          visaLoanProfile?.loanStatus,
+                        )}`}
                       >
                         {getText(visaLoanProfile?.loanStatus, "Not updated")}
                       </span>
                     </td>
 
-                    <td className="px-4 py-3.5 text-center">
+                    <td className={`${normalCellClass} text-center`}>
                       <span
-                        className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(visaLoanProfile?.pfStatus)}`}
+                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                          visaLoanProfile?.pfStatus,
+                        )}`}
                       >
                         {getText(visaLoanProfile?.pfStatus, "Not updated")}
                       </span>
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono font-black text-slate-800 dark:text-slate-300">
+                    <td
+                      className={`${normalCellClass} font-mono font-black text-slate-800 dark:text-slate-300`}
+                    >
                       {getAmount(visaLoanProfile?.sanctionedAmount)}
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono font-bold text-emerald-600">
+                    <td
+                      className={`${normalCellClass} font-mono font-bold text-emerald-600`}
+                    >
                       {getAmount(visaLoanProfile?.disbursedAmount)}
                     </td>
 
                     <td
-                      className="max-w-[200px] truncate px-4 py-3.5 text-[11px] text-slate-500"
+                      className={`${normalCellClass} max-w-[220px] truncate text-[11px] text-slate-500`}
                       title={latestRemark}
                     >
                       {latestRemark}
                     </td>
 
-                    <td className="sticky right-0 z-10 border-l border-slate-200 bg-white px-5 py-3.5 text-right shadow-[-2px_0_5px_rgba(0,0,0,0.035)] dark:border-slate-800 dark:bg-slate-900">
+                    <td className="sticky right-0 z-30 border-l border-slate-200 bg-white px-5 py-3.5 text-right align-middle shadow-[-2px_0_8px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900">
                       <div className="flex flex-nowrap items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() =>
                             router.push(`/student-profiles/${student.id}`)
                           }
-                          className="inline-flex cursor-pointer items-center gap-0.5 rounded-lg bg-red-600/10 px-2.5 py-1.5 text-[10px] font-black tracking-wide text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-red-600/10 px-2.5 py-1.5 text-[10px] font-black tracking-wide text-red-600 transition-colors hover:bg-red-600 hover:text-white"
                         >
                           <Eye className="h-3 w-3" />
-                          <span>View Detail</span>
+                          <span>View</span>
                         </button>
 
                         <button
