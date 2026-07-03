@@ -172,7 +172,7 @@ export function StudentTable({
 
   return (
     <div className="space-y-4" id="student-module-master-table">
-      <div className="relative max-h-[70vh] overflow-auto rounded-3xl border border-slate-200/85 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="relative overflow-auto rounded-3xl border border-slate-200/85 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <table className="w-max min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
           <colgroup>
             <col className="w-16" />
@@ -207,17 +207,17 @@ export function StudentTable({
           <thead className="select-none whitespace-nowrap text-[10px] font-black uppercase tracking-wider">
             <tr>
               <th
-                className={`sticky left-0 top-0 z-50 border-b border-r px-3 py-3 text-center align-middle ${thBgClass}`}
+                className={`sticky left-0 top-0 z-41 border-b border-r px-3 py-3 text-center align-middle ${thBgClass}`}
               >
                 SNO
               </th>
               <th
-                className={`sticky left-16 top-0 z-50 border-b border-r px-3 py-3 align-middle ${thBgClass}`}
+                className={`sticky left-16 top-0 z-41 border-b border-r px-3 py-3 align-middle ${thBgClass}`}
               >
                 STUD ID
               </th>
               <th
-                className={`sticky left-44 top-0 z-50 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+                className={`sticky left-44 top-0 z-41 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
               >
                 STUDENT NAME
               </th>
@@ -342,7 +342,7 @@ export function StudentTable({
                 REMARKS
               </th>
               <th
-                className={`sticky right-0 top-0 z-50 border-b border-l px-5 py-3 text-right align-middle shadow-[-2px_0_8px_rgba(15,23,42,0.08)] ${thBgClass}`}
+                className={`sticky right-0 top-0 z-41 border-b border-l px-5 py-3 text-right align-middle shadow-[-2px_0_8px_rgba(15,23,42,0.08)] ${thBgClass}`}
               >
                 ACTIONS
               </th>

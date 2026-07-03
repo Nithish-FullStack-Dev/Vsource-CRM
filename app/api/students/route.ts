@@ -80,12 +80,31 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    if (currentUser.role.name !== ROLES.SUPER_ADMIN) {
-      where.AND = [
-        ...(where.AND && Array.isArray(where.AND) ? where.AND : []),
-        {
-          counselorId: currentUser.id,
+    const andFilters: Prisma.StudentWhereInput[] = [];
+
+    // Branch Manager -> Only students from assigned branches
+    if (currentUser.role.name === ROLES.BRANCH_MANAGER) {
+      andFilters.push({
+        branchId: {
+          in: currentUser.branches.map((branch) => branch.id),
         },
+      });
+    }
+
+    // Everyone except Super Admin & Director
+    else if (
+      currentUser.role.name !== ROLES.SUPER_ADMIN &&
+      currentUser.role.name !== ROLES.DIRECTOR
+    ) {
+      andFilters.push({
+        counselorId: currentUser.id,
+      });
+    }
+
+    if (andFilters.length > 0) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        ...andFilters,
       ];
     }
 

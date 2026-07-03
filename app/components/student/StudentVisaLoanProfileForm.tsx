@@ -944,13 +944,18 @@ export function StudentVisaLoanProfileSection({
 
                   <input
                     type="number"
-                    min="0"
+                    min={0}
                     step="0.01"
                     value={form.appliedAmount}
-                    onChange={(event) =>
-                      updateField("appliedAmount", event.target.value)
-                    }
-                    placeholder="0.00"
+                    onKeyDown={(e) => {
+                      if (["-", "+", "e", "E"].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => {
+                      const value = Math.max(0, Number(e.target.value) || 0);
+                      updateField("appliedAmount", value.toString());
+                    }}
                     className={inputClassName}
                   />
                 </div>
@@ -962,13 +967,18 @@ export function StudentVisaLoanProfileSection({
 
                   <input
                     type="number"
-                    min="0"
+                    min={0}
                     step="0.01"
                     value={form.sanctionedAmount}
-                    onChange={(event) =>
-                      updateField("sanctionedAmount", event.target.value)
-                    }
-                    placeholder="0.00"
+                    onKeyDown={(e) => {
+                      if (["-", "+", "e", "E"].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => {
+                      const value = Math.max(0, Number(e.target.value) || 0);
+                      updateField("sanctionedAmount", value.toString());
+                    }}
                     className={inputClassName}
                   />
                 </div>
