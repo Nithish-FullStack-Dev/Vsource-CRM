@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,25 +31,38 @@ export function TargetDialog({
   onSave,
 }: TargetDialogProps) {
   const [targetInput, setTargetInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setTargetInput(counsellor ? String(counsellor.target) : "");
-  }, [counsellor]);
-
-  const handleSave = () => {
-    const target = Number(targetInput);
-
-    if (!Number.isInteger(target) || target < 0) {
+    if (!counsellor) {
+      setTargetInput("");
       return;
     }
 
-    onSave(target);
-  };
+    setTargetInput(String(counsellor.target));
+
+    const animationFrame = requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [counsellor]);
+
+  const parsedTarget = Number(targetInput);
 
   const isValidTarget =
     targetInput.trim() !== "" &&
-    Number.isInteger(Number(targetInput)) &&
-    Number(targetInput) >= 0;
+    Number.isInteger(parsedTarget) &&
+    parsedTarget >= 0;
+
+  const handleSave = () => {
+    if (!isValidTarget) {
+      return;
+    }
+
+    onSave(parsedTarget);
+  };
 
   return (
     <Dialog
@@ -63,21 +76,34 @@ export function TargetDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Set Monthly Target</DialogTitle>
+
           <DialogDescription>
-            Set the target for <strong>{counsellor?.name}</strong> for {periodLabel}.
+            Set the target for <strong>{counsellor?.name}</strong> for{" "}
+            {periodLabel}.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2 py-3">
           <Label htmlFor="monthly-target">Student target</Label>
+
           <Input
+            ref={inputRef}
             id="monthly-target"
             type="number"
             min={0}
             step={1}
             value={targetInput}
-            onChange={(event) => setTargetInput(event.target.value)}
             disabled={isSaving}
+            onFocus={(event) => {
+              event.currentTarget.select();
+            }}
+            onChange={(event) => {
+              const value = event.target.value;
+
+              if (value === "" || /^\d+$/.test(value)) {
+                setTargetInput(value);
+              }
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && isValidTarget) {
                 event.preventDefault();
@@ -85,6 +111,7 @@ export function TargetDialog({
               }
             }}
           />
+
           <p className="text-xs text-muted-foreground">
             Enter zero when no target is assigned for this month.
           </p>
@@ -99,6 +126,7 @@ export function TargetDialog({
           >
             Cancel
           </Button>
+
           <Button
             type="button"
             disabled={isSaving || !isValidTarget}

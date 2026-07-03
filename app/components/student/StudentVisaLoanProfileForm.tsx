@@ -652,175 +652,6 @@ export function StudentVisaLoanProfileSection({
           <form onSubmit={handleSubmit} className="space-y-6 px-6 py-5">
             <div className={sectionClassName}>
               <div className="mb-4 flex items-center gap-2">
-                <div className="rounded-xl bg-purple-500/10 p-2 text-purple-600">
-                  <ShieldCheck className="h-4 w-4" />
-                </div>
-
-                <div>
-                  <h5 className="text-xs font-black uppercase tracking-wide">
-                    Deposit, CAS & Visa
-                  </h5>
-
-                  <p className="text-[10px] text-slate-400">
-                    Select both date and time for deadline fields
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Deposit Deadline Date & Time
-                  </label>
-
-                  <input
-                    type="datetime-local"
-                    value={form.depositDeadlineDate}
-                    onChange={(event) =>
-                      updateField("depositDeadlineDate", event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Deposit Status
-                  </label>
-
-                  <select
-                    value={form.depositStatus}
-                    onChange={(event) =>
-                      updateField("depositStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select deposit status</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="partially_paid">Partially Paid</option>
-                    <option value="waived">Waived</option>
-                    <option value="not_required">Not Required</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    IHS Paid Status
-                  </label>
-
-                  <select
-                    value={form.ihsPaidStatus}
-                    onChange={(event) =>
-                      updateField("ihsPaidStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select IHS status</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="not_required">Not Required</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Visa Fee Paid Status
-                  </label>
-
-                  <select
-                    value={form.visaPaidStatus}
-                    onChange={(event) =>
-                      updateField("visaPaidStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select visa payment status</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="not_required">Not Required</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    CAS Deadline Date & Time
-                  </label>
-
-                  <input
-                    type="datetime-local"
-                    value={form.casDeadlineDate}
-                    onChange={(event) =>
-                      updateField("casDeadlineDate", event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    CAS Status
-                  </label>
-
-                  <select
-                    value={form.casStatus}
-                    onChange={(event) =>
-                      updateField("casStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select CAS status</option>
-                    <option value="not_started">Not Started</option>
-                    <option value="documents_pending">Documents Pending</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="received">Received</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="not_required">Not Required</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Visa Status
-                  </label>
-
-                  <select
-                    value={form.visaStatus}
-                    onChange={(event) =>
-                      updateField("visaStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select visa status</option>
-                    <option value="not_started">Not Started</option>
-                    <option value="documents_pending">Documents Pending</option>
-                    <option value="applied">Applied</option>
-                    <option value="decision_pending">Decision Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="withdrawn">Withdrawn</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    University Start Date & Time
-                  </label>
-
-                  <input
-                    type="datetime-local"
-                    value={form.universityStartDate}
-                    onChange={(event) =>
-                      updateField("universityStartDate", event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className={sectionClassName}>
-              <div className="mb-4 flex items-center gap-2">
                 <div className="rounded-xl bg-amber-500/10 p-2 text-amber-600">
                   <Landmark className="h-4 w-4" />
                 </div>
@@ -1035,6 +866,175 @@ export function StudentVisaLoanProfileSection({
                     />
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className={sectionClassName}>
+              <div className="mb-4 flex items-center gap-2">
+                <div className="rounded-xl bg-purple-500/10 p-2 text-purple-600">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+
+                <div>
+                  <h5 className="text-xs font-black uppercase tracking-wide">
+                    Deposit, CAS & Visa
+                  </h5>
+
+                  <p className="text-[10px] text-slate-400">
+                    Select both date and time for deadline fields
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    Deposit Deadline Date & Time
+                  </label>
+
+                  <input
+                    type="datetime-local"
+                    value={form.depositDeadlineDate}
+                    onChange={(event) =>
+                      updateField("depositDeadlineDate", event.target.value)
+                    }
+                    className={inputClassName}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    Deposit Status
+                  </label>
+
+                  <select
+                    value={form.depositStatus}
+                    onChange={(event) =>
+                      updateField("depositStatus", event.target.value)
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="">Select deposit status</option>
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="partially_paid">Partially Paid</option>
+                    <option value="waived">Waived</option>
+                    <option value="not_required">Not Required</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    IHS Paid Status
+                  </label>
+
+                  <select
+                    value={form.ihsPaidStatus}
+                    onChange={(event) =>
+                      updateField("ihsPaidStatus", event.target.value)
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="">Select IHS status</option>
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="not_required">Not Required</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    Visa Fee Paid Status
+                  </label>
+
+                  <select
+                    value={form.visaPaidStatus}
+                    onChange={(event) =>
+                      updateField("visaPaidStatus", event.target.value)
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="">Select visa payment status</option>
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="not_required">Not Required</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    CAS Deadline Date & Time
+                  </label>
+
+                  <input
+                    type="datetime-local"
+                    value={form.casDeadlineDate}
+                    onChange={(event) =>
+                      updateField("casDeadlineDate", event.target.value)
+                    }
+                    className={inputClassName}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    CAS Status
+                  </label>
+
+                  <select
+                    value={form.casStatus}
+                    onChange={(event) =>
+                      updateField("casStatus", event.target.value)
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="">Select CAS status</option>
+                    <option value="not_started">Not Started</option>
+                    <option value="documents_pending">Documents Pending</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="received">Received</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="not_required">Not Required</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    Visa Status
+                  </label>
+
+                  <select
+                    value={form.visaStatus}
+                    onChange={(event) =>
+                      updateField("visaStatus", event.target.value)
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="">Select visa status</option>
+                    <option value="not_started">Not Started</option>
+                    <option value="documents_pending">Documents Pending</option>
+                    <option value="applied">Applied</option>
+                    <option value="decision_pending">Decision Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="withdrawn">Withdrawn</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    University Start Date & Time
+                  </label>
+
+                  <input
+                    type="datetime-local"
+                    value={form.universityStartDate}
+                    onChange={(event) =>
+                      updateField("universityStartDate", event.target.value)
+                    }
+                    className={inputClassName}
+                  />
+                </div>
               </div>
             </div>
 

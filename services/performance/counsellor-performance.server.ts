@@ -211,6 +211,7 @@ export async function buildCounsellorPerformanceReport(
       name: true,
       email: true,
       createdAt: true,
+
       branches: {
         select: {
           id: true,
@@ -220,103 +221,95 @@ export async function buildCounsellorPerformanceReport(
           name: "asc",
         },
       },
+
+      monthlyTargets: {
+        where: {
+          periodStart: period.targetPeriodStart,
+        },
+        select: {
+          id: true,
+          target: true,
+          periodStart: true,
+          updatedAt: true,
+        },
+        take: 1,
+      },
     },
   });
 
   const counsellorIds = counsellors.map((counsellor) => counsellor.id);
 
-  const [achievements, createdLeads, targets] =
-    counsellorIds.length > 0
-      ? await Promise.all([
-          db.student.groupBy({
-            by: ["counselorId"],
-            where: {
-              counselorId: {
-                in: counsellorIds,
-              },
-              createdAt: {
-                gte: period.start,
-                lt: period.end,
-              },
-              ...(effectiveBranchIds !== undefined
-                ? {
-                    branchId: {
-                      in: effectiveBranchIds,
-                    },
-                  }
-                : {}),
-            },
-            _count: {
-              _all: true,
-            },
-          }),
-          db.lead.groupBy({
-            by: ["createdById"],
-            where: {
-              createdById: {
-                in: counsellorIds,
-              },
-              createdAt: {
-                gte: period.start,
-                lt: period.end,
-              },
-              ...(effectiveBranchIds !== undefined
-                ? {
-                    branchId: {
-                      in: effectiveBranchIds,
-                    },
-                  }
-                : {}),
-            },
-            _count: {
-              _all: true,
-            },
-          }),
-          db.counsellorMonthlyTarget.findMany({
-            where: {
-              periodStart: {
-                gte: period.targetPeriodStart,
-                lt: period.targetPeriodEnd,
-              },
-              counsellorId: {
-                in: counsellorIds,
-              },
-            },
-            select: {
-              counsellorId: true,
-              target: true,
-            },
-          }),
-        ])
-      : ([[], [], []] as const);
-
   const achievementMap = new Map<string, number>();
   const leadsCreatedMap = new Map<string, number>();
-  const targetMap = new Map<string, number>();
 
-  for (const item of achievements) {
-    if (item.counselorId) {
-      achievementMap.set(item.counselorId, item._count?._all ?? 0);
+  if (counsellorIds.length > 0) {
+    const [achievements, createdLeads] = await Promise.all([
+      db.student.groupBy({
+        by: ["counselorId"],
+        where: {
+          counselorId: {
+            in: counsellorIds,
+          },
+          createdAt: {
+            gte: period.start,
+            lt: period.end,
+          },
+          ...(effectiveBranchIds !== undefined
+            ? {
+                branchId: {
+                  in: effectiveBranchIds,
+                },
+              }
+            : {}),
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+
+      db.lead.groupBy({
+        by: ["createdById"],
+        where: {
+          createdById: {
+            in: counsellorIds,
+          },
+          createdAt: {
+            gte: period.start,
+            lt: period.end,
+          },
+          ...(effectiveBranchIds !== undefined
+            ? {
+                branchId: {
+                  in: effectiveBranchIds,
+                },
+              }
+            : {}),
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+    ]);
+
+    for (const item of achievements) {
+      if (item.counselorId) {
+        achievementMap.set(item.counselorId, item._count?._all ?? 0);
+      }
     }
-  }
 
-  for (const item of createdLeads) {
-    if (item.createdById) {
-      leadsCreatedMap.set(item.createdById, item._count?._all ?? 0);
+    for (const item of createdLeads) {
+      if (item.createdById) {
+        leadsCreatedMap.set(item.createdById, item._count?._all ?? 0);
+      }
     }
-  }
-
-  for (const item of targets) {
-    const currentTarget = targetMap.get(item.counsellorId) ?? 0;
-
-    targetMap.set(item.counsellorId, currentTarget + item.target);
   }
 
   const counsellorData = counsellors
     .map<CounsellorPerformance>((counsellor) => {
-      const target = targetMap.get(counsellor.id) ?? 0;
+      const target = counsellor.monthlyTargets[0]?.target ?? 0;
       const achieved = achievementMap.get(counsellor.id) ?? 0;
       const leadsCreated = leadsCreatedMap.get(counsellor.id) ?? 0;
+
       const completionPercentage =
         target > 0 ? Math.round((achieved / target) * 100) : 0;
 

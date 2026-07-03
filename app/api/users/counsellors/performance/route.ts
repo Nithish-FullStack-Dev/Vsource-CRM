@@ -4,7 +4,10 @@ import db from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
 import { getAuthorizedUser } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
-import { getCurrentIstDate, getIstMonthRange } from "@/lib/performance-period";
+import {
+  getCurrentIstDate,
+  getTargetPeriodStart,
+} from "@/lib/performance-period";
 import {
   buildCounsellorPerformanceReport,
   PerformanceAccessError,
@@ -92,6 +95,30 @@ function parseSortOrder(value: string | null): SortOrder {
   return SORT_ORDERS.has(value as SortOrder) ? (value as SortOrder) : "desc";
 }
 
+function resolvePerformanceDate(searchParams: URLSearchParams) {
+  const explicitDate = searchParams.get("date")?.trim();
+
+  if (explicitDate) {
+    return explicitDate;
+  }
+
+  const year = Number(searchParams.get("year"));
+  const month = Number(searchParams.get("month"));
+
+  if (
+    Number.isInteger(year) &&
+    year >= 2000 &&
+    year <= 2100 &&
+    Number.isInteger(month) &&
+    month >= 1 &&
+    month <= 12
+  ) {
+    return `${year}-${String(month).padStart(2, "0")}-01`;
+  }
+
+  return getCurrentIstDate();
+}
+
 export async function GET(req: NextRequest) {
   try {
     const currentUser = await getAuthorizedUser(
@@ -101,14 +128,22 @@ export async function GET(req: NextRequest) {
     );
 
     const searchParams = req.nextUrl.searchParams;
+
+    const period = parsePeriod(searchParams.get("period"));
+
     const requestedStartDate =
       searchParams.get("startDate")?.trim() || undefined;
 
     const requestedEndDate = searchParams.get("endDate")?.trim() || undefined;
 
+    const reportDate =
+      period === "custom" && requestedStartDate
+        ? requestedStartDate
+        : resolvePerformanceDate(searchParams);
+
     const report = await buildCounsellorPerformanceReport(currentUser, {
-      period: parsePeriod(searchParams.get("period")),
-      date: searchParams.get("date")?.trim() || getCurrentIstDate(),
+      period,
+      date: reportDate,
       startDate: requestedStartDate,
       endDate: requestedEndDate,
       branchId: searchParams.get("branchId")?.trim() || undefined,
@@ -204,7 +239,7 @@ export async function PUT(req: NextRequest) {
       return forbidden("No branches are assigned to your account");
     }
 
-    const { periodStart } = getIstMonthRange(year, month);
+    const periodStart = getTargetPeriodStart(year, month);
 
     const counsellorWhere: Prisma.UserWhereInput = {
       id: counsellorId,

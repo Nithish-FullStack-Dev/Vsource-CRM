@@ -401,7 +401,7 @@ export default function StudentApplicationsSection({
               <CardContent className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h4 className="text-xl font-black text-slate-900">
+                    <h4 className="text-xl text-slate-900">
                       {app.university?.name ?? "-"}
                     </h4>
 
