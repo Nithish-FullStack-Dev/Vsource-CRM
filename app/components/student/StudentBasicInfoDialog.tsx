@@ -130,7 +130,16 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
                 <FormItem>
                   <FormLabel>Mobile Number</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input
+                      {...field}
+                      type="tel"
+                      inputMode="numeric"
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "");
+                        field.onChange(value);
+                      }}
+                    />
                   </FormControl>
                 </FormItem>
               )}

@@ -45,25 +45,27 @@ export async function GET(req: NextRequest) {
 
     const andFilters: Prisma.LeadWhereInput[] = [];
 
-    if (currentUser.role.name === ROLES.COUNSELLOR) {
+    if (currentUser.role.name === ROLES.BRANCH_MANAGER) {
+      andFilters.push({
+        branchId: {
+          in: currentUser.branches.map((branch) => branch.id),
+        },
+      });
+    } else if (
+      currentUser.role.name !== ROLES.SUPER_ADMIN &&
+      currentUser.role.name !== ROLES.DIRECTOR
+    ) {
       andFilters.push({
         OR: [
           { createdById: currentUser.id },
-          { counselors: { some: { counselorId: currentUser.id } } },
+          {
+            counselors: {
+              some: {
+                counselorId: currentUser.id,
+              },
+            },
+          },
         ],
-      });
-    }
-
-    if (
-      currentUser.role.name === ROLES.JR_ASSOCIATE ||
-      currentUser.role.name === ROLES.SR_ASSOCIATE ||
-      currentUser.role.name === ROLES.JR_ASSOCIATE_BACKEND ||
-      currentUser.role.name === ROLES.SR_ASSOCIATE_BACKEND ||
-      currentUser.role.name === ROLES.JR_ASSOCIATE_FINTECH ||
-      currentUser.role.name === ROLES.SR_ASSOCIATE_FINTECH
-    ) {
-      andFilters.push({
-        createdById: currentUser.id,
       });
     }
 

@@ -552,7 +552,7 @@ export default function AllLeadsPage() {
                         Branch
                       </th>
                       <th className="px-2 py-3 font-semibold xl:px-3">
-                        Counselor
+                        Assigned
                       </th>
                       <th className="px-2 py-3 font-semibold xl:px-3">
                         Country
@@ -664,7 +664,7 @@ export default function AllLeadsPage() {
                                   className="block w-full truncate text-[11px] text-muted-foreground xl:text-xs"
                                   title="No counselors assigned"
                                 >
-                                  No counselors assigned
+                                  No users assigned
                                 </span>
                               )}
                             </div>
@@ -682,10 +682,14 @@ export default function AllLeadsPage() {
                           <td className="px-2 py-3 align-middle xl:px-3">
                             <button
                               type="button"
-                              onClick={() =>
-                                canUpdate(MODULES.MASTER_LEADS) &&
-                                setEditingLeadStatus(lead)
-                              }
+                              onClick={() => {
+                                if (
+                                  canUpdate(MODULES.MASTER_LEADS) &&
+                                  lead.status !== "converted"
+                                ) {
+                                  setEditingLeadStatus(lead);
+                                }
+                              }}
                               disabled={!canUpdate(MODULES.MASTER_LEADS)}
                               className="max-w-full disabled:cursor-default cursor-pointer"
                             >

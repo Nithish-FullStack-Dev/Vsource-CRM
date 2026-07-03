@@ -13,9 +13,6 @@ export async function GET(
 
     const counselors = await prisma.user.findMany({
       where: {
-        role: {
-          name: "Counsellor",
-        },
         branches: {
           some: {
             id,
@@ -26,6 +23,11 @@ export async function GET(
         id: true,
         name: true,
         email: true,
+        role: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         name: "asc",
