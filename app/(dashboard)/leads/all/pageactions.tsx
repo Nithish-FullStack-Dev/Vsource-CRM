@@ -697,8 +697,8 @@ export default function PageActions(props: PageActionsProps) {
                       value={
                         editingLead.passportExpireDate
                           ? new Date(editingLead.passportExpireDate)
-                              .toISOString()
-                              .split("T")[0]
+                            .toISOString()
+                            .split("T")[0]
                           : ""
                       }
                       onChange={(e) =>
@@ -728,9 +728,9 @@ export default function PageActions(props: PageActionsProps) {
                           branchId: targetBranch?.id ?? "",
                           branch: targetBranch
                             ? {
-                                id: targetBranch.id,
-                                name: targetBranch.name,
-                              }
+                              id: targetBranch.id,
+                              name: targetBranch.name,
+                            }
                             : undefined,
                         });
 
@@ -755,14 +755,16 @@ export default function PageActions(props: PageActionsProps) {
 
                   {/* Assigned Counselor */}
                   <div className="grid gap-2 sm:col-span-2">
-                    <Label className="text-sm font-medium">
-                      Assigned Counselors
-                    </Label>
+                    <Label className="text-sm font-medium">Assigned User</Label>
 
                     <div className="border rounded-xl p-3 space-y-2 max-h-48 overflow-y-auto">
                       {counselors.length > 0 ? (
                         counselors.map(
-                          (counselor: { id: string; name: string }) => (
+                          (counselor: {
+                            id: string;
+                            name: string;
+                            role: { name: string };
+                          }) => (
                             <label
                               key={counselor.id}
                               className="flex items-center gap-2 cursor-pointer"
@@ -786,7 +788,10 @@ export default function PageActions(props: PageActionsProps) {
                                 }}
                               />
 
-                              <span>{counselor.name}</span>
+                              <span>{counselor?.name || "User"}</span>
+                              <span className="text-xs text-muted-foreground bg-amber-100 rounded-2xl px-2 py-0.5">
+                                {counselor?.role?.name || "Role name"}
+                              </span>
                             </label>
                           ),
                         )
@@ -906,12 +911,12 @@ export default function PageActions(props: PageActionsProps) {
                                 ...editingLead,
                                 preferredTiers: selectedTier
                                   ? editingLead.preferredTiers?.filter(
-                                      (t) => t !== tier,
-                                    )
+                                    (t) => t !== tier,
+                                  )
                                   : [
-                                      ...(editingLead.preferredTiers || []),
-                                      tier,
-                                    ],
+                                    ...(editingLead.preferredTiers || []),
+                                    tier,
+                                  ],
                               })
                             }
                           >
@@ -978,62 +983,151 @@ export default function PageActions(props: PageActionsProps) {
                   <div className="grid gap-1.5">
                     <Label>10th Percentage</Label>
                     <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="e.g. 85 or 75.44"
+                      maxLength={5}
                       value={editingLead.tenthPercentage ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Max 2 digits before decimal & 2 after
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 2);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
                         setEditingLead({
                           ...editingLead,
-                          tenthPercentage: Number(e.target.value) || 0,
-                        })
-                      }
+                          tenthPercentage: value === "" ? undefined : Number(value),
+                        });
+                      }}
                     />
                   </div>
 
                   <div className="grid gap-1.5">
                     <Label>10th Year</Label>
                     <Input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="YYYY"
+                      maxLength={4}
                       value={editingLead.tenthYearOfPassing ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        // Prevent minus, plus, decimal, exponent
+                        if (["-", "+", ".", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+                        // Allow only digits and limit to 4 characters
+                        input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
                         setEditingLead({
                           ...editingLead,
-                          tenthYearOfPassing: Number(e.target.value) || 0,
-                        })
-                      }
+                          tenthYearOfPassing: value === "" ? undefined : Number(value),
+                        });
+                      }}
                     />
                   </div>
-
                   <div className="grid gap-1.5">
                     <Label>12th Percentage</Label>
                     <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="e.g. 88 or 75.44"
+                      maxLength={5}
                       value={editingLead.twelfthPercentage ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        // Prevent minus, plus, exponent
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Limit to 2 digits before decimal and 2 digits after decimal
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 2);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
                         setEditingLead({
                           ...editingLead,
-                          twelfthPercentage: Number(e.target.value) || 0,
-                        })
-                      }
+                          twelfthPercentage: value === "" ? undefined : Number(value),
+                        });
+                      }}
                     />
                   </div>
 
                   <div className="grid gap-1.5">
                     <Label>12th Year</Label>
                     <Input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="YYYY"
+                      maxLength={4}
                       value={editingLead.twelfthYearOfPassing ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        // Prevent minus, plus, decimal, exponent
+                        if (["-", "+", ".", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        // Allow only digits and limit to 4 characters
+                        input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
                         setEditingLead({
                           ...editingLead,
-                          twelfthYearOfPassing: Number(e.target.value) || 0,
-                        })
-                      }
+                          twelfthYearOfPassing: value === "" ? undefined : Number(value),
+                        });
+                      }}
                     />
                   </div>
 
@@ -1178,36 +1272,85 @@ export default function PageActions(props: PageActionsProps) {
                   </div>
 
                   <div className="grid gap-1.5">
-                    <Label>Bachelor Percentage</Label>
+                    <Label>Bachelor Percentage / CGPA</Label>
                     <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="e.g. 75 or 8.5"
+                      maxLength={6}
                       value={editingLead.bachelorsPercentage ?? ""}
-                      onChange={(e) =>
-                        setEditingLead({
-                          ...editingLead,
-                          bachelorsPercentage: Number(e.target.value) || 0,
-                        })
-                      }
+                      onKeyDown={(e) => {
+                        // Prevent minus, plus, exponent
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Limit integer part to 3 digits and decimal part to 2 digits
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 3);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const num = Number(value);
+
+                        if (value === "" || (!isNaN(num) && num >= 0 && num <= 100)) {
+                          setEditingLead({
+                            ...editingLead,
+                            bachelorsPercentage: value === "" ? undefined : num,
+                          });
+                        }
+                      }}
                     />
                   </div>
 
                   <div className="grid gap-1.5">
                     <Label>Bachelor Passing Year</Label>
                     <Input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="YYYY"
+                      maxLength={4}
                       value={editingLead.bachelorsYearOfPassing ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        // Prevent minus, plus, decimal, exponent
+                        if (["-", "+", ".", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        // Allow only digits and limit to 4 characters
+                        input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
                         setEditingLead({
                           ...editingLead,
-                          bachelorsYearOfPassing: Number(e.target.value) || 0,
-                        })
-                      }
+                          bachelorsYearOfPassing:
+                            value === "" ? undefined : Number(value),
+                        });
+                      }}
                     />
                   </div>
-
                   <div className="grid gap-1.5">
                     <Label>Backlogs</Label>
                     <Input
@@ -1226,6 +1369,7 @@ export default function PageActions(props: PageActionsProps) {
                   <div className="grid gap-1.5 sm:col-span-2">
                     <Label>Education Gaps</Label>
                     <Input
+                      placeholder="e.g. 1 year gap between 12th and Bachelors due to...."
                       value={editingLead.gapsIfAny || ""}
                       onChange={(e) =>
                         setEditingLead({
@@ -1268,16 +1412,45 @@ export default function PageActions(props: PageActionsProps) {
                   <div className="grid gap-1.5">
                     <Label>Listening</Label>
                     <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="L Score"
+                      maxLength={6}
                       value={editingLead.listeningScore ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Allow up to 3 digits before decimal and 2 after
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 3);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
                         setEditingLead({
                           ...editingLead,
-                          listeningScore: Number(e.target.value) || 0,
-                        })
-                      }
+                          listeningScore: value === "" ? undefined : Number(value),
+                        });
+                      }}
                     />
                   </div>
 
@@ -1285,15 +1458,44 @@ export default function PageActions(props: PageActionsProps) {
                     <Label>Reading</Label>
                     <Input
                       type="number"
+                      maxLength={6}
                       min={0}
                       step="0.01"
                       value={editingLead.readingScore ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Allow up to 3 digits before decimal and 2 after
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 3);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                      
                         setEditingLead({
                           ...editingLead,
-                          readingScore: Number(e.target.value) || 0,
+                          readingScore: value === "" ? undefined : Number(value),
                         })
-                      }
+                      }}
                     />
                   </div>
 
@@ -1301,15 +1503,43 @@ export default function PageActions(props: PageActionsProps) {
                     <Label>Writing</Label>
                     <Input
                       type="number"
+                      maxLength={6}
                       min={0}
                       step="0.01"
                       value={editingLead.writingScore ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Allow up to 3 digits before decimal and 2 after
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 3);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          writingScore: Number(e.target.value) || 0,
+                          writingScore: value === "" ? undefined : Number(value),
                         })
-                      }
+                      }}
                     />
                   </div>
 
@@ -1317,15 +1547,43 @@ export default function PageActions(props: PageActionsProps) {
                     <Label>Speaking</Label>
                     <Input
                       type="number"
+                      maxLength={6}
                       min={0}
                       step="0.01"
                       value={editingLead.speakingScore ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Allow up to 3 digits before decimal and 2 after
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 3);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          speakingScore: Number(e.target.value) || 0,
+                          speakingScore: value === "" ? undefined : Number(value),
                         })
-                      }
+                      }}
                     />
                   </div>
                   <div className="sm:col-span-2 border-t pt-4">
@@ -1336,15 +1594,43 @@ export default function PageActions(props: PageActionsProps) {
                     <Label>Total Score</Label>
                     <Input
                       type="number"
+                      maxLength={6}
                       min={0}
                       step="0.01"
                       value={editingLead.greGmatScore ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Allow up to 3 digits before decimal and 2 after
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 3);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          greGmatScore: Number(e.target.value) || 0,
+                          greGmatScore: value === "" ? undefined : Number(value),
                         })
-                      }
+                      }}
                     />
                   </div>
 
@@ -1352,15 +1638,43 @@ export default function PageActions(props: PageActionsProps) {
                     <Label>Quantitative</Label>
                     <Input
                       type="number"
+                      maxLength={6}
                       min={0}
                       step="0.01"
                       value={editingLead.quantitativeScore ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Allow up to 3 digits before decimal and 2 after
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 3);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          quantitativeScore: Number(e.target.value) || 0,
+                          quantitativeScore: value === "" ? undefined : Number(value),
                         })
-                      }
+                      }}
                     />
                   </div>
 
@@ -1368,15 +1682,43 @@ export default function PageActions(props: PageActionsProps) {
                     <Label>Verbal</Label>
                     <Input
                       type="number"
+                      maxLength={6}
                       min={0}
                       step="0.01"
                       value={editingLead.verbalScore ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Allow up to 3 digits before decimal and 2 after
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 3);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          verbalScore: Number(e.target.value) || 0,
+                          verbalScore: value === "" ? undefined : Number(value),
                         })
-                      }
+                      }}
                     />
                   </div>
 
@@ -1384,15 +1726,43 @@ export default function PageActions(props: PageActionsProps) {
                     <Label>AWA</Label>
                     <Input
                       type="number"
+                      maxLength={6}
                       min={0}
                       step="0.01"
                       value={editingLead.analyticalWritingScore ?? ""}
-                      onChange={(e) =>
+                      onKeyDown={(e) => {
+                        if (["-", "+", "e", "E"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const input = e.currentTarget;
+
+                        let value = input.value.replace(/[^0-9.]/g, "");
+
+                        // Allow only one decimal point
+                        const parts = value.split(".");
+                        if (parts.length > 2) {
+                          value = parts[0] + "." + parts.slice(1).join("");
+                        }
+
+                        // Allow up to 3 digits before decimal and 2 after
+                        if (value.includes(".")) {
+                          const [intPart, decimalPart] = value.split(".");
+                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                        } else {
+                          value = value.slice(0, 3);
+                        }
+
+                        input.value = value;
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          analyticalWritingScore: Number(e.target.value) || 0,
+                          analyticalWritingScore: value === "" ? undefined : Number(value),
                         })
-                      }
+                      }}
                     />
                   </div>
                   <div className="grid gap-1.5 sm:col-span-2">
@@ -1412,6 +1782,7 @@ export default function PageActions(props: PageActionsProps) {
                   <div className="grid gap-1.5 sm:col-span-2">
                     <Label>Work Experience</Label>
                     <Input
+                    placeholder="e.g. 2 years at XYZ company as a Software Engineer......."
                       value={editingLead.workExperience || ""}
                       onChange={(e) =>
                         setEditingLead({

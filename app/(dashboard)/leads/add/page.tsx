@@ -326,7 +326,7 @@ export default function AddLeadPage() {
             <form className="space-y-8">
               <Accordion
                 type="multiple"
-                defaultValue={["basic", "education"]}
+                defaultValue={["basic"]}
                 className="space-y-4"
               >
                 <AccordionItem
@@ -540,49 +540,148 @@ export default function AddLeadPage() {
                       <div className="space-y-2">
                         <Label>10th Percentage (%)</Label>
                         <Input
-                          min={0}
-                          placeholder="e.g. 85"
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="e.g. 85 or 75.44"
+                          maxLength={5} // Maximum: 99.99 (5 characters)
                           {...register("tenthPercentage", {
-                            setValueAs: (v) =>
-                              v === "" ? undefined : Number(v),
+                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            validate: (value) => {
+                              if (value === undefined || value === "") return true;
+
+                              const str = String(value);
+
+                              // Allows only numbers with up to 2 decimal places
+                              return /^\d{1,2}(\.\d{1,2})?$/.test(str) || "Enter a valid percentage";
+                            },
                           })}
+                          onKeyDown={(e) => {
+                            // Prevent minus, plus, exponent
+                            if (["-", "+", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            const input = e.currentTarget;
+
+                            // Remove everything except digits and one decimal point
+                            let value = input.value.replace(/[^0-9.]/g, "");
+
+                            // Keep only first decimal point
+                            const parts = value.split(".");
+                            if (parts.length > 2) {
+                              value = parts[0] + "." + parts.slice(1).join("");
+                            }
+
+                            // Limit integer part to 2 digits and decimal part to 2 digits
+                            if (value.includes(".")) {
+                              const [intPart, decimalPart] = value.split(".");
+                              value = intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
+                            } else {
+                              value = value.slice(0, 2);
+                            }
+
+                            input.value = value;
+                          }}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>10th Year of Passing</Label>
                         <Input
+                          type="text"
+                          inputMode="numeric"
                           placeholder="YYYY"
-                          min={0}
-                          type="number"
+                          maxLength={4}
                           {...register("tenthYearOfPassing", {
-                            setValueAs: (v) =>
-                              v === "" ? undefined : Number(v),
+                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            validate: (value) => {
+                              if (value === undefined || value === "") return true;
+                              return /^\d{4}$/.test(String(value)) || "Enter a valid 4-digit year";
+                            },
                           })}
+                          onKeyDown={(e) => {
+                            // Prevent non-numeric special keys
+                            if (["-", "+", ".", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            const input = e.currentTarget;
+                            input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                          }}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>12th Percentage (%)</Label>
                         <Input
-                          placeholder="e.g. 88"
-                          min={0}
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="e.g. 88 or 75.44"
+                          maxLength={5}
                           {...register("twelfthPercentage", {
-                            setValueAs: (v) =>
-                              v === "" ? undefined : Number(v),
+                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            validate: (value) => {
+                              if (value === undefined || value === "") return true;
+
+                              return (
+                                /^\d{1,2}(\.\d{1,2})?$/.test(String(value)) ||
+                                "Enter a valid percentage"
+                              );
+                            },
                           })}
+                          onKeyDown={(e) => {
+                            if (["-", "+", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            const input = e.currentTarget;
+
+                            let value = input.value.replace(/[^0-9.]/g, "");
+
+                            // Allow only one decimal point
+                            const parts = value.split(".");
+                            if (parts.length > 2) {
+                              value = parts[0] + "." + parts.slice(1).join("");
+                            }
+
+                            // Limit to 2 digits before decimal and 2 digits after decimal
+                            if (value.includes(".")) {
+                              const [intPart, decimalPart] = value.split(".");
+                              value = intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
+                            } else {
+                              value = value.slice(0, 2);
+                            }
+
+                            input.value = value;
+                          }}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>12th Year of Passing</Label>
                         <Input
+                          type="text"
+                          inputMode="numeric"
                           placeholder="YYYY"
-                          min={0}
-                          type="number"
+                          maxLength={4}
                           {...register("twelfthYearOfPassing", {
-                            setValueAs: (v) =>
-                              v === "" ? undefined : Number(v),
+                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            validate: (value) => {
+                              if (value === undefined || value === "") return true;
+                              return /^\d{4}$/.test(String(value)) || "Enter a valid 4-digit year";
+                            },
                           })}
+                          onKeyDown={(e) => {
+                            // Prevent minus, plus, decimal, exponent
+                            if (["-", "+", ".", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            const input = e.currentTarget;
+                            // Allow only digits and limit to 4 characters
+                            input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                          }}
                         />
                       </div>
                     </div>
@@ -735,38 +834,115 @@ export default function AddLeadPage() {
                       <div className="space-y-2">
                         <Label>CGPA / Percentage</Label>
                         <Input
+                          type="text"
+                          inputMode="decimal"
                           placeholder="e.g. 75 or 8.5"
-                          type="number"
-                          step="0.01"
-                          min={0}
+                          maxLength={6}
                           {...register("bachelorsPercentage", {
-                            setValueAs: (v) =>
-                              v === "" ? undefined : Number(v),
+                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            validate: (value) => {
+                              if (value === undefined || value === "") return true;
+
+                              const num = Number(value);
+
+                              if (isNaN(num)) return "Enter a valid number";
+
+                              // Allow CGPA (0–10) OR Percentage (0–100)
+                              if (num < 0 || num > 100) {
+                                return "Enter a valid CGPA (0–10) or Percentage (0–100)";
+                              }
+
+                              // Maximum 2 decimal places
+                              if (!/^\d{1,3}(\.\d{1,2})?$/.test(String(value))) {
+                                return "Maximum 2 decimal places allowed";
+                              }
+
+                              return true;
+                            },
                           })}
+                          onKeyDown={(e) => {
+                            if (["-", "+", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            const input = e.currentTarget;
+
+                            let value = input.value.replace(/[^0-9.]/g, "");
+
+                            // Allow only one decimal point
+                            const parts = value.split(".");
+                            if (parts.length > 2) {
+                              value = parts[0] + "." + parts.slice(1).join("");
+                            }
+
+                            if (value.includes(".")) {
+                              const [intPart, decimalPart] = value.split(".");
+                              value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                            } else {
+                              value = value.slice(0, 3);
+                            }
+
+                            input.value = value;
+                          }}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>Year of Passing</Label>
                         <Input
+                          type="text"
+                          inputMode="numeric"
                           placeholder="YYYY"
-                          type="number"
-                          min={0}
+                          maxLength={4}
                           {...register("bachelorsYearOfPassing", {
-                            setValueAs: (v) =>
-                              v === "" ? undefined : Number(v),
+                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            validate: (value) => {
+                              if (value === undefined || value === "") return true;
+
+                              return /^\d{4}$/.test(String(value)) || "Enter a valid 4-digit year";
+                            },
                           })}
+                          onKeyDown={(e) => {
+                            // Prevent minus, plus, decimal, exponent
+                            if (["-", "+", ".", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            const input = e.currentTarget;
+
+                            // Allow only digits and limit to 4 characters
+                            input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                          }}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>Active Backlogs</Label>
                         <Input
+                          type="text"
+                          inputMode="numeric"
                           placeholder="0"
-                          type="number"
-                          min={0}
+                          maxLength={2} // Adjust if you want more than 99 backlogs
                           {...register("backlogs", {
-                            setValueAs: (v) =>
-                              v === "" ? undefined : Number(v),
+                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            validate: (value) => {
+                              if (value === undefined || value === "") return true;
+
+                              return /^\d+$/.test(String(value)) || "Enter a valid number";
+                            },
                           })}
+                          onKeyDown={(e) => {
+                            // Prevent minus, plus, decimal, exponent
+                            if (["-", "+", ".", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            const input = e.currentTarget;
+
+                            // Allow only digits
+                            input.value = input.value.replace(/\D/g, "").slice(0, 2);
+                          }}
                         />
                       </div>
                     </div>
@@ -829,14 +1005,48 @@ export default function AddLeadPage() {
                           <div className="space-y-2">
                             <Label className="text-xs">Listening</Label>
                             <Input
+                              type="text"
+                              inputMode="decimal"
                               placeholder="L Score"
-                              type="number"
-                              step="0.5"
-                              min={0}
+                              maxLength={6}
                               {...register("listeningScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
+                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                validate: (value) => {
+                                  if (value === undefined || value === "") return true;
+
+                                  const num = Number(value);
+
+                                  return (
+                                    !isNaN(num) &&
+                                    num >= 0 &&
+                                    num <= 999.99 &&
+                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
+                                  ) || "Enter a valid score";
+                                },
                               })}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onInput={(e) => {
+                                const input = e.currentTarget;
+                                let value = input.value.replace(/[^0-9.]/g, "");
+
+                                const parts = value.split(".");
+                                if (parts.length > 2) {
+                                  value = parts[0] + "." + parts.slice(1).join("");
+                                }
+
+                                if (value.includes(".")) {
+                                  const [intPart, decimalPart] = value.split(".");
+                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                } else {
+                                  value = value.slice(0, 3);
+                                }
+
+                                input.value = value;
+                              }}
                             />
                           </div>
                           <div className="space-y-2">
@@ -844,12 +1054,47 @@ export default function AddLeadPage() {
                             <Input
                               placeholder="R Score"
                               type="number"
+                              inputMode="decimal"
                               step="0.5"
-                              min={0}
+                              maxLength={6}
                               {...register("readingScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
+                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                validate: (value) => {
+                                  if (value === undefined || value === "") return true;
+
+                                  const num = Number(value);
+
+                                  return (
+                                    !isNaN(num) &&
+                                    num >= 0 &&
+                                    num <= 999.99 &&
+                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
+                                  ) || "Enter a valid score";
+                                },
                               })}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onInput={(e) => {
+                                const input = e.currentTarget;
+                                let value = input.value.replace(/[^0-9.]/g, "");
+
+                                const parts = value.split(".");
+                                if (parts.length > 2) {
+                                  value = parts[0] + "." + parts.slice(1).join("");
+                                }
+
+                                if (value.includes(".")) {
+                                  const [intPart, decimalPart] = value.split(".");
+                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                } else {
+                                  value = value.slice(0, 3);
+                                }
+
+                                input.value = value;
+                              }}
                             />
                           </div>
                           <div className="space-y-2">
@@ -858,11 +1103,46 @@ export default function AddLeadPage() {
                               placeholder="W Score"
                               type="number"
                               step="0.5"
-                              min={0}
+                              inputMode="decimal"
+                              maxLength={6}
                               {...register("writingScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
+                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                validate: (value) => {
+                                  if (value === undefined || value === "") return true;
+
+                                  const num = Number(value);
+
+                                  return (
+                                    !isNaN(num) &&
+                                    num >= 0 &&
+                                    num <= 999.99 &&
+                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
+                                  ) || "Enter a valid score";
+                                },
                               })}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onInput={(e) => {
+                                const input = e.currentTarget;
+                                let value = input.value.replace(/[^0-9.]/g, "");
+
+                                const parts = value.split(".");
+                                if (parts.length > 2) {
+                                  value = parts[0] + "." + parts.slice(1).join("");
+                                }
+
+                                if (value.includes(".")) {
+                                  const [intPart, decimalPart] = value.split(".");
+                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                } else {
+                                  value = value.slice(0, 3);
+                                }
+
+                                input.value = value;
+                              }}
                             />
                           </div>
                           <div className="space-y-2">
@@ -871,11 +1151,46 @@ export default function AddLeadPage() {
                               placeholder="S Score"
                               type="number"
                               step="0.5"
-                              min={0}
+                              inputMode="decimal"
+                              maxLength={6}
                               {...register("speakingScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
+                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                validate: (value) => {
+                                  if (value === undefined || value === "") return true;
+
+                                  const num = Number(value);
+
+                                  return (
+                                    !isNaN(num) &&
+                                    num >= 0 &&
+                                    num <= 999.99 &&
+                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
+                                  ) || "Enter a valid score";
+                                },
                               })}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onInput={(e) => {
+                                const input = e.currentTarget;
+                                let value = input.value.replace(/[^0-9.]/g, "");
+
+                                const parts = value.split(".");
+                                if (parts.length > 2) {
+                                  value = parts[0] + "." + parts.slice(1).join("");
+                                }
+
+                                if (value.includes(".")) {
+                                  const [intPart, decimalPart] = value.split(".");
+                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                } else {
+                                  value = value.slice(0, 3);
+                                }
+
+                                input.value = value;
+                              }}
                             />
                           </div>
                         </div>
@@ -892,11 +1207,46 @@ export default function AddLeadPage() {
                             <Input
                               placeholder="Overall Score"
                               type="number"
-                              min={0}
+                              inputMode="decimal"
+                              maxLength={6}
                               {...register("greGmatScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
+                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                validate: (value) => {
+                                  if (value === undefined || value === "") return true;
+
+                                  const num = Number(value);
+
+                                  return (
+                                    !isNaN(num) &&
+                                    num >= 0 &&
+                                    num <= 999.99 &&
+                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
+                                  ) || "Enter a valid score";
+                                },
                               })}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onInput={(e) => {
+                                const input = e.currentTarget;
+                                let value = input.value.replace(/[^0-9.]/g, "");
+
+                                const parts = value.split(".");
+                                if (parts.length > 2) {
+                                  value = parts[0] + "." + parts.slice(1).join("");
+                                }
+
+                                if (value.includes(".")) {
+                                  const [intPart, decimalPart] = value.split(".");
+                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                } else {
+                                  value = value.slice(0, 3);
+                                }
+
+                                input.value = value;
+                              }}
                             />
                           </div>
                           <div className="space-y-2">
@@ -904,11 +1254,46 @@ export default function AddLeadPage() {
                             <Input
                               placeholder="Q Score"
                               type="number"
-                              min={0}
+                              inputMode="decimal"
+                              maxLength={6}
                               {...register("quantitativeScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
+                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                validate: (value) => {
+                                  if (value === undefined || value === "") return true;
+
+                                  const num = Number(value);
+
+                                  return (
+                                    !isNaN(num) &&
+                                    num >= 0 &&
+                                    num <= 999.99 &&
+                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
+                                  ) || "Enter a valid score";
+                                },
                               })}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onInput={(e) => {
+                                const input = e.currentTarget;
+                                let value = input.value.replace(/[^0-9.]/g, "");
+
+                                const parts = value.split(".");
+                                if (parts.length > 2) {
+                                  value = parts[0] + "." + parts.slice(1).join("");
+                                }
+
+                                if (value.includes(".")) {
+                                  const [intPart, decimalPart] = value.split(".");
+                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                } else {
+                                  value = value.slice(0, 3);
+                                }
+
+                                input.value = value;
+                              }}
                             />
                           </div>
                           <div className="space-y-2">
@@ -916,11 +1301,46 @@ export default function AddLeadPage() {
                             <Input
                               placeholder="V Score"
                               type="number"
-                              min={0}
+                              inputMode="decimal"
+                              maxLength={6}
                               {...register("verbalScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
+                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                validate: (value) => {
+                                  if (value === undefined || value === "") return true;
+
+                                  const num = Number(value);
+
+                                  return (
+                                    !isNaN(num) &&
+                                    num >= 0 &&
+                                    num <= 999.99 &&
+                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
+                                  ) || "Enter a valid score";
+                                },
                               })}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onInput={(e) => {
+                                const input = e.currentTarget;
+                                let value = input.value.replace(/[^0-9.]/g, "");
+
+                                const parts = value.split(".");
+                                if (parts.length > 2) {
+                                  value = parts[0] + "." + parts.slice(1).join("");
+                                }
+
+                                if (value.includes(".")) {
+                                  const [intPart, decimalPart] = value.split(".");
+                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                } else {
+                                  value = value.slice(0, 3);
+                                }
+
+                                input.value = value;
+                              }}
                             />
                           </div>
                           <div className="space-y-2 col-span-2">
@@ -930,12 +1350,47 @@ export default function AddLeadPage() {
                             <Input
                               placeholder="AWA Score"
                               type="number"
+                              inputMode="decimal"
                               step="0.5"
-                              min={0}
+                              maxLength={6}
                               {...register("analyticalWritingScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
+                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                validate: (value) => {
+                                  if (value === undefined || value === "") return true;
+
+                                  const num = Number(value);
+
+                                  return (
+                                    !isNaN(num) &&
+                                    num >= 0 &&
+                                    num <= 999.99 &&
+                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
+                                  ) || "Enter a valid score";
+                                },
                               })}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onInput={(e) => {
+                                const input = e.currentTarget;
+                                let value = input.value.replace(/[^0-9.]/g, "");
+
+                                const parts = value.split(".");
+                                if (parts.length > 2) {
+                                  value = parts[0] + "." + parts.slice(1).join("");
+                                }
+
+                                if (value.includes(".")) {
+                                  const [intPart, decimalPart] = value.split(".");
+                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                } else {
+                                  value = value.slice(0, 3);
+                                }
+
+                                input.value = value;
+                              }}
                             />
                           </div>
                         </div>
