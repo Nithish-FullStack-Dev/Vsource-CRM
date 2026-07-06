@@ -477,19 +477,16 @@ export default function ApplicationsTrackerPage() {
     if (stage === "Visa Process") {
       return (
         <div className="space-y-2">
-          <InfoRow
-            label="CAS"
-            value={student.visaLoanProfile?.casStatus ?? "-"}
-          />
+          <InfoRow label="CAS" value={student.visaProfile?.casStatus ?? "-"} />
           <InfoRow
             label="Visa"
-            value={student.visaLoanProfile?.visaStatus ?? "-"}
+            value={student.visaProfile?.visaStatus ?? "-"}
           />
           <InfoRow
             label="Loan"
-            value={student.visaLoanProfile?.loanStatus ?? "-"}
+            value={student.loanProfile?.loanStatus ?? "-"}
           />
-          <InfoRow label="NBFC" value={student.visaLoanProfile?.nbfc ?? "-"} />
+          <InfoRow label="NBFC" value={student.loanProfile?.nbfc ?? "-"} />
         </div>
       );
     }
