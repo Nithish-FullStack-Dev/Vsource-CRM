@@ -17,7 +17,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Pencil, Trash2, Eye } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Pencil,
+  Trash2,
+  Eye,
+  CalendarDays,
+  Loader2,
+} from "lucide-react";
 import type { Lead, LeadStatus } from "@/types";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +37,14 @@ import LeadStatusDialog from "@/components/leads/LeadStatusDialog";
 import { LEADS, useLeads } from "@/lib/lead";
 import { useLeadSources } from "@/lib/master-settings";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -69,7 +85,7 @@ const formatDate = (value?: string | Date | null) => {
 
   if (Number.isNaN(date.getTime())) return "—";
 
-  return date.toLocaleDateString();
+  return date.toLocaleDateString("en-GB");
 };
 
 export default function AllLeadsPage() {
@@ -87,6 +103,10 @@ export default function AllLeadsPage() {
 
   const [followupDate, setFollowupDate] = useState("");
   const [followupNote, setFollowupNote] = useState("");
+  const [followupLead, setFollowupLead] = useState<Lead | null>(null);
+  const [quickFollowupDate, setQuickFollowupDate] = useState("");
+  const [quickFollowupNote, setQuickFollowupNote] = useState("");
+  const [isSavingFollowup, setIsSavingFollowup] = useState(false);
 
   const [editingLeadStatus, setEditingLeadStatus] = useState<Lead | null>(null);
   const [leadIdToDelete, setLeadIdToDelete] = useState<string | null>(null);
@@ -208,6 +228,72 @@ export default function AllLeadsPage() {
       );
     } finally {
       setIsUpdating(false);
+    }
+  };
+  const openFollowupDialog = (lead: Lead) => {
+    setFollowupLead(lead);
+
+    setQuickFollowupDate(
+      lead.nextFollowup
+        ? new Date(lead.nextFollowup).toISOString().split("T")[0]
+        : "",
+    );
+
+    setQuickFollowupNote("");
+  };
+  const handleSaveFollowup = async () => {
+    if (!followupLead) return;
+
+    if (!quickFollowupDate) {
+      toast.error("Please select next follow-up date");
+      return;
+    }
+
+    if (!quickFollowupNote.trim()) {
+      toast.error("Please enter follow-up note");
+      return;
+    }
+
+    try {
+      setIsSavingFollowup(true);
+
+      const response = await fetch(`${API_BASE_URL}/leads/${followupLead.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          followupDate: quickFollowupDate,
+          followupNote: quickFollowupNote.trim(),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Unable to save follow-up");
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: LEADS.all,
+      });
+
+      await loadLeads();
+
+      toast.success("Follow-up saved successfully");
+
+      setFollowupLead(null);
+      setQuickFollowupDate("");
+      setQuickFollowupNote("");
+    } catch (error) {
+      console.error(error);
+
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save follow-up",
+      );
+    } finally {
+      setIsSavingFollowup(false);
     }
   };
   return (
@@ -477,7 +563,20 @@ export default function AllLeadsPage() {
                           <p className="text-[10px] uppercase text-muted-foreground">
                             Next Followup
                           </p>
-                          <p>{formatDate(lead.nextFollowup)}</p>
+
+                          {canUpdate(MODULES.MASTER_LEADS) ? (
+                            <button
+                              type="button"
+                              onClick={() => openFollowupDialog(lead)}
+                              className="mt-1 inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
+                            >
+                              <CalendarDays className="size-3.5" />
+
+                              {formatDate(lead.nextFollowup)}
+                            </button>
+                          ) : (
+                            <p>{formatDate(lead.nextFollowup)}</p>
+                          )}
                         </div>
                       </div>
 
@@ -731,9 +830,22 @@ export default function AllLeadsPage() {
                           </td>
 
                           <td className="px-2 py-3 align-middle xl:px-3">
-                            <span className="block whitespace-nowrap">
-                              {formatDate(lead.nextFollowup)}
-                            </span>
+                            {canUpdate(MODULES.MASTER_LEADS) ? (
+                              <button
+                                type="button"
+                                onClick={() => openFollowupDialog(lead)}
+                                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 font-medium text-primary transition-colors hover:bg-primary/10 hover:underline"
+                                title="Add next follow-up"
+                              >
+                                <CalendarDays className="size-3.5" />
+
+                                {formatDate(lead.nextFollowup)}
+                              </button>
+                            ) : (
+                              <span className="block whitespace-nowrap">
+                                {formatDate(lead.nextFollowup)}
+                              </span>
+                            )}
                           </td>
 
                           <td className="px-1 py-2.5 align-middle xl:px-2">
@@ -838,7 +950,91 @@ export default function AllLeadsPage() {
         open={Boolean(editingLeadStatus)}
         onClose={() => setEditingLeadStatus(null)}
       />
+      <Dialog
+        open={Boolean(followupLead)}
+        onOpenChange={(open) => {
+          if (!open && !isSavingFollowup) {
+            setFollowupLead(null);
+            setQuickFollowupDate("");
+            setQuickFollowupNote("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Next Follow-up</DialogTitle>
 
+            <DialogDescription>
+              Schedule the next follow-up for{" "}
+              <span className="font-medium text-foreground">
+                {followupLead?.studentName || "this lead"}
+              </span>
+              .
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-5 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="quick-followup-date">Next Follow-up Date</Label>
+
+              <Input
+                id="quick-followup-date"
+                type="date"
+                value={quickFollowupDate}
+                onChange={(event) => setQuickFollowupDate(event.target.value)}
+                disabled={isSavingFollowup}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="quick-followup-note">Follow-up Note</Label>
+
+              <textarea
+                id="quick-followup-note"
+                value={quickFollowupNote}
+                onChange={(event) => setQuickFollowupNote(event.target.value)}
+                placeholder="Enter follow-up note..."
+                rows={4}
+                disabled={isSavingFollowup}
+                className="flex min-h-24 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSavingFollowup}
+              onClick={() => {
+                setFollowupLead(null);
+                setQuickFollowupDate("");
+                setQuickFollowupNote("");
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleSaveFollowup}
+              disabled={isSavingFollowup}
+            >
+              {isSavingFollowup ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CalendarDays className="mr-2 size-4" />
+                  Save Follow-up
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <PageActions
         selected={selected}
         setSelected={setSelected}

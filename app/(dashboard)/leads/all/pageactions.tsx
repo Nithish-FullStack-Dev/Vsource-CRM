@@ -248,7 +248,15 @@ export default function PageActions(props: PageActionsProps) {
       </div>
     );
   }
+  const formatDate = (value?: string | Date | null) => {
+    if (!value) return "—";
 
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return "—";
+
+    return date.toLocaleDateString("en-GB");
+  };
   return (
     <>
       {/* 1. DETAILED RECORD VIEW SHEET */}
@@ -470,20 +478,12 @@ export default function PageActions(props: PageActionsProps) {
 
                     <DetailItem
                       label="Created Date"
-                      value={
-                        selected.createdAt
-                          ? new Date(selected.createdAt).toLocaleDateString()
-                          : "—"
-                      }
+                      value={formatDate(selected.createdAt)}
                     />
 
                     <DetailItem
                       label="Next Followup"
-                      value={
-                        selected.nextFollowup
-                          ? new Date(selected.nextFollowup).toLocaleDateString()
-                          : "—"
-                      }
+                      value={formatDate(selected.nextFollowup)}
                     />
                   </div>
 
@@ -506,17 +506,12 @@ export default function PageActions(props: PageActionsProps) {
                             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                               <p className="font-medium">
                                 {timeline.nextFollowup
-                                  ? new Date(
-                                      timeline.nextFollowup,
-                                    ).toLocaleDateString()
+                                  ? formatDate(timeline.nextFollowup)
                                   : "No follow-up date"}
                               </p>
 
                               <span className="text-xs text-muted-foreground">
-                                Added{" "}
-                                {new Date(
-                                  timeline.createdAt,
-                                ).toLocaleDateString()}
+                                Added {formatDate(timeline.createdAt)}
                               </span>
                             </div>
 
@@ -743,35 +738,7 @@ export default function PageActions(props: PageActionsProps) {
                       }
                     />
                   </div>
-                  {/* Graduation Status */}
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="edit-graduation-status">
-                      Graduation Status
-                    </Label>
 
-                    <Select
-                      value={editingLead.graduationStatus ?? ""}
-                      onValueChange={(value) =>
-                        setEditingLead({
-                          ...editingLead,
-                          graduationStatus: value as "completed" | "pursuing",
-                        })
-                      }
-                    >
-                      <SelectTrigger
-                        id="edit-graduation-status"
-                        className="w-full"
-                      >
-                        <SelectValue placeholder="Select Graduation Status" />
-                      </SelectTrigger>
-
-                      <SelectContent>
-                        <SelectItem value="completed">Completed</SelectItem>
-
-                        <SelectItem value="pursuing">Pursuing</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                   {/* Assigned Branch - Synced dynamically with loaded branches */}
                   <div className="grid gap-1.5 sm:col-span-2">
                     <Label
@@ -1443,7 +1410,35 @@ export default function PageActions(props: PageActionsProps) {
                       }
                     />
                   </div>
+                  {/* Graduation Status */}
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-graduation-status">
+                      Graduation Status
+                    </Label>
 
+                    <Select
+                      value={editingLead.graduationStatus ?? ""}
+                      onValueChange={(value) =>
+                        setEditingLead({
+                          ...editingLead,
+                          graduationStatus: value as "completed" | "pursuing",
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id="edit-graduation-status"
+                        className="w-full"
+                      >
+                        <SelectValue placeholder="Select Graduation Status" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        <SelectItem value="completed">Completed</SelectItem>
+
+                        <SelectItem value="pursuing">Pursuing</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="grid gap-1.5 sm:col-span-2">
                     <Label>Education Gaps</Label>
                     <Input
@@ -1457,6 +1452,7 @@ export default function PageActions(props: PageActionsProps) {
                       }
                     />
                   </div>
+
                   <div className="sm:col-span-2 border-t pt-4">
                     <h3 className="font-semibold text-base">EPT Details</h3>
                   </div>
@@ -1875,7 +1871,7 @@ export default function PageActions(props: PageActionsProps) {
                   <div className="grid gap-1.5 sm:col-span-2">
                     <Label>Work Experience</Label>
                     <Input
-                      placeholder="e.g. 2 years at XYZ company as a Software Engineer......."
+                      placeholder="e.g. 2 years at XYZ company as a ......."
                       value={editingLead.workExperience || ""}
                       onChange={(e) =>
                         setEditingLead({
