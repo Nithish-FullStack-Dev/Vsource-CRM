@@ -86,7 +86,7 @@ export function StudentUniversityApplicationForm({
 
         countryId: selectedUniversity?.country?.id,
 
-        intakeId: selectedCourse?.intake?.id,
+        intakeId: selectedCourse?.intakeId ?? null,
 
         portal,
 
@@ -100,7 +100,7 @@ export function StudentUniversityApplicationForm({
         countryName: selectedUniversity?.country?.name,
         universityName: selectedUniversity?.name,
         courseName: selectedCourse?.name,
-        intakeName: selectedCourse?.intake?.name,
+        intakeName: selectedCourse?.intakeName ?? null,
       });
 
       toast.success(application ? "Application updated" : "Application added");
@@ -199,7 +199,7 @@ export function StudentUniversityApplicationForm({
           <label className="text-xs font-semibold mb-2 block">Intake</label>
 
           <input
-            value={selectedCourse?.intake?.name ?? ""}
+            value={selectedCourse?.intakeName ?? ""}
             disabled
             className="w-full h-11 rounded-xl border px-3 bg-slate-50"
           />

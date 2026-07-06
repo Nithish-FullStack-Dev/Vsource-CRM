@@ -102,6 +102,8 @@ export interface Applications {
   offerStatus?: string;
 
   applicationDate?: string | Date;
+
+  followUpDate?: string | Date;
 }
 
 export interface Remarks {

@@ -15,10 +15,6 @@ import {
 } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import {
-  useCourseDropdown,
-  useUniversityDropdown,
-} from "@/hooks/student/applications/useUniversityDropdown";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -31,7 +27,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/store";
 import { MODULES } from "@/lib/module-codes";
-
+import {
+  CourseDropdownItem,
+  useCourseDropdown,
+  useCreateUniversityCourse,
+  useUniversityDropdown,
+} from "@/hooks/student/applications/useUniversityDropdown";
+import {
+  CreatableCourseCombobox,
+  CourseOption,
+} from "@/components/student/CreatableCourseCombobox";
+import { toast } from "sonner";
 interface Props {
   student: StudentRecord;
   isDarkMode: boolean;
@@ -47,11 +53,6 @@ interface UniversityDropdownItem {
   tier?: string;
 }
 
-interface CourseDropdownItem {
-  id: string;
-  name: string;
-  intakeId?: string;
-}
 export default function StudentApplicationsSection({
   student,
   isDarkMode,
@@ -63,6 +64,7 @@ export default function StudentApplicationsSection({
   const [selectedUniversityId, setSelectedUniversityId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const { data: courses = [] } = useCourseDropdown(selectedUniversityId);
+  const createCourseMutation = useCreateUniversityCourse(selectedUniversityId);
   const [showForm, setShowForm] = useState(false);
   const { canCreate, canDelete, canUpdate } = useAuth();
   const canApply = student.applications.length < 5;
@@ -73,6 +75,7 @@ export default function StudentApplicationsSection({
   };
   const [portal, setPortal] = useState("");
   const [applicationDate, setApplicationDate] = useState("");
+  const [followUpDate, setFollowUpDate] = useState("");
   const [status, setStatus] = useState("draft");
   const [offerStatus, setOfferStatus] = useState("not_received");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -104,6 +107,7 @@ export default function StudentApplicationsSection({
       intakeId: selectedCourse?.intakeId ?? null,
       portal,
       applicationDate: applicationDate || null,
+      followUpDate: followUpDate || null,
       status,
       offerStatus,
     };
@@ -121,6 +125,7 @@ export default function StudentApplicationsSection({
       setSelectedCourseId("");
       setPortal("");
       setApplicationDate("");
+      setFollowUpDate("");
       setStatus("draft");
       setOfferStatus("not_received");
       setEditingId(null);
@@ -131,16 +136,38 @@ export default function StudentApplicationsSection({
       setIsSaving(false);
     }
   };
+  const handleCreateCourse = async (
+    courseName: string,
+  ): Promise<CourseOption> => {
+    try {
+      const createdCourse = await createCourseMutation.mutateAsync(courseName);
+
+      toast.success(`Course "${createdCourse.name}" added successfully`);
+
+      return createdCourse;
+    } catch (error) {
+      console.error("Failed to create course:", error);
+
+      toast.error("Failed to add course");
+
+      throw error;
+    }
+  };
   const handleEdit = (app: any) => {
     setEditingId(app.id);
 
     setSelectedUniversityId(app.universityId || "");
     setSelectedCourseId(app.courseId || "");
     setPortal(app.portal || "");
-
     setApplicationDate(
       app.applicationDate
         ? new Date(app.applicationDate).toISOString().slice(0, 16)
+        : "",
+    );
+
+    setFollowUpDate(
+      app.followUpDate
+        ? new Date(app.followUpDate).toISOString().slice(0, 10)
         : "",
     );
 
@@ -268,23 +295,16 @@ export default function StudentApplicationsSection({
                   Course
                 </label>
 
-                <Select
+                <CreatableCourseCombobox
+                  universityId={selectedUniversityId}
+                  courses={courses}
                   value={selectedCourseId}
                   onValueChange={setSelectedCourseId}
-                  disabled={!selectedUniversityId}
-                >
-                  <SelectTrigger className="h-11 rounded-2xl">
-                    <SelectValue placeholder="Select Course" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {courses.map((course: CourseDropdownItem) => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onCreateCourse={handleCreateCourse}
+                  disabled={
+                    !selectedUniversityId || createCourseMutation.isPending
+                  }
+                />
               </div>
 
               <div>
@@ -311,7 +331,18 @@ export default function StudentApplicationsSection({
                   className="w-full h-11 px-4 rounded-2xl border"
                 />
               </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold">
+                  University Follow-Up Date
+                </label>
 
+                <input
+                  type="date"
+                  value={followUpDate}
+                  onChange={(e) => setFollowUpDate(e.target.value)}
+                  className="h-11 w-full rounded-2xl border px-4"
+                />
+              </div>
               <div>
                 <label className="text-xs font-semibold mb-2 block">
                   Application Status
@@ -434,16 +465,30 @@ export default function StudentApplicationsSection({
                       {app.offerStatus}
                     </p>
                   </div>
-
                   {app.applicationDate && (
-                    <div className="col-span-2">
+                    <div>
                       <p className="text-slate-400 text-sm flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         Applied Date
                       </p>
 
                       <p className="font-semibold mt-1">
-                        {new Date(app.applicationDate).toLocaleDateString()}
+                        {new Date(app.applicationDate).toLocaleDateString(
+                          "en-IN",
+                        )}
+                      </p>
+                    </div>
+                  )}
+
+                  {app.followUpDate && (
+                    <div>
+                      <p className="text-slate-400 text-sm flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Next Follow-Up
+                      </p>
+
+                      <p className="font-semibold mt-1">
+                        {new Date(app.followUpDate).toLocaleDateString("en-IN")}
                       </p>
                     </div>
                   )}
