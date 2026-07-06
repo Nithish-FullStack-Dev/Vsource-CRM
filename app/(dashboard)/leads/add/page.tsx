@@ -564,34 +564,6 @@ export default function AddLeadPage() {
                           )}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Graduation Status</Label>
-
-                        <Controller
-                          control={control}
-                          name="graduationStatus"
-                          render={({ field }) => (
-                            <Select
-                              value={field.value as string | undefined}
-                              onValueChange={field.onChange}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Graduation Status" />
-                              </SelectTrigger>
-
-                              <SelectContent>
-                                <SelectItem value="completed">
-                                  Completed
-                                </SelectItem>
-
-                                <SelectItem value="pursuing">
-                                  Pursuing
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                      </div>
 
                       <div className="space-y-2">
                         <Label>Assign Counsellor</Label>
@@ -1143,6 +1115,34 @@ export default function AddLeadPage() {
                               .replace(/\D/g, "")
                               .slice(0, 2);
                           }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Graduation Status</Label>
+
+                        <Controller
+                          control={control}
+                          name="graduationStatus"
+                          render={({ field }) => (
+                            <Select
+                              value={field.value as string | undefined}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Graduation Status" />
+                              </SelectTrigger>
+
+                              <SelectContent>
+                                <SelectItem value="completed">
+                                  Completed
+                                </SelectItem>
+
+                                <SelectItem value="pursuing">
+                                  Pursuing
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
                         />
                       </div>
                     </div>
