@@ -1,8 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, type ElementType } from "react";
 import {
-  CalendarDays,
   CheckCircle2,
   CreditCard,
   Edit3,
@@ -11,7 +10,6 @@ import {
   Loader2,
   RefreshCcw,
   Save,
-  ShieldCheck,
   UserRound,
   WalletCards,
   X,
@@ -22,31 +20,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  StudentVisaLoanProfile,
-  StudentVisaLoanProfilePayload,
-} from "@/types/student";
 import { toast } from "sonner";
-import { useStudentVisaLoanProfile } from "@/hooks/student/visa-loan/useStudentVisaLoanProfile";
-import { useSaveStudentVisaLoanProfile } from "@/hooks/student/visa-loan/useSaveStudentVisaLoanProfile";
-import { useFintechUsers } from "@/hooks/student/visa-loan/useFintechUsers";
+import {
+  StudentLoanProfile,
+  useStudentLoanProfile,
+} from "@/hooks/student/loan/useStudentLoanProfile";
+import {
+  StudentLoanProfilePayload,
+  useSaveStudentLoanProfile,
+} from "@/hooks/student/loan/useSaveStudentLoanProfile";
+import { useFintechUsers } from "@/hooks/student/loan/useFintechUsers";
 import { useAuth } from "@/store";
 import { MODULES } from "@/lib/module-codes";
 
-type StudentVisaLoanProfileSectionProps = {
+type StudentLoanProfileSectionProps = {
   studentId: string;
   isDarkMode?: boolean;
 };
 
 type FormState = {
-  depositDeadlineDate: string;
-  depositStatus: string;
-  ihsPaidStatus: string;
-  visaPaidStatus: string;
-  casDeadlineDate: string;
-  casStatus: string;
-  visaStatus: string;
-  universityStartDate: string;
   fintechAssigneeId: string;
   nbfc: string;
   loanStatus: string;
@@ -58,14 +50,6 @@ type FormState = {
 };
 
 const initialFormState: FormState = {
-  depositDeadlineDate: "",
-  depositStatus: "",
-  ihsPaidStatus: "",
-  visaPaidStatus: "",
-  casDeadlineDate: "",
-  casStatus: "",
-  visaStatus: "",
-  universityStartDate: "",
   fintechAssigneeId: "",
   nbfc: "",
   loanStatus: "",
@@ -74,35 +58,6 @@ const initialFormState: FormState = {
   sanctionedAmount: "",
   disbursed: false,
   disbursedAmount: "",
-};
-
-const getDateTimeLocalValue = (value?: string | null) => {
-  if (!value) return "";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "";
-
-  const timezoneOffset = date.getTimezoneOffset() * 60_000;
-
-  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
-};
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return "-";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
 };
 
 const formatAmount = (value?: string | number | null) => {
@@ -143,30 +98,10 @@ const getNullableNumber = (value: string) => {
   return Number.isFinite(numberValue) ? numberValue : null;
 };
 
-const getNullableDateTime = (value: string) => {
-  if (!value) return null;
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return null;
-
-  return date.toISOString();
-};
-
-const createFormState = (
-  profile?: StudentVisaLoanProfile | null,
-): FormState => {
+const createFormState = (profile?: StudentLoanProfile | null): FormState => {
   if (!profile) return initialFormState;
 
   return {
-    depositDeadlineDate: getDateTimeLocalValue(profile.depositDeadlineDate),
-    depositStatus: profile.depositStatus ?? "",
-    ihsPaidStatus: profile.ihsPaidStatus ?? "",
-    visaPaidStatus: profile.visaPaidStatus ?? "",
-    casDeadlineDate: getDateTimeLocalValue(profile.casDeadlineDate),
-    casStatus: profile.casStatus ?? "",
-    visaStatus: profile.visaStatus ?? "",
-    universityStartDate: getDateTimeLocalValue(profile.universityStartDate),
     fintechAssigneeId: profile.fintechAssigneeId ?? "",
     nbfc: profile.nbfc ?? "",
     loanStatus: profile.loanStatus ?? "",
@@ -181,7 +116,7 @@ const createFormState = (
 type DetailItemProps = {
   label: string;
   value: string;
-  icon: React.ElementType;
+  icon: ElementType;
   isDarkMode: boolean;
 };
 
@@ -211,10 +146,10 @@ function DetailItem({ label, value, icon: Icon, isDarkMode }: DetailItemProps) {
   );
 }
 
-export function StudentVisaLoanProfileSection({
+export function StudentLoanProfileSection({
   studentId,
   isDarkMode = false,
-}: StudentVisaLoanProfileSectionProps) {
+}: StudentLoanProfileSectionProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(initialFormState);
   const { data: fintechUsers = [] } = useFintechUsers(studentId);
@@ -226,9 +161,9 @@ export function StudentVisaLoanProfileSection({
     isError,
     isFetching,
     refetch,
-  } = useStudentVisaLoanProfile(studentId);
+  } = useStudentLoanProfile(studentId);
 
-  const saveMutation = useSaveStudentVisaLoanProfile();
+  const saveMutation = useSaveStudentLoanProfile();
 
   useEffect(() => {
     setForm(createFormState(profile));
@@ -298,15 +233,7 @@ export function StudentVisaLoanProfileSection({
       return;
     }
 
-    const payload: StudentVisaLoanProfilePayload = {
-      depositDeadlineDate: getNullableDateTime(form.depositDeadlineDate),
-      depositStatus: form.depositStatus || null,
-      ihsPaidStatus: form.ihsPaidStatus || null,
-      visaPaidStatus: form.visaPaidStatus || null,
-      casDeadlineDate: getNullableDateTime(form.casDeadlineDate),
-      casStatus: form.casStatus || null,
-      visaStatus: form.visaStatus || null,
-      universityStartDate: getNullableDateTime(form.universityStartDate),
+    const payload: StudentLoanProfilePayload = {
       fintechAssigneeId: form.fintechAssigneeId.trim() || null,
       nbfc: form.nbfc || null,
       loanStatus: form.loanStatus || null,
@@ -316,8 +243,6 @@ export function StudentVisaLoanProfileSection({
       disbursed: form.disbursed,
       disbursedAmount: form.disbursed ? disbursedAmount : null,
     };
-
-    console.log(payload);
 
     try {
       await saveMutation.mutateAsync({
@@ -348,11 +273,13 @@ export function StudentVisaLoanProfileSection({
       <div className="flex min-h-[350px] items-center justify-center rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-800">
         <div>
           <FileCheck2 className="mx-auto mb-3 h-8 w-8 text-slate-400" />
+
           <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
             Student profile is unavailable
           </p>
+
           <p className="mt-1 text-xs text-slate-400">
-            Select a valid student to view visa and loan details.
+            Select a valid student to view loan details.
           </p>
         </div>
       </div>
@@ -364,8 +291,9 @@ export function StudentVisaLoanProfileSection({
       <div className="flex min-h-[350px] items-center justify-center">
         <div className="text-center">
           <Loader2 className="mx-auto h-7 w-7 animate-spin text-red-600" />
+
           <p className="mt-3 text-xs font-bold text-slate-500">
-            Loading visa and loan profile...
+            Loading loan profile...
           </p>
         </div>
       </div>
@@ -379,11 +307,11 @@ export function StudentVisaLoanProfileSection({
           <FileCheck2 className="mx-auto mb-3 h-8 w-8 text-rose-500" />
 
           <p className="text-sm font-bold text-rose-600 dark:text-rose-400">
-            Unable to load visa and loan profile
+            Unable to load loan profile
           </p>
 
           <p className="mt-1 text-xs text-slate-500">
-            The student profile could not be loaded.
+            The loan profile could not be loaded.
           </p>
 
           <button
@@ -408,11 +336,11 @@ export function StudentVisaLoanProfileSection({
         <div className="flex flex-col gap-3 border-b border-inherit pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Visa & Loan Profile
+              Loan Profile
             </h4>
 
             <p className="mt-1 text-xs text-slate-400">
-              View deposit, CAS, visa, university and loan information.
+              View NBFC, loan sanction and disbursement information.
             </p>
           </div>
 
@@ -423,7 +351,7 @@ export function StudentVisaLoanProfileSection({
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-black text-white transition hover:bg-red-700"
             >
               <Edit3 className="h-4 w-4" />
-              {profile ? "Edit Details" : "Add Details"}
+              {profile ? "Edit Loan Details" : "Add Loan Details"}
             </button>
           )}
         </div>
@@ -431,184 +359,108 @@ export function StudentVisaLoanProfileSection({
         {!profile ? (
           <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-800">
             <div>
-              <ShieldCheck className="mx-auto mb-3 h-9 w-9 text-slate-400" />
+              <Landmark className="mx-auto mb-3 h-9 w-9 text-slate-400" />
 
               <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                No visa and loan profile available
+                No loan profile available
               </p>
 
               <p className="mt-1 text-xs text-slate-400">
-                Click Add Details to create the student profile.
+                Click Add Loan Details to create the loan profile.
               </p>
 
-              <button
-                type="button"
-                onClick={openEditDialog}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white"
-              >
-                <Edit3 className="h-4 w-4" />
-                Add Details
-              </button>
+              {canUpdate(MODULES.STUDENT_PROFILES) && (
+                <button
+                  type="button"
+                  onClick={openEditDialog}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white"
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Add Loan Details
+                </button>
+              )}
             </div>
           </div>
         ) : (
-          <>
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <div className="rounded-xl bg-purple-500/10 p-2 text-purple-600">
-                  <ShieldCheck className="h-4 w-4" />
-                </div>
-
-                <div>
-                  <h5 className="text-xs font-black uppercase tracking-wide">
-                    Deposit, CAS & Visa
-                  </h5>
-
-                  <p className="text-[10px] text-slate-400">
-                    University and immigration milestones
-                  </p>
-                </div>
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="rounded-xl bg-amber-500/10 p-2 text-amber-600">
+                <Landmark className="h-4 w-4" />
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <DetailItem
-                  label="Deposit Deadline"
-                  value={formatDateTime(profile.depositDeadlineDate)}
-                  icon={CalendarDays}
-                  isDarkMode={isDarkMode}
-                />
+              <div>
+                <h5 className="text-xs font-black uppercase tracking-wide">
+                  Loan & Finance
+                </h5>
 
-                <DetailItem
-                  label="Deposit Status"
-                  value={formatStatus(profile.depositStatus)}
-                  icon={CheckCircle2}
-                  isDarkMode={isDarkMode}
-                />
-
-                <DetailItem
-                  label="IHS Paid Status"
-                  value={formatStatus(profile.ihsPaidStatus)}
-                  icon={CreditCard}
-                  isDarkMode={isDarkMode}
-                />
-
-                <DetailItem
-                  label="Visa Fee Paid Status"
-                  value={formatStatus(profile.visaPaidStatus)}
-                  icon={CreditCard}
-                  isDarkMode={isDarkMode}
-                />
-
-                <DetailItem
-                  label="CAS Deadline"
-                  value={formatDateTime(profile.casDeadlineDate)}
-                  icon={CalendarDays}
-                  isDarkMode={isDarkMode}
-                />
-
-                <DetailItem
-                  label="CAS Status"
-                  value={formatStatus(profile.casStatus)}
-                  icon={FileCheck2}
-                  isDarkMode={isDarkMode}
-                />
-
-                <DetailItem
-                  label="Visa Status"
-                  value={formatStatus(profile.visaStatus)}
-                  icon={ShieldCheck}
-                  isDarkMode={isDarkMode}
-                />
-
-                <DetailItem
-                  label="University Start Date"
-                  value={formatDateTime(profile.universityStartDate)}
-                  icon={CalendarDays}
-                  isDarkMode={isDarkMode}
-                />
+                <p className="text-[10px] text-slate-400">
+                  NBFC, sanction and disbursement information
+                </p>
               </div>
             </div>
 
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <div className="rounded-xl bg-amber-500/10 p-2 text-amber-600">
-                  <Landmark className="h-4 w-4" />
-                </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <DetailItem
+                label="Fintech Assignee"
+                value={profile.fintechAssignee?.name || "-"}
+                icon={UserRound}
+                isDarkMode={isDarkMode}
+              />
 
-                <div>
-                  <h5 className="text-xs font-black uppercase tracking-wide">
-                    Loan & Finance
-                  </h5>
+              <DetailItem
+                label="NBFC"
+                value={profile.nbfc || "-"}
+                icon={Landmark}
+                isDarkMode={isDarkMode}
+              />
 
-                  <p className="text-[10px] text-slate-400">
-                    NBFC, sanction and disbursement information
-                  </p>
-                </div>
-              </div>
+              <DetailItem
+                label="Loan Status"
+                value={formatStatus(profile.loanStatus)}
+                icon={FileCheck2}
+                isDarkMode={isDarkMode}
+              />
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <DetailItem
-                  label="Fintech Assignee"
-                  value={profile.fintechAssignee?.name || "-"}
-                  icon={UserRound}
-                  isDarkMode={isDarkMode}
-                />
+              <DetailItem
+                label="Processing Fee Status"
+                value={formatStatus(profile.pfStatus)}
+                icon={CreditCard}
+                isDarkMode={isDarkMode}
+              />
 
-                <DetailItem
-                  label="NBFC"
-                  value={profile.nbfc || "-"}
-                  icon={Landmark}
-                  isDarkMode={isDarkMode}
-                />
+              <DetailItem
+                label="Applied Amount"
+                value={formatAmount(profile.appliedAmount)}
+                icon={WalletCards}
+                isDarkMode={isDarkMode}
+              />
 
-                <DetailItem
-                  label="Loan Status"
-                  value={formatStatus(profile.loanStatus)}
-                  icon={FileCheck2}
-                  isDarkMode={isDarkMode}
-                />
+              <DetailItem
+                label="Sanctioned Amount"
+                value={formatAmount(profile.sanctionedAmount)}
+                icon={WalletCards}
+                isDarkMode={isDarkMode}
+              />
 
-                <DetailItem
-                  label="Processing Fee Status"
-                  value={formatStatus(profile.pfStatus)}
-                  icon={CreditCard}
-                  isDarkMode={isDarkMode}
-                />
+              <DetailItem
+                label="Disbursed"
+                value={profile.disbursed ? "Yes" : "No"}
+                icon={CheckCircle2}
+                isDarkMode={isDarkMode}
+              />
 
-                <DetailItem
-                  label="Applied Amount"
-                  value={formatAmount(profile.appliedAmount)}
-                  icon={WalletCards}
-                  isDarkMode={isDarkMode}
-                />
-
-                <DetailItem
-                  label="Sanctioned Amount"
-                  value={formatAmount(profile.sanctionedAmount)}
-                  icon={WalletCards}
-                  isDarkMode={isDarkMode}
-                />
-
-                <DetailItem
-                  label="Disbursed"
-                  value={profile.disbursed ? "Yes" : "No"}
-                  icon={CheckCircle2}
-                  isDarkMode={isDarkMode}
-                />
-
-                <DetailItem
-                  label="Disbursed Amount"
-                  value={
-                    profile.disbursed
-                      ? formatAmount(profile.disbursedAmount)
-                      : "-"
-                  }
-                  icon={WalletCards}
-                  isDarkMode={isDarkMode}
-                />
-              </div>
+              <DetailItem
+                label="Disbursed Amount"
+                value={
+                  profile.disbursed
+                    ? formatAmount(profile.disbursedAmount)
+                    : "-"
+                }
+                icon={WalletCards}
+                isDarkMode={isDarkMode}
+              />
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -623,18 +475,16 @@ export function StudentVisaLoanProfileSection({
           setDialogOpen(true);
         }}
       >
-        <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto p-0">
+        <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto p-0">
           <DialogHeader className="sticky top-0 z-20 border-b bg-background px-6 py-4">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <DialogTitle className="text-base font-black">
-                  {profile
-                    ? "Edit Visa & Loan Profile"
-                    : "Add Visa & Loan Profile"}
+                  {profile ? "Edit Loan Profile" : "Add Loan Profile"}
                 </DialogTitle>
 
                 <p className="mt-1 text-xs text-slate-400">
-                  Update visa, university, loan and disbursement details.
+                  Update fintech, NBFC, amount and disbursement details.
                 </p>
               </div>
 
@@ -778,13 +628,16 @@ export function StudentVisaLoanProfileSection({
                     min={0}
                     step="0.01"
                     value={form.appliedAmount}
-                    onKeyDown={(e) => {
-                      if (["-", "+", "e", "E"].includes(e.key)) {
-                        e.preventDefault();
+                    onKeyDown={(event) => {
+                      if (["-", "+", "e", "E"].includes(event.key)) {
+                        event.preventDefault();
                       }
                     }}
-                    onChange={(e) => {
-                      const value = Math.max(0, Number(e.target.value) || 0);
+                    onChange={(event) => {
+                      const value = Math.max(
+                        0,
+                        Number(event.target.value) || 0,
+                      );
                       updateField("appliedAmount", value.toString());
                     }}
                     className={inputClassName}
@@ -801,13 +654,16 @@ export function StudentVisaLoanProfileSection({
                     min={0}
                     step="0.01"
                     value={form.sanctionedAmount}
-                    onKeyDown={(e) => {
-                      if (["-", "+", "e", "E"].includes(e.key)) {
-                        e.preventDefault();
+                    onKeyDown={(event) => {
+                      if (["-", "+", "e", "E"].includes(event.key)) {
+                        event.preventDefault();
                       }
                     }}
-                    onChange={(e) => {
-                      const value = Math.max(0, Number(e.target.value) || 0);
+                    onChange={(event) => {
+                      const value = Math.max(
+                        0,
+                        Number(event.target.value) || 0,
+                      );
                       updateField("sanctionedAmount", value.toString());
                     }}
                     className={inputClassName}
@@ -858,6 +714,11 @@ export function StudentVisaLoanProfileSection({
                       min="0"
                       step="0.01"
                       value={form.disbursedAmount}
+                      onKeyDown={(event) => {
+                        if (["-", "+", "e", "E"].includes(event.key)) {
+                          event.preventDefault();
+                        }
+                      }}
                       onChange={(event) =>
                         updateField("disbursedAmount", event.target.value)
                       }
@@ -869,179 +730,10 @@ export function StudentVisaLoanProfileSection({
               </div>
             </div>
 
-            <div className={sectionClassName}>
-              <div className="mb-4 flex items-center gap-2">
-                <div className="rounded-xl bg-purple-500/10 p-2 text-purple-600">
-                  <ShieldCheck className="h-4 w-4" />
-                </div>
-
-                <div>
-                  <h5 className="text-xs font-black uppercase tracking-wide">
-                    Deposit, CAS & Visa
-                  </h5>
-
-                  <p className="text-[10px] text-slate-400">
-                    Select both date and time for deadline fields
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Deposit Deadline Date & Time
-                  </label>
-
-                  <input
-                    type="datetime-local"
-                    value={form.depositDeadlineDate}
-                    onChange={(event) =>
-                      updateField("depositDeadlineDate", event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Deposit Status
-                  </label>
-
-                  <select
-                    value={form.depositStatus}
-                    onChange={(event) =>
-                      updateField("depositStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select deposit status</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="partially_paid">Partially Paid</option>
-                    <option value="waived">Waived</option>
-                    <option value="not_required">Not Required</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    IHS Paid Status
-                  </label>
-
-                  <select
-                    value={form.ihsPaidStatus}
-                    onChange={(event) =>
-                      updateField("ihsPaidStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select IHS status</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="not_required">Not Required</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Visa Fee Paid Status
-                  </label>
-
-                  <select
-                    value={form.visaPaidStatus}
-                    onChange={(event) =>
-                      updateField("visaPaidStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select visa payment status</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="not_required">Not Required</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    CAS Deadline Date & Time
-                  </label>
-
-                  <input
-                    type="datetime-local"
-                    value={form.casDeadlineDate}
-                    onChange={(event) =>
-                      updateField("casDeadlineDate", event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    CAS Status
-                  </label>
-
-                  <select
-                    value={form.casStatus}
-                    onChange={(event) =>
-                      updateField("casStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select CAS status</option>
-                    <option value="not_started">Not Started</option>
-                    <option value="documents_pending">Documents Pending</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="received">Received</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="not_required">Not Required</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Visa Status
-                  </label>
-
-                  <select
-                    value={form.visaStatus}
-                    onChange={(event) =>
-                      updateField("visaStatus", event.target.value)
-                    }
-                    className={inputClassName}
-                  >
-                    <option value="">Select visa status</option>
-                    <option value="not_started">Not Started</option>
-                    <option value="documents_pending">Documents Pending</option>
-                    <option value="applied">Applied</option>
-                    <option value="decision_pending">Decision Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="withdrawn">Withdrawn</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    University Start Date & Time
-                  </label>
-
-                  <input
-                    type="datetime-local"
-                    value={form.universityStartDate}
-                    onChange={(event) =>
-                      updateField("universityStartDate", event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </div>
-              </div>
-            </div>
-
             {saveMutation.isError && (
               <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-600 dark:border-rose-900/40 dark:bg-rose-950/10 dark:text-rose-400">
-                Unable to save the profile. Check the entered information and
-                try again.
+                Unable to save the loan profile. Check the entered information
+                and try again.
               </div>
             )}
 

@@ -10,13 +10,13 @@ import { useRouter } from "next/navigation";
 interface StudentTableProps {
   isDarkMode: boolean;
   onSelectStudent: (id: string) => void;
-  onDeleteStudent: (id: string) => void;
+  // onDeleteStudent: (id: string) => void;
 }
 
 export function StudentTable({
   isDarkMode,
   onSelectStudent,
-  onDeleteStudent,
+  // onDeleteStudent,
 }: StudentTableProps) {
   const [visiblePasswords, setVisiblePasswords] = useState<
     Record<string, boolean>
@@ -361,7 +361,8 @@ export function StudentTable({
               </tr>
             ) : (
               students.map((student: StudentRecord, index: number) => {
-                const visaLoanProfile = student?.visaLoanProfile ?? null;
+                const visaProfile = student?.visaProfile ?? null;
+                const loanProfile = student?.loanProfile ?? null;
                 const lead = student?.lead ?? null;
                 const counselor = student?.counselor ?? null;
                 const remarks = Array.isArray(student?.remarks)
@@ -503,59 +504,59 @@ export function StudentTable({
                     <td
                       className={`${normalCellClass} font-mono text-[11px] font-semibold text-slate-500`}
                     >
-                      {getDate(visaLoanProfile?.depositDeadlineDate)}
+                      {getDate(visaProfile?.depositDeadlineDate)}
                     </td>
 
                     <td className={`${normalCellClass} text-center`}>
                       <span
                         className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
-                          visaLoanProfile?.depositStatus,
+                          visaProfile?.depositStatus,
                         )}`}
                       >
-                        {getText(visaLoanProfile?.depositStatus, "Not updated")}
+                        {getText(visaProfile?.depositStatus, "Not updated")}
                       </span>
                     </td>
 
                     <td className={`${normalCellClass} text-center`}>
                       <span
                         className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
-                          visaLoanProfile?.ihsPaidStatus,
+                          visaProfile?.ihsPaidStatus,
                         )}`}
                       >
-                        {getText(visaLoanProfile?.ihsPaidStatus, "Not updated")}
-                      </span>
-                    </td>
-
-                    <td
-                      className={`${normalCellClass} font-mono text-[11px] font-semibold text-slate-500`}
-                    >
-                      {getDate(visaLoanProfile?.casDeadlineDate)}
-                    </td>
-
-                    <td className={`${normalCellClass} text-center`}>
-                      <span
-                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
-                          visaLoanProfile?.casStatus,
-                        )}`}
-                      >
-                        {getText(visaLoanProfile?.casStatus, "Not updated")}
-                      </span>
-                    </td>
-
-                    <td className={`${normalCellClass} text-center`}>
-                      <span
-                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
-                          visaLoanProfile?.visaStatus,
-                        )}`}
-                      >
-                        {getText(visaLoanProfile?.visaStatus, "Not updated")}
+                        {getText(visaProfile?.ihsPaidStatus, "Not updated")}
                       </span>
                     </td>
 
                     <td
                       className={`${normalCellClass} font-mono text-[11px] font-semibold text-slate-500`}
                     >
-                      {getDate(visaLoanProfile?.universityStartDate)}
+                      {getDate(visaProfile?.casDeadlineDate)}
+                    </td>
+
+                    <td className={`${normalCellClass} text-center`}>
+                      <span
+                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                          visaProfile?.casStatus,
+                        )}`}
+                      >
+                        {getText(visaProfile?.casStatus, "Not updated")}
+                      </span>
+                    </td>
+
+                    <td className={`${normalCellClass} text-center`}>
+                      <span
+                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                          visaProfile?.visaStatus,
+                        )}`}
+                      >
+                        {getText(visaProfile?.visaStatus, "Not updated")}
+                      </span>
+                    </td>
+
+                    <td
+                      className={`${normalCellClass} font-mono text-[11px] font-semibold text-slate-500`}
+                    >
+                      {getDate(visaProfile?.universityStartDate)}
                     </td>
 
                     <td
@@ -563,7 +564,7 @@ export function StudentTable({
                     >
                       <div className="truncate">
                         {getText(
-                          visaLoanProfile?.fintechAssignee?.name,
+                          loanProfile?.fintechAssignee?.name,
                           "Not assigned",
                         )}
                       </div>
@@ -572,39 +573,39 @@ export function StudentTable({
                     <td
                       className={`${normalCellClass} font-bold text-slate-600 dark:text-slate-300`}
                     >
-                      {getText(visaLoanProfile?.nbfc, "Not selected")}
+                      {getText(loanProfile?.nbfc, "Not selected")}
                     </td>
 
                     <td className={`${normalCellClass} text-center`}>
                       <span
                         className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
-                          visaLoanProfile?.loanStatus,
+                          loanProfile?.loanStatus,
                         )}`}
                       >
-                        {getText(visaLoanProfile?.loanStatus, "Not updated")}
+                        {getText(loanProfile?.loanStatus, "Not updated")}
                       </span>
                     </td>
 
                     <td className={`${normalCellClass} text-center`}>
                       <span
                         className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
-                          visaLoanProfile?.pfStatus,
+                          loanProfile?.pfStatus,
                         )}`}
                       >
-                        {getText(visaLoanProfile?.pfStatus, "Not updated")}
+                        {getText(loanProfile?.pfStatus, "Not updated")}
                       </span>
                     </td>
 
                     <td
                       className={`${normalCellClass} font-mono font-black text-slate-800 dark:text-slate-300`}
                     >
-                      {getAmount(visaLoanProfile?.sanctionedAmount)}
+                      {getAmount(loanProfile?.sanctionedAmount)}
                     </td>
 
                     <td
                       className={`${normalCellClass} font-mono font-bold text-emerald-600`}
                     >
-                      {getAmount(visaLoanProfile?.disbursedAmount)}
+                      {getAmount(loanProfile?.disbursedAmount)}
                     </td>
 
                     <td
@@ -627,7 +628,7 @@ export function StudentTable({
                           <span>View</span>
                         </button>
 
-                        <button
+                        {/* <button
                           type="button"
                           onClick={() =>
                             student?.id && onDeleteStudent(student.id)
@@ -637,7 +638,7 @@ export function StudentTable({
                           title="Delete student"
                         >
                           <Trash2 className="h-3 w-3" />
-                        </button>
+                        </button> */}
                       </div>
                     </td>
                   </tr>

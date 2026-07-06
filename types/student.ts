@@ -43,7 +43,9 @@ export interface StudentRecord {
 
   applications: Applications[];
 
-  visaLoanProfile?: StudentVisaLoanProfile;
+  visaProfile?: StudentVisaProfile;
+
+  loanProfile?: StudentLoanProfile;
 
   remarks?: Remarks[];
 
@@ -163,50 +165,96 @@ export type StudentDocumentsResponse = {
 };
 
 //! Visa
-export type StudentVisaLoanProfile = {
+export type StudentVisaProfile = {
   id?: string;
+
   studentId?: string;
+
   depositDeadlineDate?: string | null;
+
   depositStatus?: string | null;
+
   ihsPaidStatus?: string | null;
+
   visaPaidStatus?: string | null;
+
   casDeadlineDate?: string | null;
+
   casStatus?: string | null;
+
   visaStatus?: string | null;
+
   universityStartDate?: string | null;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+};
+
+export type StudentVisaProfilePayload = {
+  depositDeadlineDate: string | null;
+
+  depositStatus: string | null;
+
+  ihsPaidStatus: string | null;
+
+  visaPaidStatus: string | null;
+
+  casDeadlineDate: string | null;
+
+  casStatus: string | null;
+
+  visaStatus: string | null;
+
+  universityStartDate: string | null;
+};
+
+export type StudentLoanProfile = {
+  id?: string;
+
+  studentId?: string;
+
   fintechAssigneeId?: string | null;
 
   fintechAssignee?: {
     id: string;
     name: string;
   } | null;
+
   nbfc?: string | null;
+
   loanStatus?: string | null;
+
   pfStatus?: string | null;
+
   appliedAmount?: string | number | null;
+
   sanctionedAmount?: string | number | null;
+
   disbursed?: boolean;
+
   disbursedAmount?: string | number | null;
+
   createdAt?: string;
+
   updatedAt?: string;
 };
 
-export type StudentVisaLoanProfilePayload = {
-  depositDeadlineDate: string | null;
-  depositStatus: string | null;
-  ihsPaidStatus: string | null;
-  visaPaidStatus: string | null;
-  casDeadlineDate: string | null;
-  casStatus: string | null;
-  visaStatus: string | null;
-  universityStartDate: string | null;
+export type StudentLoanProfilePayload = {
   fintechAssigneeId: string | null;
+
   nbfc: string | null;
+
   loanStatus: string | null;
+
   pfStatus: string | null;
+
   appliedAmount: number | null;
+
   sanctionedAmount: number | null;
+
   disbursed: boolean;
+
   disbursedAmount: number | null;
 };
 

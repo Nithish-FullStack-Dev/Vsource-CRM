@@ -56,7 +56,7 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
       applicationDate: "",
       counselorId: "",
       currentStage: "",
-      status: undefined,
+      // status: undefined,
     },
   });
 
@@ -81,7 +81,7 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
 
       currentStage: student.currentStage ?? "",
 
-      status: student.status ?? undefined,
+      // status: student.status ?? undefined,
 
       moi: student.moi ?? "",
 
@@ -150,7 +150,7 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
               name="emailId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>VSTU Email</FormLabel>
+                  <FormLabel>Visa Email</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -231,7 +231,7 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
               name="applicationDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Application Date</FormLabel>
+                  <FormLabel>Date of Admission</FormLabel>
 
                   <FormControl>
                     <Input type="date" {...field} value={field.value ?? ""} />
@@ -257,7 +257,7 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
               )}
             />
 
-            <FormField
+            {/* <FormField
               control={form.control}
               name="status"
               render={({ field }) => (
@@ -276,7 +276,7 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
                   </select>
                 </FormItem>
               )}
-            />
+            /> */}
 
             <FormField
               control={form.control}

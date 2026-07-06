@@ -59,24 +59,33 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // Visa + Loan Profile Filters
-    const visaLoanProfileFilter: Prisma.StudentVisaLoanProfileWhereInput = {};
+    // Visa Profile Filter
+    const visaProfileFilter: Prisma.StudentVisaProfileWhereInput = {};
 
     if (visaStatus) {
-      visaLoanProfileFilter.visaStatus = visaStatus;
+      visaProfileFilter.visaStatus = visaStatus;
     }
 
     if (casStatus) {
-      visaLoanProfileFilter.casStatus = casStatus;
+      visaProfileFilter.casStatus = casStatus;
     }
+
+    if (Object.keys(visaProfileFilter).length > 0) {
+      where.visaProfile = {
+        is: visaProfileFilter,
+      };
+    }
+
+    // Loan Profile Filter
+    const loanProfileFilter: Prisma.StudentLoanProfileWhereInput = {};
 
     if (loanStatus) {
-      visaLoanProfileFilter.loanStatus = loanStatus;
+      loanProfileFilter.loanStatus = loanStatus;
     }
 
-    if (Object.keys(visaLoanProfileFilter).length > 0) {
-      where.visaLoanProfile = {
-        is: visaLoanProfileFilter,
+    if (Object.keys(loanProfileFilter).length > 0) {
+      where.loanProfile = {
+        is: loanProfileFilter,
       };
     }
 
@@ -202,7 +211,18 @@ export async function GET(req: NextRequest) {
           },
         },
 
-        visaLoanProfile: true,
+        visaProfile: true,
+
+        loanProfile: {
+          include: {
+            fintechAssignee: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         moduleProgress: true,
 
         documents: {

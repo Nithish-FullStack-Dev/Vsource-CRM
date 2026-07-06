@@ -31,12 +31,12 @@ const statusOptions: Array<{
   label: string;
   defaultProgress: number;
 }> = [
-  { value: "pending", label: "Pending", defaultProgress: 0 },
+  { value: "not_started", label: "Not Started", defaultProgress: 0 },
   { value: "started", label: "Started", defaultProgress: 20 },
   { value: "in_progress", label: "In Progress", defaultProgress: 50 },
   { value: "need_corrections", label: "Need Corrections", defaultProgress: 75 },
   { value: "completed", label: "Completed", defaultProgress: 100 },
-  {value: "rejected", label:"Rejected", defaultProgress:0}
+  { value: "rejected", label: "Rejected", defaultProgress: 0 },
 ];
 
 type Props = {
@@ -57,12 +57,12 @@ export function StudentModuleProgressDialog({
   currentProgress,
 }: Props) {
   const updateMutation = useUpdateStudentModuleProgress(studentId);
-  const [status, setStatus] = useState<StudentModuleStatus>("pending");
+  const [status, setStatus] = useState<StudentModuleStatus>("not_started");
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     if (!open) return;
-    setStatus(currentProgress?.status ?? "pending");
+    setStatus(currentProgress?.status ?? "not_started");
     setProgress(currentProgress?.progress ?? 0);
   }, [open, currentProgress]);
 
