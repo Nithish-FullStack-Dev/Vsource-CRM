@@ -46,6 +46,11 @@ import { usePageTitle } from "@/store/page-title";
 import { useAuth } from "@/store";
 import { MODULES } from "@/lib/module-codes";
 import { StudentStatusDialog } from "@/components/student/StudentStatusDialog";
+import { Button } from "@/components/ui/button";
+import { useStudentTimeline } from "@/hooks/student/timeline/useStudentTimeline";
+import { useCreateStudentTimeline } from "@/hooks/student/timeline/useCreateStudentTimeline";
+import { Badge } from "@/components/ui/badge";
+import StudentRemarksTimelineTab from "@/components/student/StudentRemarksTimelineTab";
 
 const tabs = [
   {
@@ -107,11 +112,33 @@ export default function Home() {
   const { setTitle, clearTitle } = usePageTitle();
   const [newRemarkText, setNewRemarkText] = useState<string>("");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [description, setDescription] = useState("");
+  const [followupDate, setFollowupDate] = useState("");
+  const [timelineType, setTimelineType] = useState<
+    | "note"
+    | "followup"
+    | "call"
+    | "meeting"
+    | "status_change"
+    | "document"
+    | "application"
+    | "offer_letter"
+    | "loan"
+    | "visa"
+    | "payment"
+    | "info"
+  >("followup");
 
   const { data: moduleProgress = [], isLoading: isModuleProgressLoading } =
     useStudentModuleProgress(selectedStudentId || "");
 
   const { data: remarks = [] } = useRemarks(selectedStudentId ?? "");
+
+  const { data: timeline = [] } = useStudentTimeline(selectedStudentId ?? "");
+
+  const createTimelineMutation = useCreateStudentTimeline(
+    selectedStudentId ?? "",
+  );
 
   const tabModuleMap: Partial<Record<StudentDetailTab, StudentModuleKey>> = {
     info: "basic_information",
@@ -262,6 +289,29 @@ export default function Home() {
     );
   };
 
+  const handleAddTimeline = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!followupDate) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    try {
+      await createTimelineMutation.mutateAsync({
+        type: timelineType,
+        description: description.trim() || undefined,
+        followupDate: followupDate || undefined,
+      });
+
+      setDescription("");
+      setFollowupDate("");
+      setTimelineType("note");
+    } catch (error) {
+      toast.error("Failed to add timeline.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-sm font-semibold text-slate-500">
@@ -389,7 +439,7 @@ export default function Home() {
                   </div>
 
                   <div
-                    className={`p-6 rounded-3xl border shadow-xl min-h-[500px] ${
+                    className={`p-6 rounded-3xl border shadow-xl min-h-125 ${
                       isDarkMode
                         ? "bg-slate-900 border-slate-800"
                         : "bg-white border-slate-100"
@@ -645,58 +695,38 @@ export default function Home() {
                     )}
 
                     {detailTab === "remarks" && (
-                      <div className="space-y-6">
-                        {canCreate(MODULES.STUDENT_PROFILES) && (
-                          <form
-                            onSubmit={handleAddRemark}
-                            className="flex gap-2.5"
-                          >
-                            <input
-                              type="text"
-                              value={newRemarkText}
-                              onChange={(event) =>
-                                setNewRemarkText(event.target.value)
-                              }
-                              placeholder="Type here..."
-                              className={`flex-1 px-4 py-2.5 text-xs rounded-xl border focus:outline-none focus:ring-1 focus:ring-red-600 ${isDarkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-50 border-slate-202"}`}
-                              required
-                            />
-
-                            <button
-                              type="submit"
-                              className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wide cursor-pointer"
-                              disabled={createRemarkMutation.isPending}
-                            >
-                              {createRemarkMutation.isPending
-                                ? "Saving..."
-                                : "Save"}
-                            </button>
-                          </form>
-                        )}
-
-                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-3">
-                          {remarks.map((remark: Remarks, index: number) => (
-                            <div
-                              key={index}
-                              className="relative pl-6 border-l-2 border-red-600/30 pb-3 last:pb-0"
-                            >
-                              <span className="absolute left-[-5px] top-1.5 h-2 w-2 rounded-full bg-red-600" />
-
-                              <div className="text-[10px] flex items-center justify-between text-slate-400 mb-1 font-bold">
-                                <span className="font-mono bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded">
-                                  {formatDateForDisplay(remark?.createdAt)}
-                                </span>
-
-                                <span>{remark?.createdBy?.name ?? "User"}</span>
-                              </div>
-
-                              <p className="text-xs text-slate-800 dark:text-slate-200 font-semibold leading-relaxed">
-                                {remark?.note ?? "No remark provided"}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <StudentRemarksTimelineTab
+                        studentId={selectedStudent.id}
+                        remarks={remarks}
+                        timeline={timeline}
+                        isDarkMode={isDarkMode}
+                        canCreate={canCreate(MODULES.STUDENT_PROFILES)}
+                        isRemarkSubmitting={createRemarkMutation.isPending}
+                        isTimelineSubmitting={createTimelineMutation.isPending}
+                        formatDate={formatDateForDisplay}
+                        onAddRemark={async (note) => {
+                          try {
+                            await createRemarkMutation.mutateAsync({
+                              studentId: selectedStudent.id,
+                              note,
+                            });
+                          } catch (caughtError) {
+                            toast.error(
+                              getErrorMessage(
+                                caughtError,
+                                "Failed to add remark",
+                              ),
+                            );
+                          }
+                        }}
+                        onAddTimeline={async (payload) => {
+                          try {
+                            await createTimelineMutation.mutateAsync(payload);
+                          } catch {
+                            toast.error("Failed to add timeline.");
+                          }
+                        }}
+                      />
                     )}
                   </div>
                 </div>
