@@ -46,7 +46,7 @@ model User {
   mbbsLeadsCreated MbbsLead[] @relation("MbbsLeadCreatedBy")
   mbbsLeadsUpdated MbbsLead[] @relation("MbbsLeadUpdatedBy")
 
-  fintechAssignedStudents StudentVisaLoanProfile[] @relation("FintechAssignedStudents")
+  fintechAssignedStudentLoans StudentLoanProfile[] @relation("FintechAssignedStudentLoans")
 
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
@@ -470,7 +470,9 @@ model Student {
 
   applications StudentApplication[]
 
-  visaLoanProfile StudentVisaLoanProfile?
+  visaProfile StudentVisaProfile?
+
+  loanProfile StudentLoanProfile?
 
   remarks StudentRemark[]
 
@@ -557,7 +559,7 @@ model StudentApplication {
   @@index([intakeId])
 }
 
-model StudentVisaLoanProfile {
+model StudentVisaProfile {
   id String @id @default(uuid())
 
   studentId String  @unique
@@ -575,9 +577,22 @@ model StudentVisaLoanProfile {
   visaStatus          String?
   universityStartDate DateTime?
 
-  fintechAssigneeId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  fintechAssignee User? @relation("FintechAssignedStudents", fields: [fintechAssigneeId], references: [id])
+  @@index([depositStatus])
+  @@index([casStatus])
+  @@index([visaStatus])
+}
+
+model StudentLoanProfile {
+  id String @id @default(uuid())
+
+  studentId String  @unique
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  fintechAssigneeId String?
+  fintechAssignee   User?   @relation("FintechAssignedStudentLoans", fields: [fintechAssigneeId], references: [id])
 
   nbfc String?
 
@@ -594,9 +609,6 @@ model StudentVisaLoanProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([depositStatus])
-  @@index([casStatus])
-  @@index([visaStatus])
   @@index([loanStatus])
   @@index([fintechAssigneeId])
 }
@@ -651,7 +663,7 @@ enum StudentModuleType {
 }
 
 enum StudentModuleStatus {
-  pending
+  not_started
   started
   in_progress
   need_corrections
@@ -666,7 +678,7 @@ model StudentModuleProgress {
   student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   module   StudentModuleType
-  status   StudentModuleStatus @default(pending)
+  status   StudentModuleStatus @default(not_started)
   progress Int                 @default(0)
 
   createdAt DateTime @default(now())
@@ -892,7 +904,7 @@ model UniversityCourse {
 
   name String
 
-  degree DegreeType
+  degree DegreeType?
 
   durationMonths Int?
 

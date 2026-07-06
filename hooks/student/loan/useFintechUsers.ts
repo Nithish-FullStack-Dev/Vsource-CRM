@@ -1,4 +1,4 @@
-// hooks/student/visa-loan/useFintechUsers.ts
+// hooks/student/loan/useFintechUsers.ts
 
 import { api } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";

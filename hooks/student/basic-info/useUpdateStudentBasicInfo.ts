@@ -31,3 +31,37 @@ export const useUpdateStudentBasicInfo = () => {
     },
   });
 };
+
+export const useUpdateStudentStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: "active" | "inactive" | "drop";
+    }) => {
+      const { data } = await api.patch(`/students/${id}/status`, {
+        status,
+      });
+
+      return data;
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: STUDENTKEY.all,
+      });
+
+      toast.success("Student status updated");
+    },
+
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message ?? "Failed to update student status",
+      );
+    },
+  });
+};

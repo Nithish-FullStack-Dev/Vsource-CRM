@@ -6,10 +6,11 @@ export type StudentModuleKey =
   | "basic_information"
   | "documents"
   | "university_applications"
-  | "visa_process";
+  | "visa_process"
+  | "loan_process";
 
 export type StudentModuleStatus =
-  | "pending"
+  | "not_started"
   | "started"
   | "in_progress"
   | "need_corrections"
