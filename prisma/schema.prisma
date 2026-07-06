@@ -159,6 +159,11 @@ enum LeadType {
   mbbs
 }
 
+enum GraduationStatus {
+  completed
+  pursuing
+}
+
 model Lead {
   id String @id @default(uuid())
 
@@ -226,10 +231,11 @@ model Lead {
 
   gapsIfAny String?
 
-  status LeadStatus @default(new)
-
-  nextFollowup DateTime?
-  remarks      String?
+  status           LeadStatus        @default(new)
+  graduationStatus GraduationStatus?
+  loanRequirement  Boolean           @default(false)
+  nextFollowup     DateTime?
+  remarks          String?
 
   student   Student?
   createdAt DateTime @default(now())

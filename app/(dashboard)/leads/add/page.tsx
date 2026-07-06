@@ -46,7 +46,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
-
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Command,
   CommandEmpty,
@@ -123,6 +123,18 @@ const leadFormSchema = z.object({
   status: z.string().optional(),
   source: z.string().optional(),
   branchId: z.string().min(1, "Branch is required"),
+  graduationStatus: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined;
+      }
+
+      return value;
+    },
+    z.enum(["completed", "pursuing"]).optional(),
+  ),
+  loanRequirement: z.boolean(),
+  counselorIds: z.array(z.string()).optional(),
 });
 
 type LeadFormValues = z.input<typeof leadFormSchema>;
@@ -194,31 +206,35 @@ export default function AddLeadPage() {
 
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
+
   const {
     register,
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
       counsellingDate: getCurrentDateTimeLocal(),
 
-      // Required
       studentName: "",
       mobileNumber: "",
       emailId: "",
       branchId: "",
 
-      // Basic Info
       fatherName: "",
       place: "",
       passport: "",
       passportExpireDate: "",
       source: "",
 
-      // Education
+      graduationStatus: undefined,
+      loanRequirement: false,
+      counselorIds: [],
+
       tenthPercentage: undefined,
       tenthYearOfPassing: undefined,
       twelfthPercentage: undefined,
@@ -230,20 +246,17 @@ export default function AddLeadPage() {
       backlogs: 0,
       gapsIfAny: "",
 
-      // EPT
       englishTestType: "",
       listeningScore: undefined,
       readingScore: undefined,
       writingScore: undefined,
       speakingScore: undefined,
 
-      // GRE / GMAT
       greGmatScore: undefined,
       quantitativeScore: undefined,
       verbalScore: undefined,
       analyticalWritingScore: undefined,
 
-      // Preferences
       preferredCountry: "",
       preferredIntake: "",
       preferredCourse: "",
@@ -254,6 +267,40 @@ export default function AddLeadPage() {
     },
   });
 
+  const selectedBranchId = watch("branchId");
+
+  interface Counselor {
+    id: string;
+    name: string;
+    email: string;
+  }
+
+  const { data: counselors = [], isLoading: counselorsLoading } = useQuery<
+    Counselor[]
+  >({
+    queryKey: ["counselors", selectedBranchId],
+
+    queryFn: async () => {
+      const { data } = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/users`,
+        {
+          params: {
+            branchId: selectedBranchId,
+            role: "counsellor",
+          },
+          withCredentials: true,
+        },
+      );
+
+      return data?.data ?? [];
+    },
+
+    enabled: Boolean(selectedBranchId),
+  });
+
+  useEffect(() => {
+    setValue("counselorIds", []);
+  }, [selectedBranchId, setValue]);
   useEffect(() => {
     const loadMasters = async () => {
       try {
@@ -517,6 +564,111 @@ export default function AddLeadPage() {
                           )}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Graduation Status</Label>
+
+                        <Controller
+                          control={control}
+                          name="graduationStatus"
+                          render={({ field }) => (
+                            <Select
+                              value={field.value as string | undefined}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Graduation Status" />
+                              </SelectTrigger>
+
+                              <SelectContent>
+                                <SelectItem value="completed">
+                                  Completed
+                                </SelectItem>
+
+                                <SelectItem value="pursuing">
+                                  Pursuing
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Assign Counsellor</Label>
+
+                        <Controller
+                          control={control}
+                          name="counselorIds"
+                          render={({ field }) => (
+                            <Select
+                              disabled={!selectedBranchId || counselorsLoading}
+                              value={field.value?.[0] ?? ""}
+                              onValueChange={(value) => field.onChange([value])}
+                            >
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={
+                                    !selectedBranchId
+                                      ? "Select Branch First"
+                                      : counselorsLoading
+                                        ? "Loading Counsellors..."
+                                        : "Select Counsellor"
+                                  }
+                                />
+                              </SelectTrigger>
+
+                              <SelectContent>
+                                {counselors.map((counselor) => (
+                                  <SelectItem
+                                    key={counselor.id}
+                                    value={counselor.id}
+                                  >
+                                    {counselor.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label>Loan Requirement</Label>
+
+                        <Controller
+                          control={control}
+                          name="loanRequirement"
+                          render={({ field }) => (
+                            <RadioGroup
+                              value={field.value ? "yes" : "no"}
+                              onValueChange={(value) =>
+                                field.onChange(value === "yes")
+                              }
+                              className="flex h-10 items-center gap-6"
+                            >
+                              <div className="flex items-center gap-2">
+                                <RadioGroupItem value="yes" id="loan-yes" />
+                                <Label
+                                  htmlFor="loan-yes"
+                                  className="cursor-pointer"
+                                >
+                                  Yes
+                                </Label>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <RadioGroupItem value="no" id="loan-no" />
+                                <Label
+                                  htmlFor="loan-no"
+                                  className="cursor-pointer"
+                                >
+                                  No
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          )}
+                        />
+                      </div>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -545,14 +697,19 @@ export default function AddLeadPage() {
                           placeholder="e.g. 85 or 75.44"
                           maxLength={5} // Maximum: 99.99 (5 characters)
                           {...register("tenthPercentage", {
-                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            setValueAs: (v) =>
+                              v === "" ? undefined : Number(v),
                             validate: (value) => {
-                              if (value === undefined || value === "") return true;
+                              if (value === undefined || value === "")
+                                return true;
 
                               const str = String(value);
 
                               // Allows only numbers with up to 2 decimal places
-                              return /^\d{1,2}(\.\d{1,2})?$/.test(str) || "Enter a valid percentage";
+                              return (
+                                /^\d{1,2}(\.\d{1,2})?$/.test(str) ||
+                                "Enter a valid percentage"
+                              );
                             },
                           })}
                           onKeyDown={(e) => {
@@ -576,7 +733,10 @@ export default function AddLeadPage() {
                             // Limit integer part to 2 digits and decimal part to 2 digits
                             if (value.includes(".")) {
                               const [intPart, decimalPart] = value.split(".");
-                              value = intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
+                              value =
+                                intPart.slice(0, 2) +
+                                "." +
+                                decimalPart.slice(0, 2);
                             } else {
                               value = value.slice(0, 2);
                             }
@@ -593,10 +753,15 @@ export default function AddLeadPage() {
                           placeholder="YYYY"
                           maxLength={4}
                           {...register("tenthYearOfPassing", {
-                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            setValueAs: (v) =>
+                              v === "" ? undefined : Number(v),
                             validate: (value) => {
-                              if (value === undefined || value === "") return true;
-                              return /^\d{4}$/.test(String(value)) || "Enter a valid 4-digit year";
+                              if (value === undefined || value === "")
+                                return true;
+                              return (
+                                /^\d{4}$/.test(String(value)) ||
+                                "Enter a valid 4-digit year"
+                              );
                             },
                           })}
                           onKeyDown={(e) => {
@@ -607,7 +772,9 @@ export default function AddLeadPage() {
                           }}
                           onInput={(e) => {
                             const input = e.currentTarget;
-                            input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                            input.value = input.value
+                              .replace(/\D/g, "")
+                              .slice(0, 4);
                           }}
                         />
                       </div>
@@ -619,9 +786,11 @@ export default function AddLeadPage() {
                           placeholder="e.g. 88 or 75.44"
                           maxLength={5}
                           {...register("twelfthPercentage", {
-                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            setValueAs: (v) =>
+                              v === "" ? undefined : Number(v),
                             validate: (value) => {
-                              if (value === undefined || value === "") return true;
+                              if (value === undefined || value === "")
+                                return true;
 
                               return (
                                 /^\d{1,2}(\.\d{1,2})?$/.test(String(value)) ||
@@ -648,7 +817,10 @@ export default function AddLeadPage() {
                             // Limit to 2 digits before decimal and 2 digits after decimal
                             if (value.includes(".")) {
                               const [intPart, decimalPart] = value.split(".");
-                              value = intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
+                              value =
+                                intPart.slice(0, 2) +
+                                "." +
+                                decimalPart.slice(0, 2);
                             } else {
                               value = value.slice(0, 2);
                             }
@@ -665,10 +837,15 @@ export default function AddLeadPage() {
                           placeholder="YYYY"
                           maxLength={4}
                           {...register("twelfthYearOfPassing", {
-                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            setValueAs: (v) =>
+                              v === "" ? undefined : Number(v),
                             validate: (value) => {
-                              if (value === undefined || value === "") return true;
-                              return /^\d{4}$/.test(String(value)) || "Enter a valid 4-digit year";
+                              if (value === undefined || value === "")
+                                return true;
+                              return (
+                                /^\d{4}$/.test(String(value)) ||
+                                "Enter a valid 4-digit year"
+                              );
                             },
                           })}
                           onKeyDown={(e) => {
@@ -680,7 +857,9 @@ export default function AddLeadPage() {
                           onInput={(e) => {
                             const input = e.currentTarget;
                             // Allow only digits and limit to 4 characters
-                            input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                            input.value = input.value
+                              .replace(/\D/g, "")
+                              .slice(0, 4);
                           }}
                         />
                       </div>
@@ -839,9 +1018,11 @@ export default function AddLeadPage() {
                           placeholder="e.g. 75 or 8.5"
                           maxLength={6}
                           {...register("bachelorsPercentage", {
-                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            setValueAs: (v) =>
+                              v === "" ? undefined : Number(v),
                             validate: (value) => {
-                              if (value === undefined || value === "") return true;
+                              if (value === undefined || value === "")
+                                return true;
 
                               const num = Number(value);
 
@@ -853,7 +1034,9 @@ export default function AddLeadPage() {
                               }
 
                               // Maximum 2 decimal places
-                              if (!/^\d{1,3}(\.\d{1,2})?$/.test(String(value))) {
+                              if (
+                                !/^\d{1,3}(\.\d{1,2})?$/.test(String(value))
+                              ) {
                                 return "Maximum 2 decimal places allowed";
                               }
 
@@ -878,7 +1061,10 @@ export default function AddLeadPage() {
 
                             if (value.includes(".")) {
                               const [intPart, decimalPart] = value.split(".");
-                              value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                              value =
+                                intPart.slice(0, 3) +
+                                "." +
+                                decimalPart.slice(0, 2);
                             } else {
                               value = value.slice(0, 3);
                             }
@@ -895,11 +1081,16 @@ export default function AddLeadPage() {
                           placeholder="YYYY"
                           maxLength={4}
                           {...register("bachelorsYearOfPassing", {
-                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            setValueAs: (v) =>
+                              v === "" ? undefined : Number(v),
                             validate: (value) => {
-                              if (value === undefined || value === "") return true;
+                              if (value === undefined || value === "")
+                                return true;
 
-                              return /^\d{4}$/.test(String(value)) || "Enter a valid 4-digit year";
+                              return (
+                                /^\d{4}$/.test(String(value)) ||
+                                "Enter a valid 4-digit year"
+                              );
                             },
                           })}
                           onKeyDown={(e) => {
@@ -912,7 +1103,9 @@ export default function AddLeadPage() {
                             const input = e.currentTarget;
 
                             // Allow only digits and limit to 4 characters
-                            input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                            input.value = input.value
+                              .replace(/\D/g, "")
+                              .slice(0, 4);
                           }}
                         />
                       </div>
@@ -924,11 +1117,16 @@ export default function AddLeadPage() {
                           placeholder="0"
                           maxLength={2} // Adjust if you want more than 99 backlogs
                           {...register("backlogs", {
-                            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                            setValueAs: (v) =>
+                              v === "" ? undefined : Number(v),
                             validate: (value) => {
-                              if (value === undefined || value === "") return true;
+                              if (value === undefined || value === "")
+                                return true;
 
-                              return /^\d+$/.test(String(value)) || "Enter a valid number";
+                              return (
+                                /^\d+$/.test(String(value)) ||
+                                "Enter a valid number"
+                              );
                             },
                           })}
                           onKeyDown={(e) => {
@@ -941,7 +1139,9 @@ export default function AddLeadPage() {
                             const input = e.currentTarget;
 
                             // Allow only digits
-                            input.value = input.value.replace(/\D/g, "").slice(0, 2);
+                            input.value = input.value
+                              .replace(/\D/g, "")
+                              .slice(0, 2);
                           }}
                         />
                       </div>
@@ -1010,18 +1210,23 @@ export default function AddLeadPage() {
                               placeholder="L Score"
                               maxLength={6}
                               {...register("listeningScore", {
-                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                setValueAs: (v) =>
+                                  v === "" ? undefined : Number(v),
                                 validate: (value) => {
-                                  if (value === undefined || value === "") return true;
+                                  if (value === undefined || value === "")
+                                    return true;
 
                                   const num = Number(value);
 
                                   return (
-                                    !isNaN(num) &&
-                                    num >= 0 &&
-                                    num <= 999.99 &&
-                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
-                                  ) || "Enter a valid score";
+                                    (!isNaN(num) &&
+                                      num >= 0 &&
+                                      num <= 999.99 &&
+                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                        String(value),
+                                      )) ||
+                                    "Enter a valid score"
+                                  );
                                 },
                               })}
                               onKeyDown={(e) => {
@@ -1035,12 +1240,17 @@ export default function AddLeadPage() {
 
                                 const parts = value.split(".");
                                 if (parts.length > 2) {
-                                  value = parts[0] + "." + parts.slice(1).join("");
+                                  value =
+                                    parts[0] + "." + parts.slice(1).join("");
                                 }
 
                                 if (value.includes(".")) {
-                                  const [intPart, decimalPart] = value.split(".");
-                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                  const [intPart, decimalPart] =
+                                    value.split(".");
+                                  value =
+                                    intPart.slice(0, 3) +
+                                    "." +
+                                    decimalPart.slice(0, 2);
                                 } else {
                                   value = value.slice(0, 3);
                                 }
@@ -1058,18 +1268,23 @@ export default function AddLeadPage() {
                               step="0.5"
                               maxLength={6}
                               {...register("readingScore", {
-                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                setValueAs: (v) =>
+                                  v === "" ? undefined : Number(v),
                                 validate: (value) => {
-                                  if (value === undefined || value === "") return true;
+                                  if (value === undefined || value === "")
+                                    return true;
 
                                   const num = Number(value);
 
                                   return (
-                                    !isNaN(num) &&
-                                    num >= 0 &&
-                                    num <= 999.99 &&
-                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
-                                  ) || "Enter a valid score";
+                                    (!isNaN(num) &&
+                                      num >= 0 &&
+                                      num <= 999.99 &&
+                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                        String(value),
+                                      )) ||
+                                    "Enter a valid score"
+                                  );
                                 },
                               })}
                               onKeyDown={(e) => {
@@ -1083,12 +1298,17 @@ export default function AddLeadPage() {
 
                                 const parts = value.split(".");
                                 if (parts.length > 2) {
-                                  value = parts[0] + "." + parts.slice(1).join("");
+                                  value =
+                                    parts[0] + "." + parts.slice(1).join("");
                                 }
 
                                 if (value.includes(".")) {
-                                  const [intPart, decimalPart] = value.split(".");
-                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                  const [intPart, decimalPart] =
+                                    value.split(".");
+                                  value =
+                                    intPart.slice(0, 3) +
+                                    "." +
+                                    decimalPart.slice(0, 2);
                                 } else {
                                   value = value.slice(0, 3);
                                 }
@@ -1106,18 +1326,23 @@ export default function AddLeadPage() {
                               inputMode="decimal"
                               maxLength={6}
                               {...register("writingScore", {
-                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                setValueAs: (v) =>
+                                  v === "" ? undefined : Number(v),
                                 validate: (value) => {
-                                  if (value === undefined || value === "") return true;
+                                  if (value === undefined || value === "")
+                                    return true;
 
                                   const num = Number(value);
 
                                   return (
-                                    !isNaN(num) &&
-                                    num >= 0 &&
-                                    num <= 999.99 &&
-                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
-                                  ) || "Enter a valid score";
+                                    (!isNaN(num) &&
+                                      num >= 0 &&
+                                      num <= 999.99 &&
+                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                        String(value),
+                                      )) ||
+                                    "Enter a valid score"
+                                  );
                                 },
                               })}
                               onKeyDown={(e) => {
@@ -1131,12 +1356,17 @@ export default function AddLeadPage() {
 
                                 const parts = value.split(".");
                                 if (parts.length > 2) {
-                                  value = parts[0] + "." + parts.slice(1).join("");
+                                  value =
+                                    parts[0] + "." + parts.slice(1).join("");
                                 }
 
                                 if (value.includes(".")) {
-                                  const [intPart, decimalPart] = value.split(".");
-                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                  const [intPart, decimalPart] =
+                                    value.split(".");
+                                  value =
+                                    intPart.slice(0, 3) +
+                                    "." +
+                                    decimalPart.slice(0, 2);
                                 } else {
                                   value = value.slice(0, 3);
                                 }
@@ -1154,18 +1384,23 @@ export default function AddLeadPage() {
                               inputMode="decimal"
                               maxLength={6}
                               {...register("speakingScore", {
-                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                setValueAs: (v) =>
+                                  v === "" ? undefined : Number(v),
                                 validate: (value) => {
-                                  if (value === undefined || value === "") return true;
+                                  if (value === undefined || value === "")
+                                    return true;
 
                                   const num = Number(value);
 
                                   return (
-                                    !isNaN(num) &&
-                                    num >= 0 &&
-                                    num <= 999.99 &&
-                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
-                                  ) || "Enter a valid score";
+                                    (!isNaN(num) &&
+                                      num >= 0 &&
+                                      num <= 999.99 &&
+                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                        String(value),
+                                      )) ||
+                                    "Enter a valid score"
+                                  );
                                 },
                               })}
                               onKeyDown={(e) => {
@@ -1179,12 +1414,17 @@ export default function AddLeadPage() {
 
                                 const parts = value.split(".");
                                 if (parts.length > 2) {
-                                  value = parts[0] + "." + parts.slice(1).join("");
+                                  value =
+                                    parts[0] + "." + parts.slice(1).join("");
                                 }
 
                                 if (value.includes(".")) {
-                                  const [intPart, decimalPart] = value.split(".");
-                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                  const [intPart, decimalPart] =
+                                    value.split(".");
+                                  value =
+                                    intPart.slice(0, 3) +
+                                    "." +
+                                    decimalPart.slice(0, 2);
                                 } else {
                                   value = value.slice(0, 3);
                                 }
@@ -1210,18 +1450,23 @@ export default function AddLeadPage() {
                               inputMode="decimal"
                               maxLength={6}
                               {...register("greGmatScore", {
-                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                setValueAs: (v) =>
+                                  v === "" ? undefined : Number(v),
                                 validate: (value) => {
-                                  if (value === undefined || value === "") return true;
+                                  if (value === undefined || value === "")
+                                    return true;
 
                                   const num = Number(value);
 
                                   return (
-                                    !isNaN(num) &&
-                                    num >= 0 &&
-                                    num <= 999.99 &&
-                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
-                                  ) || "Enter a valid score";
+                                    (!isNaN(num) &&
+                                      num >= 0 &&
+                                      num <= 999.99 &&
+                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                        String(value),
+                                      )) ||
+                                    "Enter a valid score"
+                                  );
                                 },
                               })}
                               onKeyDown={(e) => {
@@ -1235,12 +1480,17 @@ export default function AddLeadPage() {
 
                                 const parts = value.split(".");
                                 if (parts.length > 2) {
-                                  value = parts[0] + "." + parts.slice(1).join("");
+                                  value =
+                                    parts[0] + "." + parts.slice(1).join("");
                                 }
 
                                 if (value.includes(".")) {
-                                  const [intPart, decimalPart] = value.split(".");
-                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                  const [intPart, decimalPart] =
+                                    value.split(".");
+                                  value =
+                                    intPart.slice(0, 3) +
+                                    "." +
+                                    decimalPart.slice(0, 2);
                                 } else {
                                   value = value.slice(0, 3);
                                 }
@@ -1257,18 +1507,23 @@ export default function AddLeadPage() {
                               inputMode="decimal"
                               maxLength={6}
                               {...register("quantitativeScore", {
-                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                setValueAs: (v) =>
+                                  v === "" ? undefined : Number(v),
                                 validate: (value) => {
-                                  if (value === undefined || value === "") return true;
+                                  if (value === undefined || value === "")
+                                    return true;
 
                                   const num = Number(value);
 
                                   return (
-                                    !isNaN(num) &&
-                                    num >= 0 &&
-                                    num <= 999.99 &&
-                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
-                                  ) || "Enter a valid score";
+                                    (!isNaN(num) &&
+                                      num >= 0 &&
+                                      num <= 999.99 &&
+                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                        String(value),
+                                      )) ||
+                                    "Enter a valid score"
+                                  );
                                 },
                               })}
                               onKeyDown={(e) => {
@@ -1282,12 +1537,17 @@ export default function AddLeadPage() {
 
                                 const parts = value.split(".");
                                 if (parts.length > 2) {
-                                  value = parts[0] + "." + parts.slice(1).join("");
+                                  value =
+                                    parts[0] + "." + parts.slice(1).join("");
                                 }
 
                                 if (value.includes(".")) {
-                                  const [intPart, decimalPart] = value.split(".");
-                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                  const [intPart, decimalPart] =
+                                    value.split(".");
+                                  value =
+                                    intPart.slice(0, 3) +
+                                    "." +
+                                    decimalPart.slice(0, 2);
                                 } else {
                                   value = value.slice(0, 3);
                                 }
@@ -1304,18 +1564,23 @@ export default function AddLeadPage() {
                               inputMode="decimal"
                               maxLength={6}
                               {...register("verbalScore", {
-                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                setValueAs: (v) =>
+                                  v === "" ? undefined : Number(v),
                                 validate: (value) => {
-                                  if (value === undefined || value === "") return true;
+                                  if (value === undefined || value === "")
+                                    return true;
 
                                   const num = Number(value);
 
                                   return (
-                                    !isNaN(num) &&
-                                    num >= 0 &&
-                                    num <= 999.99 &&
-                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
-                                  ) || "Enter a valid score";
+                                    (!isNaN(num) &&
+                                      num >= 0 &&
+                                      num <= 999.99 &&
+                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                        String(value),
+                                      )) ||
+                                    "Enter a valid score"
+                                  );
                                 },
                               })}
                               onKeyDown={(e) => {
@@ -1329,12 +1594,17 @@ export default function AddLeadPage() {
 
                                 const parts = value.split(".");
                                 if (parts.length > 2) {
-                                  value = parts[0] + "." + parts.slice(1).join("");
+                                  value =
+                                    parts[0] + "." + parts.slice(1).join("");
                                 }
 
                                 if (value.includes(".")) {
-                                  const [intPart, decimalPart] = value.split(".");
-                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                  const [intPart, decimalPart] =
+                                    value.split(".");
+                                  value =
+                                    intPart.slice(0, 3) +
+                                    "." +
+                                    decimalPart.slice(0, 2);
                                 } else {
                                   value = value.slice(0, 3);
                                 }
@@ -1354,18 +1624,23 @@ export default function AddLeadPage() {
                               step="0.5"
                               maxLength={6}
                               {...register("analyticalWritingScore", {
-                                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                                setValueAs: (v) =>
+                                  v === "" ? undefined : Number(v),
                                 validate: (value) => {
-                                  if (value === undefined || value === "") return true;
+                                  if (value === undefined || value === "")
+                                    return true;
 
                                   const num = Number(value);
 
                                   return (
-                                    !isNaN(num) &&
-                                    num >= 0 &&
-                                    num <= 999.99 &&
-                                    /^\d{1,3}(\.\d{1,2})?$/.test(String(value))
-                                  ) || "Enter a valid score";
+                                    (!isNaN(num) &&
+                                      num >= 0 &&
+                                      num <= 999.99 &&
+                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                        String(value),
+                                      )) ||
+                                    "Enter a valid score"
+                                  );
                                 },
                               })}
                               onKeyDown={(e) => {
@@ -1379,12 +1654,17 @@ export default function AddLeadPage() {
 
                                 const parts = value.split(".");
                                 if (parts.length > 2) {
-                                  value = parts[0] + "." + parts.slice(1).join("");
+                                  value =
+                                    parts[0] + "." + parts.slice(1).join("");
                                 }
 
                                 if (value.includes(".")) {
-                                  const [intPart, decimalPart] = value.split(".");
-                                  value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                                  const [intPart, decimalPart] =
+                                    value.split(".");
+                                  value =
+                                    intPart.slice(0, 3) +
+                                    "." +
+                                    decimalPart.slice(0, 2);
                                 } else {
                                   value = value.slice(0, 3);
                                 }

@@ -84,6 +84,10 @@ export default function AllLeadsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [selected, setSelected] = useState<Lead | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+
+  const [followupDate, setFollowupDate] = useState("");
+  const [followupNote, setFollowupNote] = useState("");
+
   const [editingLeadStatus, setEditingLeadStatus] = useState<Lead | null>(null);
   const [leadIdToDelete, setLeadIdToDelete] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -174,20 +178,34 @@ export default function AllLeadsPage() {
         body: JSON.stringify({
           ...editingLead,
           counselorIds: selectedCounselors,
+          followupDate: followupDate || undefined,
+          followupNote: followupNote.trim() || undefined,
         }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error("Unable to update lead");
+        throw new Error(result?.message || "Unable to update lead");
       }
+
+      await queryClient.invalidateQueries({
+        queryKey: LEADS.all,
+      });
 
       await loadLeads();
 
       toast.success("Lead updated successfully");
+
       setEditingLead(null);
+      setFollowupDate("");
+      setFollowupNote("");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to update lead");
+
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update lead",
+      );
     } finally {
       setIsUpdating(false);
     }
@@ -822,10 +840,10 @@ export default function AllLeadsPage() {
       />
 
       <PageActions
-        selected={selected as any}
-        setSelected={setSelected as any}
-        editingLead={editingLead as any}
-        setEditingLead={setEditingLead as any}
+        selected={selected}
+        setSelected={setSelected}
+        editingLead={editingLead}
+        setEditingLead={setEditingLead}
         leadIdToDelete={leadIdToDelete}
         setLeadIdToDelete={setLeadIdToDelete}
         handleUpdateLead={handleUpdateLead}
@@ -835,6 +853,10 @@ export default function AllLeadsPage() {
         selectedCounselors={selectedCounselors}
         setSelectedCounselors={setSelectedCounselors}
         isUpdating={isUpdating}
+        followupDate={followupDate}
+        setFollowupDate={setFollowupDate}
+        followupNote={followupNote}
+        setFollowupNote={setFollowupNote}
       />
     </PageTransition>
   );
