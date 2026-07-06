@@ -140,7 +140,7 @@ function DocumentPreview({ record }: { record: StudentDocumentRecord }) {
     return (
       <div className="flex h-full min-h-[300px] items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
         <img
-          src={`${process.env.NEXT_PUBLIC_IMAGE}${fileUrl}`}
+          src={fileUrl}
           alt={fileName}
           className="max-h-[430px] w-full object-contain"
         />
@@ -151,7 +151,7 @@ function DocumentPreview({ record }: { record: StudentDocumentRecord }) {
   if (isPdf) {
     return (
       <iframe
-        src={`${process.env.NEXT_PUBLIC_IMAGE}${fileUrl}`}
+        src={fileUrl}
         title={fileName}
         className="h-[430px] w-full rounded-[20px] border border-slate-200 bg-white dark:border-slate-800"
       />
