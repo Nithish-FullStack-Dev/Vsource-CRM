@@ -95,13 +95,17 @@ const performanceStudentSelect = {
       createdAt: true,
     },
   },
-  visaLoanProfile: {
+  visaProfile: {
     select: {
       depositStatus: true,
       ihsPaidStatus: true,
       visaPaidStatus: true,
       casStatus: true,
       visaStatus: true,
+    },
+  },
+  loanProfile: {
+    select: {
       fintechAssigneeId: true,
       nbfc: true,
       loanStatus: true,
@@ -669,9 +673,7 @@ async function getTargetMetrics(
   const counselorDetails = new Map<string, CounselorDetails>();
   const targetPeriods = new Set<string>();
   const allowedBranchIds =
-    accessScope.kind === "branches"
-      ? new Set(accessScope.branchIds)
-      : null;
+    accessScope.kind === "branches" ? new Set(accessScope.branchIds) : null;
   let totalTarget = 0;
 
   for (const item of targets) {
@@ -714,9 +716,7 @@ async function getTargetMetrics(
     );
 
     const performanceCounselorId =
-      accessScope.kind === "user"
-        ? accessScope.userId
-        : item.counselorId;
+      accessScope.kind === "user" ? accessScope.userId : item.counselorId;
 
     if (performanceCounselorId) {
       counselorAchievements.set(
@@ -968,7 +968,8 @@ function mapStudentToRow(
   counselorOverride: PerformanceCounselorOverride | null,
 ): PerformanceReportRow {
   const latestApplication = studentApplications[0] ?? null;
-  const profile = student.visaLoanProfile;
+  const visaProfile = student.visaProfile;
+  const loanProfile = student.loanProfile;
   const counselorId = counselorOverride?.id ?? student.counselorId;
   const counselorName =
     counselorOverride?.name ?? student.counselor?.name ?? "Not Assigned";
@@ -1016,13 +1017,13 @@ function mapStudentToRow(
     latestOfferStatus: latestApplication
       ? String(latestApplication.offerStatus ?? "")
       : "",
-    casStatus: profile?.casStatus ?? "",
-    visaStatus: profile?.visaStatus ?? "",
-    loanStatus: profile?.loanStatus ?? "",
-    nbfc: profile?.nbfc ?? "",
-    fintechAssigneeName: profile?.fintechAssignee?.name ?? "Not Assigned",
-    sanctionedAmount: toNumber(profile?.sanctionedAmount),
-    disbursedAmount: toNumber(profile?.disbursedAmount),
+    casStatus: visaProfile?.casStatus ?? "",
+    visaStatus: visaProfile?.visaStatus ?? "",
+    loanStatus: loanProfile?.loanStatus ?? "",
+    nbfc: loanProfile?.nbfc ?? "",
+    fintechAssigneeName: loanProfile?.fintechAssignee?.name ?? "Not Assigned",
+    sanctionedAmount: toNumber(loanProfile?.sanctionedAmount),
+    disbursedAmount: toNumber(loanProfile?.disbursedAmount),
   };
 }
 
@@ -1031,7 +1032,8 @@ function mapApplicationToExportRow(
   student: PerformanceStudentRecord,
   counselorOverride: PerformanceCounselorOverride | null,
 ): PerformanceApplicationExportRow {
-  const profile = student.visaLoanProfile;
+  const visaProfile = student.visaProfile;
+  const loanProfile = student.loanProfile;
   const counselorName =
     counselorOverride?.name ?? student.counselor?.name ?? "Not Assigned";
 
@@ -1053,19 +1055,19 @@ function mapApplicationToExportRow(
     applicationDate: application.applicationDate?.toISOString() ?? null,
     applicationStatus: String(application.status ?? ""),
     offerStatus: String(application.offerStatus ?? ""),
-    depositStatus: profile?.depositStatus ?? "",
-    ihsPaidStatus: profile?.ihsPaidStatus ?? "",
-    visaPaidStatus: profile?.visaPaidStatus ?? "",
-    casStatus: profile?.casStatus ?? "",
-    visaStatus: profile?.visaStatus ?? "",
-    fintechAssigneeName: profile?.fintechAssignee?.name ?? "Not Assigned",
-    nbfc: profile?.nbfc ?? "",
-    loanStatus: profile?.loanStatus ?? "",
-    pfStatus: profile?.pfStatus ?? "",
-    appliedAmount: toNumber(profile?.appliedAmount),
-    sanctionedAmount: toNumber(profile?.sanctionedAmount),
-    disbursed: profile?.disbursed ?? false,
-    disbursedAmount: toNumber(profile?.disbursedAmount),
+    depositStatus: visaProfile?.depositStatus ?? "",
+    ihsPaidStatus: visaProfile?.ihsPaidStatus ?? "",
+    visaPaidStatus: visaProfile?.visaPaidStatus ?? "",
+    casStatus: visaProfile?.casStatus ?? "",
+    visaStatus: visaProfile?.visaStatus ?? "",
+    fintechAssigneeName: loanProfile?.fintechAssignee?.name ?? "Not Assigned",
+    nbfc: loanProfile?.nbfc ?? "",
+    loanStatus: loanProfile?.loanStatus ?? "",
+    pfStatus: loanProfile?.pfStatus ?? "",
+    appliedAmount: toNumber(loanProfile?.appliedAmount),
+    sanctionedAmount: toNumber(loanProfile?.sanctionedAmount),
+    disbursed: loanProfile?.disbursed ?? false,
+    disbursedAmount: toNumber(loanProfile?.disbursedAmount),
   };
 }
 
@@ -1316,16 +1318,12 @@ function buildBranchPerformance(
       current.droppedStudents += 1;
     }
 
-    if (isVisaApproved(student.visaLoanProfile?.visaStatus ?? "")) {
+    if (isVisaApproved(student.visaProfile?.visaStatus ?? "")) {
       current.visaApproved += 1;
     }
 
-    current.sanctionedAmount += toNumber(
-      student.visaLoanProfile?.sanctionedAmount,
-    );
-    current.disbursedAmount += toNumber(
-      student.visaLoanProfile?.disbursedAmount,
-    );
+    current.sanctionedAmount += toNumber(student.loanProfile?.sanctionedAmount);
+    current.disbursedAmount += toNumber(student.loanProfile?.disbursedAmount);
   }
 
   for (const application of applications) {
@@ -1474,24 +1472,20 @@ function buildCounselorPerformance(
       current.droppedStudents += 1;
     }
 
-    if (isCasReceived(student.visaLoanProfile?.casStatus ?? "")) {
+    if (isCasReceived(student.visaProfile?.casStatus ?? "")) {
       current.casReceived += 1;
     }
 
-    if (isVisaApproved(student.visaLoanProfile?.visaStatus ?? "")) {
+    if (isVisaApproved(student.visaProfile?.visaStatus ?? "")) {
       current.visaApproved += 1;
     }
 
-    if (isLoanSanctioned(student.visaLoanProfile?.loanStatus ?? "")) {
+    if (isLoanSanctioned(student.loanProfile?.loanStatus ?? "")) {
       current.loanSanctioned += 1;
     }
 
-    current.sanctionedAmount += toNumber(
-      student.visaLoanProfile?.sanctionedAmount,
-    );
-    current.disbursedAmount += toNumber(
-      student.visaLoanProfile?.disbursedAmount,
-    );
+    current.sanctionedAmount += toNumber(student.loanProfile?.sanctionedAmount);
+    current.disbursedAmount += toNumber(student.loanProfile?.disbursedAmount);
   }
 
   for (const application of applications) {
@@ -1552,11 +1546,11 @@ function buildCounselorPerformance(
       const branchId =
         "branchId" in reportingBranch
           ? reportingBranch.branchId
-          : reportingBranch ?? "Not Assigned";
+          : (reportingBranch ?? "Not Assigned");
       const branch =
         "branch" in reportingBranch
           ? reportingBranch.branch
-          : reportingBranch ?? "Not Assigned";
+          : (reportingBranch ?? "Not Assigned");
       const totalWalkins = value.leads + value.students;
       const target = targetMetrics.counselorTargets.get(value.counselorId) ?? 0;
       const achieved =
@@ -1641,27 +1635,26 @@ function buildSummary(
       isOfferStatus(String(application.offerStatus ?? "")),
     ).length,
     visaApprovedStudents: students.filter((student) =>
-      isVisaApproved(student.visaLoanProfile?.visaStatus ?? ""),
+      isVisaApproved(student.visaProfile?.visaStatus ?? ""),
     ).length,
     casReceivedStudents: students.filter((student) =>
-      isCasReceived(student.visaLoanProfile?.casStatus ?? ""),
+      isCasReceived(student.visaProfile?.casStatus ?? ""),
     ).length,
     loanSanctionedStudents: students.filter((student) =>
-      isLoanSanctioned(student.visaLoanProfile?.loanStatus ?? ""),
+      isLoanSanctioned(student.loanProfile?.loanStatus ?? ""),
     ).length,
     totalAppliedAmount: students.reduce(
-      (total, student) =>
-        total + toNumber(student.visaLoanProfile?.appliedAmount),
+      (total, student) => total + toNumber(student.loanProfile?.appliedAmount),
       0,
     ),
     totalSanctionedAmount: students.reduce(
       (total, student) =>
-        total + toNumber(student.visaLoanProfile?.sanctionedAmount),
+        total + toNumber(student.loanProfile?.sanctionedAmount),
       0,
     ),
     totalDisbursedAmount: students.reduce(
       (total, student) =>
-        total + toNumber(student.visaLoanProfile?.disbursedAmount),
+        total + toNumber(student.loanProfile?.disbursedAmount),
       0,
     ),
   };
@@ -1670,9 +1663,9 @@ function buildSummary(
 function hasApplicationFilters(filters: PerformanceReportFilters): boolean {
   return Boolean(
     filters.countryId ||
-      filters.intakeId ||
-      filters.universityId ||
-      filters.applicationStatus,
+    filters.intakeId ||
+    filters.universityId ||
+    filters.applicationStatus,
   );
 }
 
@@ -1685,10 +1678,10 @@ function hasStudentOnlyApplicationFilters(
 function hasComplianceFilters(filters: PerformanceReportFilters): boolean {
   return Boolean(
     filters.casStatus ||
-      filters.visaStatus ||
-      filters.loanStatus ||
-      filters.nbfc ||
-      filters.fintechAssigneeId,
+    filters.visaStatus ||
+    filters.loanStatus ||
+    filters.nbfc ||
+    filters.fintechAssigneeId,
   );
 }
 
@@ -1870,7 +1863,8 @@ function buildStudentWhere(
   const andConditions: Prisma.StudentWhereInput[] = [];
   const where: Prisma.StudentWhereInput = {};
   const leadWhere: Prisma.LeadWhereInput = {};
-  const visaLoanWhere: Prisma.StudentVisaLoanProfileWhereInput = {};
+  const loanProfileWhere: Prisma.StudentLoanProfileWhereInput = {};
+  const visaLoanWhere: Prisma.StudentVisaProfileWhereInput = {};
   const applicationWhere = buildApplicationWhere(filters);
 
   if (filters.search) {
@@ -1976,20 +1970,20 @@ function buildStudentWhere(
   }
 
   if (filters.loanStatus) {
-    visaLoanWhere.loanStatus = filters.loanStatus;
+    loanProfileWhere.loanStatus = filters.loanStatus;
   }
 
   if (filters.nbfc) {
-    visaLoanWhere.nbfc = filters.nbfc;
+    loanProfileWhere.nbfc = filters.nbfc;
   }
 
   if (filters.fintechAssigneeId) {
-    visaLoanWhere.fintechAssigneeId = filters.fintechAssigneeId;
+    loanProfileWhere.fintechAssigneeId = filters.fintechAssigneeId;
   }
 
-  if (Object.keys(visaLoanWhere).length > 0) {
-    where.visaLoanProfile = {
-      is: visaLoanWhere,
+  if (Object.keys(loanProfileWhere).length > 0) {
+    where.loanProfile = {
+      is: loanProfileWhere,
     };
   }
 
@@ -2213,10 +2207,10 @@ export async function getPerformanceReport(
       applications.map((application) => String(application.status ?? "")),
     ),
     visaStatusBreakdown: buildStatusBreakdown(
-      students.map((student) => student.visaLoanProfile?.visaStatus ?? ""),
+      students.map((student) => student.visaProfile?.visaStatus ?? ""),
     ),
     loanStatusBreakdown: buildStatusBreakdown(
-      students.map((student) => student.visaLoanProfile?.loanStatus ?? ""),
+      students.map((student) => student.loanProfile?.loanStatus ?? ""),
     ),
     branchPerformance: buildBranchPerformance(
       leads,
@@ -2264,7 +2258,8 @@ export async function getPerformanceReportFilterOptions(): Promise<PerformanceRe
     intakes,
     universities,
     applicationStatuses,
-    visaLoanProfiles,
+    visaProfiles,
+    loanProfiles,
     fintechProfiles,
     leadSourcesMaster,
     leadSourcesUsed,
@@ -2336,15 +2331,21 @@ export async function getPerformanceReportFilterOptions(): Promise<PerformanceRe
         status: "asc",
       },
     }),
-    db.studentVisaLoanProfile.findMany({
+    db.studentVisaProfile.findMany({
       select: {
         casStatus: true,
         visaStatus: true,
-        loanStatus: true,
-        nbfc: true,
+        casDeadlineDate: true,
       },
     }),
-    db.studentVisaLoanProfile.findMany({
+    db.studentLoanProfile.findMany({
+      select: {
+        loanStatus: true,
+        nbfc: true,
+        fintechAssigneeId: true,
+      },
+    }),
+    db.studentLoanProfile.findMany({
       where: {
         fintechAssigneeId: {
           not: null,
@@ -2440,15 +2441,13 @@ export async function getPerformanceReportFilterOptions(): Promise<PerformanceRe
       ...leadSourcesUsed.map((lead) => lead.source),
     ]),
     applicationStatuses: applicationStatuses.map((item) => String(item.status)),
-    casStatuses: uniqueSorted(
-      visaLoanProfiles.map((profile) => profile.casStatus),
-    ),
+    casStatuses: uniqueSorted(visaProfiles.map((profile) => profile.casStatus)),
     visaStatuses: uniqueSorted(
-      visaLoanProfiles.map((profile) => profile.visaStatus),
+      visaProfiles.map((profile) => profile.visaStatus),
     ),
     loanStatuses: uniqueSorted(
-      visaLoanProfiles.map((profile) => profile.loanStatus),
+      loanProfiles.map((profile) => profile.loanStatus),
     ),
-    nbfcs: uniqueSorted(visaLoanProfiles.map((profile) => profile.nbfc)),
+    nbfcs: uniqueSorted(loanProfiles.map((profile) => profile.nbfc)),
   };
 }
