@@ -17,12 +17,12 @@ const allowedModules = Object.values(StudentModuleType);
 const allowedStatuses = Object.values(StudentModuleStatus);
 
 const defaultProgress: Record<StudentModuleStatus, number> = {
-  pending: 0,
+  not_started: 0,
   started: 20,
   in_progress: 50,
   need_corrections: 75,
   completed: 100,
-  rejected:0,
+  rejected: 0,
 };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
@@ -76,7 +76,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         id: record?.id ?? null,
         studentId: id,
         module,
-        status: record?.status ?? StudentModuleStatus.pending,
+        status: record?.status ?? StudentModuleStatus.not_started,
         progress: record?.progress ?? 0,
         createdAt: record?.createdAt ?? null,
         updatedAt: record?.updatedAt ?? null,
