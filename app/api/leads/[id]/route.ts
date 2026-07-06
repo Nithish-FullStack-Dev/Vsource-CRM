@@ -1,7 +1,7 @@
 /**
  * api/leads/[id]/route.ts
- * GET    /api/leads/:id  — full lead detail with timelines
- * PUT  /api/leads/:id
+ * GET    /api/leads/:id
+ * PATCH  /api/leads/:id
  * DELETE /api/leads/:id
  */
 
@@ -13,18 +13,23 @@ import { getAuthorizedUser } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { Prisma } from "@/generated/prisma/client";
 
-type Ctx = { params: Promise<{ id: string }> };
+type Ctx = {
+  params: Promise<{
+    id: string;
+  }>;
+};
 
-export async function GET(_req: NextRequest, { params }: Ctx) {
+export async function GET(req: NextRequest, { params }: Ctx) {
   try {
     const currentUser = await getAuthorizedUser(
-      _req,
+      req,
       MODULES.MASTER_LEADS,
       PERMISSIONS.READ,
     );
 
     const { id } = await params;
-    const lead = await db.lead.findUnique({
+
+    const lead = await db.lead.findFirst({
       where: {
         id,
 
@@ -41,22 +46,53 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
           },
         ],
       },
+
       include: {
         branch: true,
+
         counselors: {
-          select: { counselor: { select: { name: true, id: true } } },
+          select: {
+            isPrimary: true,
+
+            counselor: {
+              select: {
+                name: true,
+                id: true,
+              },
+            },
+          },
         },
+
         timelines: {
           include: {
-            createdBy: { select: { id: true, name: true } },
-            updatedBy: { select: { id: true, name: true } },
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+
+            updatedBy: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
-          orderBy: { createdAt: "desc" },
+
+          orderBy: {
+            createdAt: "desc",
+          },
         },
+
         student: true,
       },
     });
-    if (!lead) return notFound("Lead");
+
+    if (!lead) {
+      return notFound("Lead");
+    }
+
     return ok(lead);
   } catch (err) {
     return handleError(err);
@@ -65,43 +101,115 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
+    const currentUser = await getAuthorizedUser(
+      req,
+      MODULES.MASTER_LEADS,
+      PERMISSIONS.UPDATE,
+    );
+
     const { id } = await params;
+
     const body = LeadUpdateSchema.parse(await req.json());
-    const { counselorIds, ...leadData } = body;
-    const lead = await db.$transaction(
-  async (tx: Prisma.TransactionClient) => {
-      const updatedLead = await tx.lead.update({
-        where: { id },
-        data: leadData,
+
+    const { counselorIds, followupDate, followupNote, branchId, ...leadData } =
+      body;
+
+    const existingLead = await db.lead.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existingLead) {
+      return notFound("Lead");
+    }
+
+    const lead = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+      const updateData: Prisma.LeadUpdateInput = {
+        ...leadData,
+
+        ...(branchId && {
+          branch: {
+            connect: {
+              id: branchId,
+            },
+          },
+        }),
+
+        updatedBy: {
+          connect: {
+            id: currentUser.id,
+          },
+        },
+      };
+
+      if (followupDate) {
+        updateData.nextFollowup = new Date(followupDate);
+      }
+
+      await tx.lead.update({
+        where: {
+          id,
+        },
+        data: updateData,
       });
 
-      if (counselorIds) {
+      if (counselorIds !== undefined) {
         await tx.leadCounselor.deleteMany({
           where: {
             leadId: id,
           },
         });
 
-        await tx.leadCounselor.createMany({
-          data: counselorIds.map((counselorId, index) => ({
+        if (counselorIds.length > 0) {
+          await tx.leadCounselor.createMany({
+            data: counselorIds.map((counselorId, index) => ({
+              leadId: id,
+              counselorId,
+              assignedById: currentUser.id,
+              isPrimary: index === 0,
+            })),
+          });
+        }
+      }
+
+      if (followupDate || followupNote?.trim()) {
+        await tx.leadTimeline.create({
+          data: {
             leadId: id,
-            counselorId,
-            isPrimary: index === 0,
-          })),
+
+            description: followupNote?.trim() || "Follow-up scheduled",
+
+            nextFollowup: followupDate ? new Date(followupDate) : null,
+
+            createdById: currentUser.id,
+
+            updatedById: currentUser.id,
+          },
         });
       }
 
       return tx.lead.findUnique({
-        where: { id },
+        where: {
+          id,
+        },
+
         include: {
           branch: {
             select: {
               id: true,
               name: true,
+              code: true,
             },
           },
+
           counselors: {
-            include: {
+            select: {
+              isPrimary: true,
+
               counselor: {
                 select: {
                   id: true,
@@ -110,22 +218,72 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               },
             },
           },
+
+          timelines: {
+            include: {
+              createdBy: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+
+              updatedBy: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+
+          _count: {
+            select: {
+              timelines: true,
+            },
+          },
         },
       });
     });
+
     return ok(lead, "Lead updated successfully");
   } catch (err) {
     return handleError(err);
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: Ctx) {
+export async function DELETE(req: NextRequest, { params }: Ctx) {
   try {
+    await getAuthorizedUser(req, MODULES.MASTER_LEADS, PERMISSIONS.DELETE);
+
     const { id } = await params;
-    await db.lead.delete({ where: { id } });
+
+    const existingLead = await db.lead.findUnique({
+      where: {
+        id,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existingLead) {
+      return notFound("Lead");
+    }
+
+    await db.lead.delete({
+      where: {
+        id,
+      },
+    });
+
     return noContent();
   } catch (err) {
-    console.log(err);
     return handleError(err);
   }
 }

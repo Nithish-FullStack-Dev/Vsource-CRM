@@ -28,16 +28,18 @@ export interface Lead {
   counsellingDate?: string | null;
 
   studentName?: string;
+  fatherName?: string;
   mobileNumber?: string;
   emailId?: string;
   password?: string;
 
   place?: string;
   passport?: string;
-
   passportExpireDate?: string | null;
 
   source?: string;
+
+  branchId: string;
 
   branch?: {
     id: string;
@@ -56,6 +58,10 @@ export interface Lead {
   preferredIntake?: string;
   preferredCourse?: string;
   preferredTiers?: string[];
+
+  graduationStatus?: "completed" | "pursuing" | null;
+  loanRequirement?: boolean;
+
   tenthPercentage?: number;
   tenthYearOfPassing?: number;
 
@@ -89,9 +95,22 @@ export interface Lead {
 
   nextFollowup?: string | null;
 
+  timelines?: {
+    id: string;
+    description: string;
+    nextFollowup?: string | null;
+    createdAt: string;
+
+    createdBy?: {
+      id: string;
+      name: string;
+    } | null;
+  }[];
+
   status: LeadStatus;
 
   isConverted?: boolean;
+
   createdAt: string;
 }
 

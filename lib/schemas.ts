@@ -128,36 +128,62 @@ export const LeadCreateSchema = z.object({
   source: optStr,
   branchId: uuid,
   assignedCounselorId: optUuid,
+
   tenthPercentage: optFloat,
   tenthYearOfPassing: optInt,
   twelfthPercentage: optFloat,
   twelfthYearOfPassing: optInt,
+
   bachelorsCourse: optStr,
   bachelorsUniversityName: optStr,
   bachelorsPercentage: optFloat,
   bachelorsYearOfPassing: optInt,
+
   backlogs: optInt,
   workExperience: optStr,
+
   preferredCountry: optStr,
   preferredIntake: optStr,
   preferredCourse: optStr,
+
   preferredTiers: z
     .array(z.enum(["T1", "T2", "T3", "T4"]))
     .optional()
     .default([]),
+
   greGmatScore: optFloat,
   quantitativeScore: optFloat,
   verbalScore: optFloat,
   analyticalWritingScore: optFloat,
+
   englishTestType: optStr,
   listeningScore: optFloat,
   writingScore: optFloat,
   readingScore: optFloat,
   speakingScore: optFloat,
+
   gapsIfAny: optStr,
+
   status: LeadStatusEnum.default("new"),
+
   nextFollowup: optDate,
+
   remarks: optStr,
+
+  graduationStatus: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return null;
+      }
+
+      return value;
+    },
+    z.enum(["completed", "pursuing"]).nullable().optional(),
+  ),
+
+  loanRequirement: z.boolean().default(false),
+
+  counselorIds: z.array(z.string().uuid()).optional(),
 });
 
 export const LeadUpdateSchema = LeadCreateSchema.partial()
@@ -166,6 +192,8 @@ export const LeadUpdateSchema = LeadCreateSchema.partial()
   })
   .extend({
     counselorIds: z.array(z.string().uuid()).optional(),
+    followupDate: z.string().trim().optional(),
+    followupNote: z.string().trim().optional(),
   });
 
 export const LeadTimelineCreateSchema = z.object({

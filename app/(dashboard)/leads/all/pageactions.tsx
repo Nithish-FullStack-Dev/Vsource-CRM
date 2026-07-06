@@ -1,8 +1,7 @@
 // crm-frontend-next\app\(dashboard)\leads\all\pageactions.tsx
 "use client";
 
-import type { LeadStatus } from "@/types";
-
+import type { Lead, LeadStatus } from "@/types";
 import {
   Sheet,
   SheetContent,
@@ -40,7 +39,7 @@ import axios from "axios";
 import { useCounselors } from "@/lib/lead";
 import { Loader2 } from "lucide-react";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
-
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Command,
   CommandEmpty,
@@ -58,97 +57,35 @@ import {
 
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-interface LeadRecord {
-  id: string;
-  leadNumber: string;
-
-  counsellingDate?: string | null;
-
-  studentName?: string;
-  fatherName?: string;
-  mobileNumber?: string;
-  emailId?: string;
-
-  place?: string;
-  passport?: string;
-
-  passportExpireDate?: string | null;
-
-  source?: string;
-  branchId: string;
-  branch?: {
-    id: string;
-    name: string;
-  };
-
-  counselors?: {
-    isPrimary: boolean;
-    counselor: {
-      id: string;
-      name: string;
-    };
-  }[];
-
-  preferredCountry?: string;
-  preferredIntake?: string;
-  preferredCourse?: string;
-  preferredTiers?: string[];
-  tenthPercentage?: number;
-  tenthYearOfPassing?: number;
-
-  twelfthPercentage?: number;
-  twelfthYearOfPassing?: number;
-
-  bachelorsCourse?: string;
-  bachelorsUniversityName?: string;
-  bachelorsPercentage?: number;
-  bachelorsYearOfPassing?: number;
-
-  backlogs?: number;
-
-  workExperience?: string;
-
-  greGmatScore?: number;
-  quantitativeScore?: number;
-  verbalScore?: number;
-  analyticalWritingScore?: number;
-
-  englishTestType?: string;
-  listeningScore?: number;
-  readingScore?: number;
-  writingScore?: number;
-  speakingScore?: number;
-
-  gapsIfAny?: string;
-
-  isConverted?: boolean;
-
-  remarks?: string;
-  nextFollowup?: string | null;
-
-  status: LeadStatus;
-  createdAt: string;
-}
 
 interface PageActionsProps {
-  selected: LeadRecord | null;
-  setSelected: React.Dispatch<React.SetStateAction<LeadRecord | null>>;
+  selected: Lead | null;
+  setSelected: React.Dispatch<React.SetStateAction<Lead | null>>;
 
-  editingLead: LeadRecord | null;
-  setEditingLead: React.Dispatch<React.SetStateAction<LeadRecord | null>>;
+  editingLead: Lead | null;
+  setEditingLead: React.Dispatch<React.SetStateAction<Lead | null>>;
 
   leadIdToDelete: string | null;
   setLeadIdToDelete: React.Dispatch<React.SetStateAction<string | null>>;
 
-  handleUpdateLead: (e: React.FormEvent) => Promise<void>;
+  handleUpdateLead: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+
   executeDeleteLead: () => Promise<void>;
 
   branchOptions: string[];
+
   statusStyle: Record<LeadStatus, string>;
 
   selectedCounselors: string[];
   setSelectedCounselors: React.Dispatch<React.SetStateAction<string[]>>;
+
   isUpdating: boolean;
+
+  followupDate: string;
+  setFollowupDate: React.Dispatch<React.SetStateAction<string>>;
+
+  followupNote: string;
+  setFollowupNote: React.Dispatch<React.SetStateAction<string>>;
 }
 const englishTestOptions = ["IELTS", "TOEFL", "DUOLINGO", "PTE"];
 export default function PageActions(props: PageActionsProps) {
@@ -164,6 +101,10 @@ export default function PageActions(props: PageActionsProps) {
     selectedCounselors,
     setSelectedCounselors,
     isUpdating,
+    followupDate,
+    setFollowupDate,
+    followupNote,
+    setFollowupNote,
   } = props;
   const queryClient = useQueryClient();
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -320,10 +261,10 @@ export default function PageActions(props: PageActionsProps) {
             <>
               <SheetHeader className="border-b pb-4">
                 <SheetTitle className="text-2xl font-bold">
-                  {selected.studentName}
+                  {selected?.studentName}
                 </SheetTitle>
                 <SheetDescription>
-                  Serial Number: {selected.leadNumber}
+                  Serial Number: {selected?.leadNumber}
                 </SheetDescription>
               </SheetHeader>
 
@@ -336,35 +277,39 @@ export default function PageActions(props: PageActionsProps) {
                   <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
                     <DetailItem
                       label="Student Name"
-                      value={selected.studentName}
+                      value={selected?.studentName}
                     />
                     <DetailItem
                       label="Father Name"
-                      value={selected.fatherName}
+                      value={selected?.fatherName}
                     />
                     <DetailItem
                       label="Mobile Number"
-                      value={selected.mobileNumber}
+                      value={selected?.mobileNumber}
                     />
                     <DetailItem
                       label="Email Address"
-                      value={selected.emailId}
+                      value={selected?.emailId}
                     />
-                    <DetailItem label="Place" value={selected.place} />
+                    <DetailItem label="Place" value={selected?.place} />
                     <DetailItem
                       label="Passport Number"
-                      value={selected.passport}
+                      value={selected?.passport}
                     />
-                    <DetailItem label="Lead Source" value={selected.source} />
-                    <DetailItem label="Branch" value={selected.branch?.name} />
+                    <DetailItem label="Lead Source" value={selected?.source} />
+                    <DetailItem label="Branch" value={selected?.branch?.name} />
+                    <DetailItem
+                      label="Graduation Status"
+                      value={selected?.graduationStatus}
+                    />
                     <div>
                       <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Assigned Counselors
                       </p>
 
                       <div className="flex flex-wrap gap-2">
-                        {selected.counselors?.length ? (
-                          selected.counselors.map((coun, idx) => (
+                        {selected?.counselors?.length ? (
+                          selected?.counselors.map((coun, idx) => (
                             <Badge key={coun.counselor?.id || idx}>
                               {coun?.counselor?.name}
                               {coun.isPrimary && " (Primary)"}
@@ -517,29 +462,81 @@ export default function PageActions(props: PageActionsProps) {
                 {/* CRM INFORMATION */}
                 <div className="rounded-xl border bg-card">
                   <div className="border-b px-5 py-3">
-                    <h3 className="font-semibold text-lg">CRM Information</h3>
+                    <h3 className="text-lg font-semibold">CRM Information</h3>
                   </div>
+
                   <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
                     <DetailItem label="Status" value={selected.status} />
+
                     <DetailItem
                       label="Created Date"
                       value={
                         selected.createdAt
                           ? new Date(selected.createdAt).toLocaleDateString()
-                          : "-"
+                          : "—"
                       }
                     />
+
                     <DetailItem
                       label="Next Followup"
                       value={
                         selected.nextFollowup
                           ? new Date(selected.nextFollowup).toLocaleDateString()
-                          : "-"
+                          : "—"
                       }
                     />
                   </div>
+
                   <div className="border-t p-5">
                     <DetailBlock label="Remarks" value={selected.remarks} />
+                  </div>
+
+                  <div className="border-t p-5">
+                    <h4 className="mb-4 text-sm font-semibold">
+                      Follow-up History
+                    </h4>
+
+                    {selected.timelines?.length ? (
+                      <div className="space-y-3">
+                        {selected.timelines.map((timeline) => (
+                          <div
+                            key={timeline.id}
+                            className="rounded-xl border bg-muted/20 p-4"
+                          >
+                            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                              <p className="font-medium">
+                                {timeline.nextFollowup
+                                  ? new Date(
+                                      timeline.nextFollowup,
+                                    ).toLocaleDateString()
+                                  : "No follow-up date"}
+                              </p>
+
+                              <span className="text-xs text-muted-foreground">
+                                Added{" "}
+                                {new Date(
+                                  timeline.createdAt,
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              {timeline.description}
+                            </p>
+
+                            {timeline.createdBy?.name && (
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                Added by {timeline.createdBy.name}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No follow-up history available.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -573,6 +570,43 @@ export default function PageActions(props: PageActionsProps) {
                 </SheetHeader>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Loan Requirement */}
+                  <div className="space-y-3">
+                    <Label>Loan Requirement</Label>
+
+                    <RadioGroup
+                      value={editingLead.loanRequirement ? "yes" : "no"}
+                      onValueChange={(value) =>
+                        setEditingLead({
+                          ...editingLead,
+                          loanRequirement: value === "yes",
+                        })
+                      }
+                      className="flex h-10 items-center gap-6"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="yes" id="edit-loan-yes" />
+
+                        <Label
+                          htmlFor="edit-loan-yes"
+                          className="cursor-pointer font-normal"
+                        >
+                          Yes
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="no" id="edit-loan-no" />
+
+                        <Label
+                          htmlFor="edit-loan-no"
+                          className="cursor-pointer font-normal"
+                        >
+                          No
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
                   {/* Student Name */}
                   <div className="grid gap-1.5 sm:col-span-2">
                     <Label htmlFor="edit-name" className="text-sm font-medium">
@@ -697,8 +731,8 @@ export default function PageActions(props: PageActionsProps) {
                       value={
                         editingLead.passportExpireDate
                           ? new Date(editingLead.passportExpireDate)
-                            .toISOString()
-                            .split("T")[0]
+                              .toISOString()
+                              .split("T")[0]
                           : ""
                       }
                       onChange={(e) =>
@@ -709,7 +743,35 @@ export default function PageActions(props: PageActionsProps) {
                       }
                     />
                   </div>
+                  {/* Graduation Status */}
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-graduation-status">
+                      Graduation Status
+                    </Label>
 
+                    <Select
+                      value={editingLead.graduationStatus ?? ""}
+                      onValueChange={(value) =>
+                        setEditingLead({
+                          ...editingLead,
+                          graduationStatus: value as "completed" | "pursuing",
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id="edit-graduation-status"
+                        className="w-full"
+                      >
+                        <SelectValue placeholder="Select Graduation Status" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        <SelectItem value="completed">Completed</SelectItem>
+
+                        <SelectItem value="pursuing">Pursuing</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   {/* Assigned Branch - Synced dynamically with loaded branches */}
                   <div className="grid gap-1.5 sm:col-span-2">
                     <Label
@@ -728,9 +790,9 @@ export default function PageActions(props: PageActionsProps) {
                           branchId: targetBranch?.id ?? "",
                           branch: targetBranch
                             ? {
-                              id: targetBranch.id,
-                              name: targetBranch.name,
-                            }
+                                id: targetBranch.id,
+                                name: targetBranch.name,
+                              }
                             : undefined,
                         });
 
@@ -911,12 +973,12 @@ export default function PageActions(props: PageActionsProps) {
                                 ...editingLead,
                                 preferredTiers: selectedTier
                                   ? editingLead.preferredTiers?.filter(
-                                    (t) => t !== tier,
-                                  )
+                                      (t) => t !== tier,
+                                    )
                                   : [
-                                    ...(editingLead.preferredTiers || []),
-                                    tier,
-                                  ],
+                                      ...(editingLead.preferredTiers || []),
+                                      tier,
+                                    ],
                               })
                             }
                           >
@@ -1007,7 +1069,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Max 2 digits before decimal & 2 after
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 2);
                         }
@@ -1019,7 +1082,8 @@ export default function PageActions(props: PageActionsProps) {
 
                         setEditingLead({
                           ...editingLead,
-                          tenthPercentage: value === "" ? undefined : Number(value),
+                          tenthPercentage:
+                            value === "" ? undefined : Number(value),
                         });
                       }}
                     />
@@ -1042,14 +1106,17 @@ export default function PageActions(props: PageActionsProps) {
                       onInput={(e) => {
                         const input = e.currentTarget;
                         // Allow only digits and limit to 4 characters
-                        input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                        input.value = input.value
+                          .replace(/\D/g, "")
+                          .slice(0, 4);
                       }}
                       onChange={(e) => {
                         const value = e.target.value;
 
                         setEditingLead({
                           ...editingLead,
-                          tenthYearOfPassing: value === "" ? undefined : Number(value),
+                          tenthYearOfPassing:
+                            value === "" ? undefined : Number(value),
                         });
                       }}
                     />
@@ -1082,7 +1149,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Limit to 2 digits before decimal and 2 digits after decimal
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 2) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 2);
                         }
@@ -1094,7 +1162,8 @@ export default function PageActions(props: PageActionsProps) {
 
                         setEditingLead({
                           ...editingLead,
-                          twelfthPercentage: value === "" ? undefined : Number(value),
+                          twelfthPercentage:
+                            value === "" ? undefined : Number(value),
                         });
                       }}
                     />
@@ -1118,14 +1187,17 @@ export default function PageActions(props: PageActionsProps) {
                         const input = e.currentTarget;
 
                         // Allow only digits and limit to 4 characters
-                        input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                        input.value = input.value
+                          .replace(/\D/g, "")
+                          .slice(0, 4);
                       }}
                       onChange={(e) => {
                         const value = e.target.value;
 
                         setEditingLead({
                           ...editingLead,
-                          twelfthYearOfPassing: value === "" ? undefined : Number(value),
+                          twelfthYearOfPassing:
+                            value === "" ? undefined : Number(value),
                         });
                       }}
                     />
@@ -1299,7 +1371,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Limit integer part to 3 digits and decimal part to 2 digits
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 3);
                         }
@@ -1310,7 +1383,10 @@ export default function PageActions(props: PageActionsProps) {
                         const value = e.target.value;
                         const num = Number(value);
 
-                        if (value === "" || (!isNaN(num) && num >= 0 && num <= 100)) {
+                        if (
+                          value === "" ||
+                          (!isNaN(num) && num >= 0 && num <= 100)
+                        ) {
                           setEditingLead({
                             ...editingLead,
                             bachelorsPercentage: value === "" ? undefined : num,
@@ -1338,7 +1414,9 @@ export default function PageActions(props: PageActionsProps) {
                         const input = e.currentTarget;
 
                         // Allow only digits and limit to 4 characters
-                        input.value = input.value.replace(/\D/g, "").slice(0, 4);
+                        input.value = input.value
+                          .replace(/\D/g, "")
+                          .slice(0, 4);
                       }}
                       onChange={(e) => {
                         const value = e.target.value;
@@ -1436,7 +1514,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Allow up to 3 digits before decimal and 2 after
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 3);
                         }
@@ -1448,7 +1527,8 @@ export default function PageActions(props: PageActionsProps) {
 
                         setEditingLead({
                           ...editingLead,
-                          listeningScore: value === "" ? undefined : Number(value),
+                          listeningScore:
+                            value === "" ? undefined : Number(value),
                         });
                       }}
                     />
@@ -1481,7 +1561,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Allow up to 3 digits before decimal and 2 after
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 3);
                         }
@@ -1490,11 +1571,12 @@ export default function PageActions(props: PageActionsProps) {
                       }}
                       onChange={(e) => {
                         const value = e.target.value;
-                      
+
                         setEditingLead({
                           ...editingLead,
-                          readingScore: value === "" ? undefined : Number(value),
-                        })
+                          readingScore:
+                            value === "" ? undefined : Number(value),
+                        });
                       }}
                     />
                   </div>
@@ -1526,7 +1608,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Allow up to 3 digits before decimal and 2 after
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 3);
                         }
@@ -1537,8 +1620,9 @@ export default function PageActions(props: PageActionsProps) {
                         const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          writingScore: value === "" ? undefined : Number(value),
-                        })
+                          writingScore:
+                            value === "" ? undefined : Number(value),
+                        });
                       }}
                     />
                   </div>
@@ -1570,7 +1654,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Allow up to 3 digits before decimal and 2 after
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 3);
                         }
@@ -1581,8 +1666,9 @@ export default function PageActions(props: PageActionsProps) {
                         const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          speakingScore: value === "" ? undefined : Number(value),
-                        })
+                          speakingScore:
+                            value === "" ? undefined : Number(value),
+                        });
                       }}
                     />
                   </div>
@@ -1617,7 +1703,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Allow up to 3 digits before decimal and 2 after
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 3);
                         }
@@ -1628,8 +1715,9 @@ export default function PageActions(props: PageActionsProps) {
                         const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          greGmatScore: value === "" ? undefined : Number(value),
-                        })
+                          greGmatScore:
+                            value === "" ? undefined : Number(value),
+                        });
                       }}
                     />
                   </div>
@@ -1661,7 +1749,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Allow up to 3 digits before decimal and 2 after
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 3);
                         }
@@ -1672,8 +1761,9 @@ export default function PageActions(props: PageActionsProps) {
                         const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          quantitativeScore: value === "" ? undefined : Number(value),
-                        })
+                          quantitativeScore:
+                            value === "" ? undefined : Number(value),
+                        });
                       }}
                     />
                   </div>
@@ -1705,7 +1795,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Allow up to 3 digits before decimal and 2 after
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 3);
                         }
@@ -1717,7 +1808,7 @@ export default function PageActions(props: PageActionsProps) {
                         setEditingLead({
                           ...editingLead,
                           verbalScore: value === "" ? undefined : Number(value),
-                        })
+                        });
                       }}
                     />
                   </div>
@@ -1749,7 +1840,8 @@ export default function PageActions(props: PageActionsProps) {
                         // Allow up to 3 digits before decimal and 2 after
                         if (value.includes(".")) {
                           const [intPart, decimalPart] = value.split(".");
-                          value = intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
+                          value =
+                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
                         } else {
                           value = value.slice(0, 3);
                         }
@@ -1760,8 +1852,9 @@ export default function PageActions(props: PageActionsProps) {
                         const value = e.target.value;
                         setEditingLead({
                           ...editingLead,
-                          analyticalWritingScore: value === "" ? undefined : Number(value),
-                        })
+                          analyticalWritingScore:
+                            value === "" ? undefined : Number(value),
+                        });
                       }}
                     />
                   </div>
@@ -1782,7 +1875,7 @@ export default function PageActions(props: PageActionsProps) {
                   <div className="grid gap-1.5 sm:col-span-2">
                     <Label>Work Experience</Label>
                     <Input
-                    placeholder="e.g. 2 years at XYZ company as a Software Engineer......."
+                      placeholder="e.g. 2 years at XYZ company as a Software Engineer......."
                       value={editingLead.workExperience || ""}
                       onChange={(e) =>
                         setEditingLead({
@@ -1792,51 +1885,25 @@ export default function PageActions(props: PageActionsProps) {
                       }
                     />
                   </div>
-                  {/* Next Followup Date */}
-                  <div className="grid gap-1.5 sm:col-span-2">
-                    <Label
-                      htmlFor="edit-followup"
-                      className="text-sm font-medium"
-                    >
-                      Next Followup Date
-                    </Label>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="followup-date">Next Follow-up Date</Label>
+
                     <Input
-                      id="edit-followup"
+                      id="followup-date"
                       type="date"
-                      className="bg-background"
-                      value={
-                        editingLead.nextFollowup
-                          ? editingLead.nextFollowup.split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) =>
-                        setEditingLead({
-                          ...editingLead,
-                          nextFollowup: e.target.value || null,
-                        })
-                      }
+                      value={followupDate}
+                      onChange={(event) => setFollowupDate(event.target.value)}
                     />
                   </div>
 
-                  {/* Management Remarks */}
                   <div className="grid gap-1.5 sm:col-span-2">
-                    <Label
-                      htmlFor="edit-remarks"
-                      className="text-sm font-medium"
-                    >
-                      Management Remarks
-                    </Label>
+                    <Label htmlFor="followup-note">Follow-up Note</Label>
+
                     <Input
-                      id="edit-remarks"
-                      className="bg-background"
-                      value={editingLead.remarks || ""}
-                      onChange={(e) =>
-                        setEditingLead({
-                          ...editingLead,
-                          remarks: e.target.value,
-                        })
-                      }
-                      placeholder="Add tracking updates..."
+                      id="followup-note"
+                      placeholder="Enter follow-up note..."
+                      value={followupNote}
+                      onChange={(event) => setFollowupNote(event.target.value)}
                     />
                   </div>
                 </div>
