@@ -72,6 +72,8 @@ export interface StudentRecord {
     progress: number;
   }[];
 
+  timelines?: StudentTimeline[];
+
   createdAt: string;
   updatedAt: string;
 }
@@ -284,4 +286,40 @@ export interface StudentModuleProgressRecord {
   createdAt: string;
 
   updatedAt: string;
+}
+
+export interface StudentTimeline {
+  id: string;
+  studentId: string;
+  type:
+    | "note"
+    | "followup"
+    | "call"
+    | "meeting"
+    | "status_change"
+    | "document"
+    | "application"
+    | "offer_letter"
+    | "loan"
+    | "visa"
+    | "payment"
+    | "info";
+
+  description: string;
+
+  followupDate?: string | null;
+
+  createdAt: string;
+
+  createdBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface CreateTimelinePayload {
+  type: StudentTimeline["type"];
+  description?: string;
+  followupDate?: string;
 }

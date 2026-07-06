@@ -737,7 +737,7 @@ enum TimelineType {
 
   payment
 
-  system
+  info
 }
 
 model StudentTimeline {
@@ -748,14 +748,9 @@ model StudentTimeline {
 
   type TimelineType
 
-  title String
-
   description String? @db.Text
 
   followupDate DateTime?
-
-  oldValue String?
-  newValue String?
 
   createdById String?
 
