@@ -200,7 +200,7 @@ export function UniversityFormDialog({
         id: course.id ?? getTemporaryId(),
         name: course.name ?? "",
         courseCode: course.courseCode ?? undefined,
-        degree: course.degree ?? "masters",
+        degree: course.degree ?? undefined,
 
         durationMonths: toOptionalNumber(course.durationMonths),
 
@@ -855,7 +855,6 @@ export function UniversityFormDialog({
                       courseArray.append({
                         id: getTemporaryId(),
                         name: "",
-                        degree: "masters",
                       })
                     }
                   >

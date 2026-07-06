@@ -173,7 +173,7 @@ export async function GET(req: NextRequest) {
 
             portal: true,
             applicationDate: true,
-
+            followUpDate: true,
             status: true,
             offerStatus: true,
 

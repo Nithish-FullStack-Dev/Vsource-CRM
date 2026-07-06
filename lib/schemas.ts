@@ -278,8 +278,8 @@ const DegreeTypeEnum = z.enum([
 ]);
 
 export const UniversityCourseCreateSchema = z.object({
-  name: z.string().min(1),
-  degree: DegreeTypeEnum,
+  name: z.string().trim().min(1, "Course name is required"),
+  degree: DegreeTypeEnum.optional(),
   durationMonths: optInt,
   annualTuitionFee: z.number().optional(),
   totalTuitionFee: z.number().optional(),

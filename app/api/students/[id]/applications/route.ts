@@ -96,6 +96,8 @@ export async function POST(
           ? new Date(body.applicationDate)
           : null,
 
+        followUpDate: body.followUpDate ? new Date(body.followUpDate) : null,
+
         status: body.status,
         offerStatus: body.offerStatus,
 

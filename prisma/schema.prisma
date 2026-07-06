@@ -537,6 +537,8 @@ model StudentApplication {
 
   applicationDate DateTime?
 
+  followUpDate DateTime?
+
   status ApplicationStatus @default(draft)
 
   offerStatus OfferStatus @default(not_received)

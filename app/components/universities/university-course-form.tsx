@@ -49,19 +49,58 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
   });
   const intakes = intakesData ?? [];
 
-  const { field: name } = useController({ control, name: `courses.${index}.name` });
-  const { field: courseCode } = useController({ control, name: `courses.${index}.courseCode` });
-  const { field: degree } = useController({ control, name: `courses.${index}.degree` });
-  const { field: durationMonths } = useController({ control, name: `courses.${index}.durationMonths` });
-  const { field: annualFee } = useController({ control, name: `courses.${index}.annualTuitionFee` });
-  const { field: totalFee } = useController({ control, name: `courses.${index}.totalTuitionFee` });
-  const { field: currency } = useController({ control, name: `courses.${index}.currency` });
-  const { field: intakeId } = useController({ control, name: `courses.${index}.intakeId` });
-  const { field: minimumPercentage } = useController({ control, name: `courses.${index}.minimumPercentage` });
-  const { field: backlogLimit } = useController({ control, name: `courses.${index}.backlogLimit` });
-  const { field: ieltsOverall } = useController({ control, name: `courses.${index}.ieltsOverall` });
-  const { field: applicationDeadline } = useController({ control, name: `courses.${index}.applicationDeadline` });
-  const { field: description } = useController({ control, name: `courses.${index}.description` });
+  const { field: name } = useController({
+    control,
+    name: `courses.${index}.name`,
+  });
+  const { field: courseCode } = useController({
+    control,
+    name: `courses.${index}.courseCode`,
+  });
+  const { field: degree } = useController({
+    control,
+    name: `courses.${index}.degree`,
+  });
+  const { field: durationMonths } = useController({
+    control,
+    name: `courses.${index}.durationMonths`,
+  });
+  const { field: annualFee } = useController({
+    control,
+    name: `courses.${index}.annualTuitionFee`,
+  });
+  const { field: totalFee } = useController({
+    control,
+    name: `courses.${index}.totalTuitionFee`,
+  });
+  const { field: currency } = useController({
+    control,
+    name: `courses.${index}.currency`,
+  });
+  const { field: intakeId } = useController({
+    control,
+    name: `courses.${index}.intakeId`,
+  });
+  const { field: minimumPercentage } = useController({
+    control,
+    name: `courses.${index}.minimumPercentage`,
+  });
+  const { field: backlogLimit } = useController({
+    control,
+    name: `courses.${index}.backlogLimit`,
+  });
+  const { field: ieltsOverall } = useController({
+    control,
+    name: `courses.${index}.ieltsOverall`,
+  });
+  const { field: applicationDeadline } = useController({
+    control,
+    name: `courses.${index}.applicationDeadline`,
+  });
+  const { field: description } = useController({
+    control,
+    name: `courses.${index}.description`,
+  });
 
   return (
     <Card className="rounded-2xl border">
@@ -72,7 +111,12 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
             <h4 className="font-semibold">Course #{index + 1}</h4>
             <p className="text-sm text-muted-foreground">Course information</p>
           </div>
-          <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            onClick={() => remove(index)}
+          >
             <Trash2 className="size-4" />
           </Button>
         </div>
@@ -102,14 +146,21 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
         {/* Degree + Duration */}
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label>
-              Degree <span className="text-destructive">*</span>
-            </Label>
-            <Select value={degree.value} onValueChange={degree.onChange}>
+            <Label>Degree</Label>
+
+            <Select
+              value={degree.value ?? "none"}
+              onValueChange={(value) =>
+                degree.onChange(value === "none" ? undefined : value)
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select degree" />
               </SelectTrigger>
+
               <SelectContent>
+                <SelectItem value="none">— None —</SelectItem>
+
                 {DEGREE_OPTIONS.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
                     {item.label}
@@ -125,7 +176,9 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
               min={0}
               value={durationMonths.value ?? ""}
               onChange={(e) =>
-                durationMonths.onChange(e.target.value === "" ? "" : Number(e.target.value))
+                durationMonths.onChange(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
               }
               placeholder="24"
             />
@@ -141,7 +194,9 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
               min={0}
               value={annualFee.value ?? ""}
               onChange={(e) =>
-                annualFee.onChange(e.target.value === "" ? "" : Number(e.target.value))
+                annualFee.onChange(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
               }
               placeholder="0"
             />
@@ -153,7 +208,9 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
               min={0}
               value={totalFee.value ?? ""}
               onChange={(e) =>
-                totalFee.onChange(e.target.value === "" ? "" : Number(e.target.value))
+                totalFee.onChange(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
               }
               placeholder="0"
             />
@@ -174,7 +231,9 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
             <Label>Intake</Label>
             <Select
               value={intakeId.value ?? "none"}
-              onValueChange={(val) => intakeId.onChange(val === "none" ? "" : val)}
+              onValueChange={(val) =>
+                intakeId.onChange(val === "none" ? "" : val)
+              }
               disabled={intakesLoading}
             >
               <SelectTrigger>
@@ -217,7 +276,9 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
               max={100}
               value={minimumPercentage.value ?? ""}
               onChange={(e) =>
-                minimumPercentage.onChange(e.target.value === "" ? "" : Number(e.target.value))
+                minimumPercentage.onChange(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
               }
               placeholder="60"
             />
@@ -229,7 +290,9 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
               min={0}
               value={backlogLimit.value ?? ""}
               onChange={(e) =>
-                backlogLimit.onChange(e.target.value === "" ? "" : Number(e.target.value))
+                backlogLimit.onChange(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
               }
               placeholder="0"
             />
@@ -243,7 +306,9 @@ function UniversityCourseFormComponent({ index, control, remove }: Props) {
               max={9}
               value={ieltsOverall.value ?? ""}
               onChange={(e) =>
-                ieltsOverall.onChange(e.target.value === "" ? "" : Number(e.target.value))
+                ieltsOverall.onChange(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
               }
               placeholder="6.5"
             />

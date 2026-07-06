@@ -16,18 +16,17 @@ const emptyToUndefinedString = z.preprocess(
 export const courseSchema = z.object({
   id: z.string(),
 
-  name: z.string().min(1, "Course name is required"),
+  name: z.string().trim().min(1, "Course name is required"),
 
   courseCode: emptyToUndefinedString,
 
-  degree: z.enum([
-    "diploma",
-    "bachelors",
-    "masters",
-    "phd",
-    "mba",
-    "certificate",
-  ]),
+  degree: z.preprocess(
+    (val) =>
+      val === "" || val === null || val === undefined ? undefined : val,
+    z
+      .enum(["diploma", "bachelors", "masters", "phd", "mba", "certificate"])
+      .optional(),
+  ),
 
   durationMonths: emptyToUndefinedNumber,
 
@@ -37,7 +36,6 @@ export const courseSchema = z.object({
 
   currency: emptyToUndefinedString,
 
-  // Stored as intakeId (FK) — maps to Intake.id in the DB
   intakeId: emptyToUndefinedString,
 
   minimumPercentage: emptyToUndefinedNumber,

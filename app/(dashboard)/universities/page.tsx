@@ -223,43 +223,6 @@ export default function UniversitiesPage() {
         />
       )}
 
-      {/* Stats Summary Cards */}
-      {/* <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-        <div className="rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md">
-          <p className="text-sm font-medium text-muted-foreground">
-            Total Universities
-          </p>
-          <h3 className="mt-2 text-3xl font-bold tracking-tight">
-            {totalCount}
-          </h3>
-        </div>
-
-        <div className="rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md">
-          <p className="text-sm font-medium text-muted-foreground">Active</p>
-          <h3 className="mt-2 text-3xl font-bold tracking-tight text-emerald-600">
-            {activeCount ?? 0}
-          </h3>
-        </div>
-
-        <div className="rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md">
-          <p className="text-sm font-medium text-muted-foreground">
-            Global Countries
-          </p>
-          <h3 className="mt-2 text-3xl font-bold tracking-tight text-blue-600">
-            {countries.length}
-          </h3>
-        </div>
-
-        <div className="rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md">
-          <p className="text-sm font-medium text-muted-foreground">
-            Shortlisted
-          </p>
-          <h3 className="mt-2 text-3xl font-bold tracking-tight text-rose-500">
-            {shortlistedIds.length}
-          </h3>
-        </div>
-      </div> */}
-
       {/* Filter Toolbar Section */}
       <div className="mb-6 flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm md:flex-row md:items-center">
         <div className="relative flex-1">
