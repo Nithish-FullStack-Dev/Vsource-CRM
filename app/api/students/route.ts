@@ -3,7 +3,13 @@
 import { NextRequest } from "next/server";
 
 import db from "@/lib/prisma";
-import { ok, handleError } from "@/lib/api-helpers";
+import {
+  ok,
+  handleError,
+  PaginationMeta,
+  buildMeta,
+  parsePagination,
+} from "@/lib/api-helpers";
 import { Prisma } from "@/generated/prisma/client";
 import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
@@ -18,6 +24,7 @@ export async function GET(req: NextRequest) {
     );
 
     const { searchParams } = new URL(req.url);
+    const { skip, take, page, limit } = parsePagination(searchParams);
 
     const search = searchParams.get("search");
     const branchId = searchParams.get("branchId");
@@ -117,154 +124,164 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const students = await db.student.findMany({
-      where,
+    const [students, total] = await db.$transaction([
+      db.student.findMany({
+        where,
+        skip,
+        take,
 
-      include: {
-        lead: {
-          select: {
-            passport: true,
-            preferredCountry: true,
-            preferredIntake: true,
-            preferredCourse: true,
-            preferredTiers: true,
-            bachelorsCourse: true,
-            twelfthPercentage: true,
-            twelfthYearOfPassing: true,
-          },
-        },
-
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-
-        counselor: {
-          select: {
-            id: true,
-            name: true,
-            role: {
-              select: {
-                id: true,
-                name: true,
-              },
+        include: {
+          lead: {
+            select: {
+              passport: true,
+              preferredCountry: true,
+              preferredIntake: true,
+              preferredCourse: true,
+              preferredTiers: true,
+              bachelorsCourse: true,
+              twelfthPercentage: true,
+              twelfthYearOfPassing: true,
             },
           },
-        },
 
-        applications: {
-          select: {
-            id: true,
-
-            countryId: true,
-            countryName: true,
-
-            universityId: true,
-            universityName: true,
-
-            courseId: true,
-            courseName: true,
-
-            intakeId: true,
-            intakeName: true,
-
-            portal: true,
-            applicationDate: true,
-            followUpDate: true,
-            status: true,
-            offerStatus: true,
-
-            country: {
-              select: {
-                id: true,
-                name: true,
-              },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
             },
+          },
 
-            university: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-
-            course: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-
-            intake: {
-              select: {
-                id: true,
-                name: true,
+          counselor: {
+            select: {
+              id: true,
+              name: true,
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                },
               },
             },
           },
 
-          orderBy: {
-            createdAt: "desc",
+          applications: {
+            select: {
+              id: true,
+
+              countryId: true,
+              countryName: true,
+
+              universityId: true,
+              universityName: true,
+
+              courseId: true,
+              courseName: true,
+
+              intakeId: true,
+              intakeName: true,
+
+              portal: true,
+              applicationDate: true,
+              followUpDate: true,
+              status: true,
+              offerStatus: true,
+
+              country: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+
+              university: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+
+              course: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+
+              intake: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+
+            orderBy: {
+              createdAt: "desc",
+            },
           },
-        },
 
-        visaProfile: true,
+          timeline: true,
 
-        loanProfile: {
-          include: {
-            fintechAssignee: {
-              select: {
-                id: true,
-                name: true,
+          visaProfile: true,
+
+          loanProfile: {
+            include: {
+              fintechAssignee: {
+                select: {
+                  id: true,
+                  name: true,
+                },
               },
             },
           },
-        },
-        moduleProgress: true,
+          moduleProgress: true,
 
-        documents: {
-          select: {
-            id: true,
+          documents: {
+            select: {
+              id: true,
 
-            studentId: true,
+              studentId: true,
 
-            documentCode: true,
-            documentType: true,
+              documentCode: true,
+              documentType: true,
 
-            originalFileName: true,
-            storedFileName: true,
+              originalFileName: true,
+              storedFileName: true,
 
-            fileUrl: true,
+              fileUrl: true,
 
-            mimeType: true,
-            fileSize: true,
+              mimeType: true,
+              fileSize: true,
 
-            remarks: true,
+              remarks: true,
 
-            uploadedAt: true,
-            createdAt: true,
-            updatedAt: true,
+              uploadedAt: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+
+            orderBy: {
+              uploadedAt: "desc",
+            },
           },
 
-          orderBy: {
-            uploadedAt: "desc",
+          remarks: {
+            orderBy: {
+              createdAt: "desc",
+            },
           },
         },
 
-        remarks: {
-          orderBy: {
-            createdAt: "desc",
-          },
+        orderBy: {
+          createdAt: "desc",
         },
-      },
+      }),
 
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+      db.student.count({
+        where,
+      }),
+    ]);
 
     const studentsWithPassword = students.map((student) => {
       let password = student.password;
@@ -283,7 +300,11 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return ok(studentsWithPassword, "Students fetched successfully");
+    return ok(
+      studentsWithPassword,
+      "Students fetched successfully",
+      buildMeta(total, page, limit),
+    );
   } catch (err) {
     return handleError(err);
   }

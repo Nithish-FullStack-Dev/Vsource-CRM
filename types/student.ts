@@ -92,7 +92,7 @@ export interface StudentRecord {
 
   moduleProgress?: StudentModuleProgressRecord[];
 
-  timelines?: StudentTimeline[];
+  timeline?: StudentTimeline[];
 
   createdAt: string;
 
@@ -330,7 +330,7 @@ export interface StudentTimeline {
     | "loan"
     | "visa"
     | "payment"
-    | "system";
+    | "info";
 
   title?: string;
 
