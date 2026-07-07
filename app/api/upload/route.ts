@@ -1,64 +1,117 @@
-/**
- * app/api/upload/route.ts
- * POST /api/upload — Upload a file (image) and return its public URL
- */
-
+// app\api\upload\route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
+import { readFile, stat } from "fs/promises";
 import path from "path";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
+type RouteContext = {
+  params: Promise<{
+    path: string[];
+  }>;
+};
+
+const CONTENT_TYPES: Record<string, string> = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".pdf": "application/pdf",
+};
+
+export async function GET(_req: NextRequest, { params }: RouteContext) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
+    const { path: pathSegments } = await params;
 
-    if (!file) {
+    if (!pathSegments?.length) {
       return NextResponse.json(
-        { success: false, message: "No file provided" },
-        { status: 400 }
+        {
+          success: false,
+          message: "File path is required",
+        },
+        {
+          status: 400,
+        },
       );
     }
 
-    // Validate file type
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
-    if (!allowedTypes.includes(file.type)) {
+    const uploadsDirectory = path.resolve(process.cwd(), "public", "uploads");
+
+    const requestedFile = path.resolve(uploadsDirectory, ...pathSegments);
+
+    // Prevent directory traversal attacks
+    if (
+      requestedFile !== uploadsDirectory &&
+      !requestedFile.startsWith(`${uploadsDirectory}${path.sep}`)
+    ) {
       return NextResponse.json(
-        { success: false, message: "Invalid file type. Only images are allowed." },
-        { status: 400 }
+        {
+          success: false,
+          message: "Invalid file path",
+        },
+        {
+          status: 403,
+        },
       );
     }
 
-    // Validate file size (max 5MB)
-    const maxSizeBytes = 5 * 1024 * 1024;
-    if (file.size > maxSizeBytes) {
+    const fileStats = await stat(requestedFile);
+
+    if (!fileStats.isFile()) {
       return NextResponse.json(
-        { success: false, message: "File too large. Maximum size is 5MB." },
-        { status: 400 }
+        {
+          success: false,
+          message: "File not found",
+        },
+        {
+          status: 404,
+        },
       );
     }
 
-    // Build a safe filename using timestamp + original extension
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const safeExt = allowedTypes.includes(`image/${ext}`) ? ext : "jpg";
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExt}`;
+    const fileBuffer = await readFile(requestedFile);
 
-    // Ensure upload directory exists
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
+    const extension = path.extname(requestedFile).toLowerCase();
 
-    // Write the file
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(uploadDir, filename), buffer);
+    const contentType = CONTENT_TYPES[extension] ?? "application/octet-stream";
 
-    const url = `/uploads/${filename}`;
-    return NextResponse.json({ success: true, url, message: "File uploaded successfully" });
-  } catch (err) {
-    console.error("[upload]", err);
+    return new NextResponse(fileBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": String(fileBuffer.length),
+        "Cache-Control": "public, max-age=86400",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code === "ENOENT" || nodeError.code === "ENOTDIR") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "File not found",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
+
+    console.error("[UPLOAD_FILE_GET_ERROR]", error);
+
     return NextResponse.json(
-      { success: false, message: "Upload failed. Please try again." },
-      { status: 500 }
+      {
+        success: false,
+        message: "Failed to load file",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }
