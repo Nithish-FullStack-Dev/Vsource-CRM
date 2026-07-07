@@ -1,7 +1,44 @@
-// types\student.ts
+// types/student.ts
+
 import { User } from "@/users/types/user";
 import { Lead, Role } from ".";
 
+export type StudentModuleType =
+  | "basic_information"
+  | "documents"
+  | "university_applications"
+  | "visa_process"
+  | "loan_process";
+
+export type StudentModuleStatus =
+  | "not_started"
+  | "started"
+  | "in_progress"
+  | "need_corrections"
+  | "completed"
+  | "rejected";
+
+export interface StudentModuleProgressRecord {
+  id: string;
+  studentId: string;
+  module: StudentModuleType;
+  status: StudentModuleStatus;
+  progress: number;
+  createdAt: string;
+  updatedAt: string;
+}
+export type StudentStage =
+  | "application_started"
+  | "application_submitted"
+  | "offer_received"
+  | "deposit_pending"
+  | "deposit_paid"
+  | "cas_pending"
+  | "cas_received"
+  | "visa_filing"
+  | "visa_approved"
+  | "visa_rejected"
+  | "enrolled";
 export interface StudentRecord {
   id: string;
 
@@ -19,15 +56,15 @@ export interface StudentRecord {
 
   applicationDate?: string | Date;
 
-  currentStage?: string;
+  currentStage?: StudentStage | null;
 
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "drop";
 
   moi?: string;
 
   undergraduate?: "pursuing" | "graduate";
 
-  counselorId: string;
+  counselorId?: string;
 
   branch?: {
     id: string;
@@ -43,9 +80,9 @@ export interface StudentRecord {
 
   applications: Applications[];
 
-  visaProfile?: StudentVisaProfile;
+  visaProfile?: StudentVisaProfile | null;
 
-  loanProfile?: StudentLoanProfile;
+  loanProfile?: StudentLoanProfile | null;
 
   remarks?: Remarks[];
 
@@ -53,28 +90,12 @@ export interface StudentRecord {
 
   lead?: Lead;
 
-  moduleProgress?: {
-    id: string;
-    module:
-      | "basic_information"
-      | "documents"
-      | "university_applications"
-      | "visa_process";
-
-    status:
-      | "pending"
-      | "started"
-      | "in_progress"
-      | "need_corrections"
-      | "completed"
-      | "rejected";
-
-    progress: number;
-  }[];
+  moduleProgress?: StudentModuleProgressRecord[];
 
   timelines?: StudentTimeline[];
 
   createdAt: string;
+
   updatedAt: string;
 }
 
@@ -84,9 +105,11 @@ export interface Applications {
   portal?: string;
 
   universityId: string;
+
   courseId: string;
 
   countryId?: string;
+
   intakeId?: string;
 
   university?: {
@@ -107,33 +130,49 @@ export interface Applications {
 
   followUpDate?: string | Date;
 }
-
 export interface Remarks {
   id: string;
+
   note: string;
+
   createdAt: string | Date;
+
   createdBy: User;
 }
 
 export type StudentDocumentRecord = {
   id: string;
+
   studentId: string;
+
   documentCode: string;
+
   documentType: string;
+
   originalFileName: string;
+
   storedFileName: string;
+
   fileUrl: string;
+
   mimeType: string;
+
   fileSize: number;
+
   remarks?: string | null;
+
   uploadedAt: string;
+
   createdAt: string;
+
   updatedAt: string;
 };
 
 export type StudentDocumentChecklistItem = {
   code: string;
+
   name: string;
+
   category:
     | "PERSONAL"
     | "ACADEMIC"
@@ -144,31 +183,44 @@ export type StudentDocumentChecklistItem = {
     | "LOAN_PARENT"
     | "LOAN_COLLATERAL"
     | "VISA";
+
   module: "ADMISSION" | "LOAN" | "VISA";
+
   requiredCount: number;
+
   allowMultiple: boolean;
+
   isMandatory: boolean;
+
   uploadedCount: number;
+
   isComplete: boolean;
+
   documents: StudentDocumentRecord[];
 };
 
 export type StudentDocumentSummary = {
   totalChecklistItems: number;
+
   completedChecklistItems: number;
+
   pendingChecklistItems: number;
+
   totalRequiredUploads: number;
+
   completedRequiredUploads: number;
+
   percentage: number;
 };
 
 export type StudentDocumentsResponse = {
   checklist: StudentDocumentChecklistItem[];
+
   summary: StudentDocumentSummary;
+
   hasUploadedDocuments: boolean;
 };
 
-//! Visa
 export type StudentVisaProfile = {
   id?: string;
 
@@ -212,7 +264,6 @@ export type StudentVisaProfilePayload = {
 
   universityStartDate: string | null;
 };
-
 export type StudentLoanProfile = {
   id?: string;
 
@@ -262,35 +313,11 @@ export type StudentLoanProfilePayload = {
   disbursedAmount: number | null;
 };
 
-export interface StudentModuleProgressRecord {
-  id: string;
-
-  studentId: string;
-
-  module:
-    | "basic_information"
-    | "documents"
-    | "university_applications"
-    | "visa_process";
-
-  status:
-    | "pending"
-    | "started"
-    | "in_progress"
-    | "need_corrections"
-    | "completed"
-    | "rejected";
-
-  progress: number;
-
-  createdAt: string;
-
-  updatedAt: string;
-}
-
 export interface StudentTimeline {
   id: string;
+
   studentId: string;
+
   type:
     | "note"
     | "followup"
@@ -303,11 +330,17 @@ export interface StudentTimeline {
     | "loan"
     | "visa"
     | "payment"
-    | "info";
+    | "system";
 
-  description: string;
+  title?: string;
+
+  description?: string | null;
 
   followupDate?: string | null;
+
+  oldValue?: string | null;
+
+  newValue?: string | null;
 
   createdAt: string;
 
@@ -315,11 +348,15 @@ export interface StudentTimeline {
     id: string;
     name: string;
     email: string;
-  };
+  } | null;
 }
 
 export interface CreateTimelinePayload {
   type: StudentTimeline["type"];
+
+  title?: string;
+
   description?: string;
+
   followupDate?: string;
 }

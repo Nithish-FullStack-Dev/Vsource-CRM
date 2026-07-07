@@ -1,3 +1,4 @@
+// app\api\students\[id]\status\route.ts
 import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";

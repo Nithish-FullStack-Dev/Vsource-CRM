@@ -1,501 +1,756 @@
-// app\(dashboard)\master-tracker\page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, {
+  DragEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { ArrowRight, GripVertical, Loader2, LockKeyhole } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
-  GripVertical,
-  ArrowRight,
-  UserCheck,
-  Inbox,
-  AlertCircle,
-  FileText,
-  CheckCircle2,
-} from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
-import { useMasterTracker } from "@/hooks/application-tracker/useMasterTracker";
-import type { StudentRecord } from "@/types/student";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+
 import TrackerFilter from "./TrackerFilter";
+import { useMasterTracker } from "@/hooks/application-tracker/useMasterTracker";
 
-const KANBAN_COLUMNS = [
-  {
-    id: "Inquiry",
-    label: "Inquiry",
-    headerStyle:
-      "border-sky-200 dark:border-sky-900/50 text-sky-800 dark:text-sky-300 bg-sky-50/60 dark:bg-sky-950/15",
-    badgeStyle: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
-  },
-  {
-    id: "Documents",
-    label: "Documents",
-    headerStyle:
-      "border-gray-300 dark:border-gray-900/50 text-gray-805 dark:text-gray-300 bg-gray-100/50 dark:bg-gray-950/15",
-    badgeStyle:
-      "bg-gray-100/90 text-gray-950 border border-gray-200 dark:bg-gray-950 dark:text-gray-300",
-  },
-  {
-    id: "Applied",
-    label: "Uni Applied",
-    headerStyle:
-      "border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-300 bg-rose-50/60 dark:bg-rose-950/15",
-    badgeStyle: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
-  },
-  {
-    id: "Visa Process",
-    label: "Visa Process",
-    headerStyle:
-      "border-purple-200 dark:border-purple-900/50 text-purple-800 dark:text-purple-300 bg-purple-50/60 dark:bg-purple-950/15",
-    badgeStyle:
-      "bg-purple-100 text-purple-800 dark:bg-purple-955 dark:text-purple-300",
-  },
-] as const;
+import type {
+  StudentModuleStatus,
+  StudentModuleType,
+  StudentRecord,
+} from "@/types/student";
 
+type KanbanStage =
+  | "Inquiry"
+  | "Documents"
+  | "Applied"
+  | "Visa Process"
+  | "Loan Process";
+
+type CardColor = "red" | "green" | "yellow" | "white";
+
+type TrackerStudent = StudentRecord & {
+  recordType: "student";
+};
+
+type DraggedStudent = {
+  studentId: string;
+  fromStage: KanbanStage;
+};
+type PendingStageMove = {
+  studentId: string;
+  studentName: string;
+  fromStage: KanbanStage;
+  toStage: KanbanStage;
+};
 type InfoRowProps = {
   label: string;
   value: React.ReactNode;
 };
 
+const KANBAN_COLUMNS: {
+  id: KanbanStage;
+  label: string;
+  badgeStyle: string;
+}[] = [
+  {
+    id: "Inquiry",
+    label: "Inquiry",
+    badgeStyle: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
+  },
+  {
+    id: "Documents",
+    label: "Documents",
+    badgeStyle:
+      "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-300",
+  },
+  {
+    id: "Applied",
+    label: "Uni Applied",
+    badgeStyle: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+  },
+  {
+    id: "Loan Process",
+    label: "Loan Process",
+    badgeStyle: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+  },
+  {
+    id: "Visa Process",
+    label: "Visa Process",
+    badgeStyle:
+      "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
+  },
+];
+
+const STAGE_ORDER: KanbanStage[] = [
+  "Inquiry",
+  "Documents",
+  "Applied",
+  "Loan Process",
+  "Visa Process",
+];
+
+const STAGE_MODULE_MAP: Record<KanbanStage, StudentModuleType> = {
+  Inquiry: "basic_information",
+  Documents: "documents",
+  Applied: "university_applications",
+  "Visa Process": "visa_process",
+  "Loan Process": "loan_process",
+};
+
+const INITIAL_FILTERS = {
+  search: "",
+  dateRange: "all",
+  branchId: "",
+  counselorId: "",
+  country: "",
+  intake: "",
+  stage: "",
+  moduleStatus: "",
+  recordType: "",
+};
+
 function InfoRow({ label, value }: InfoRowProps) {
   return (
-    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs">
-      <span className="font-medium text-slate-500">{label}</span>
-      <span className="font-bold text-slate-900">{value}</span>
+    <div className="flex h-9 items-center justify-between gap-2 rounded-xl bg-white/60 px-3 text-xs dark:bg-slate-950/40">
+      <span className="shrink-0 font-medium text-slate-500 dark:text-white">
+        {label}
+      </span>
+
+      <span className="min-w-0 truncate text-right font-bold">{value}</span>
     </div>
   );
 }
 
 export default function ApplicationsTrackerPage() {
-  const { data, isLoading } = useMasterTracker();
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useMasterTracker();
+
   const students: StudentRecord[] = data?.students ?? [];
-  const isDarkMode = false;
-  const [filters, setFilters] = useState({
-    search: "",
-    dateRange: "all",
-    branchId: "",
-    counselorId: "",
-    country: "",
-    intake: "",
-    stage: "",
-    moduleStatus: "",
-    recordType: "",
-  });
 
-  const onSelectStudent = (id: string) => {
-    router.push(`/student-profiles/${id}`);
-  };
+  const dragRef = useRef<DraggedStudent | null>(null);
 
-  // State for interactive popups in simple English
-  const [moveConfirm, setMoveConfirm] = useState<{
-    studentId: string;
-    studentName: string;
-    fromStage: string;
-    toStage: string;
-  } | null>(null);
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
 
-  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [draggedStudent, setDraggedStudent] = useState<DraggedStudent | null>(
+    null,
+  );
 
-  // Maps student current stage text to the correct Kanban Column ID
-  const getModuleStatus = (
-    student: StudentRecord,
-    module:
-      | "basic_information"
-      | "documents"
-      | "university_applications"
-      | "visa_process",
-  ) => {
-    return (
-      student.moduleProgress?.find((item) => item.module === module)?.status ??
-      "pending"
-    );
-  };
+  const [dragOverStage, setDragOverStage] = useState<KanbanStage | null>(null);
 
-  const getCurrentModuleStatus = (student: StudentRecord) => {
-    const basic = getModuleStatus(student, "basic_information");
-    if (basic !== "completed") return basic;
+  const [movingStudentId, setMovingStudentId] = useState<string | null>(null);
+  const [pendingStageMove, setPendingStageMove] =
+    useState<PendingStageMove | null>(null);
+  const getModuleProgress = useCallback(
+    (student: StudentRecord, module: StudentModuleType) => {
+      return student.moduleProgress?.find((item) => item.module === module);
+    },
+    [],
+  );
 
-    const docs = getModuleStatus(student, "documents");
-    if (docs !== "completed") return docs;
+  const getModuleStatus = useCallback(
+    (
+      student: StudentRecord,
+      module: StudentModuleType,
+    ): StudentModuleStatus => {
+      return getModuleProgress(student, module)?.status ?? "not_started";
+    },
+    [getModuleProgress],
+  );
 
-    const apps = getModuleStatus(student, "university_applications");
-    if (apps !== "completed") return apps;
+  const mapStageToKanban = useCallback(
+    (student: StudentRecord): KanbanStage => {
+      switch (student.currentStage) {
+        case "application_started":
+          return "Inquiry";
 
-    return getModuleStatus(student, "visa_process");
-  };
+        case "application_submitted":
+          return "Documents";
 
-  const mapStageToKanban = (item: any): string => {
-    if (item.recordType === "lead") {
-      return "Inquiry";
-    }
+        case "offer_received":
+          return "Applied";
 
-    const basicInfo = getModuleStatus(item, "basic_information");
-    const documents = getModuleStatus(item, "documents");
-    const applications = getModuleStatus(item, "university_applications");
-    const visa = getModuleStatus(item, "visa_process");
+        case "deposit_pending":
+        case "deposit_paid":
+        case "cas_pending":
+        case "cas_received":
+        case "visa_filing":
+        case "visa_approved":
+        case "visa_rejected":
+          return "Visa Process";
 
-    if (basicInfo !== "completed") {
-      return "Inquiry";
-    }
+        case "enrolled":
+          return "Loan Process";
 
-    if (documents !== "completed") {
-      return "Documents";
-    }
-
-    if (applications !== "completed") {
-      return "Applied";
-    }
-
-    if (visa !== "completed") {
-      return "Visa Process";
-    }
-
-    return "Visa Process";
-  };
-
-  // Convert column key back to standard Stage Value
-  const mapKanbanToStageValue = (kanbanStage: string): string => {
-    switch (kanbanStage) {
-      case "Inquiry":
-        return "Lead Created";
-      case "Documents":
-        return "Documents";
-      case "Applied":
-        return "Application Submitted";
-      case "Visa Process":
-        return "Visa Applied";
-      default:
-        return "Lead Created";
-    }
-  };
-
-  // Colors as specified: yellow, white, green, last option red
-  const getStudentColorThemeKey = (
-    item: any,
-  ): "red" | "green" | "yellow" | "white" => {
-    if (item.recordType === "lead") {
-      switch (item.status) {
-        case "converted":
-          return "green";
-        case "qualified":
-        case "contacted":
-          return "yellow";
-        case "lost":
-          return "red";
         default:
-          return "white";
+          return "Inquiry";
       }
-    }
+    },
+    [],
+  );
 
-    const stage = mapStageToKanban(item);
-    let currentStatus = "pending";
+  const getCurrentModuleStatus = useCallback(
+    (student: StudentRecord): StudentModuleStatus => {
+      const stage = mapStageToKanban(student);
+      return getModuleStatus(student, STAGE_MODULE_MAP[stage]);
+    },
+    [getModuleStatus, mapStageToKanban],
+  );
 
-    switch (stage) {
-      case "Inquiry":
-        currentStatus = getModuleStatus(item, "basic_information");
-        break;
-      case "Documents":
-        currentStatus = getModuleStatus(item, "documents");
-        break;
-      case "Applied":
-        currentStatus = getModuleStatus(item, "university_applications");
-        break;
-      case "Visa Process":
-        currentStatus = getModuleStatus(item, "visa_process");
-        break;
-    }
+  const canDragStudent = useCallback(
+    (student: StudentRecord): boolean => {
+      const currentStage = mapStageToKanban(student);
+      if (currentStage === "Visa Process") {
+        return false;
+      }
 
-    switch (currentStatus) {
-      case "completed":
-        return "green";
-      case "rejected":
-        return "red";
-      case "started":
-      case "in_progress":
-      case "need_corrections":
-        return "yellow";
-      case "pending":
-      default:
-        return "white";
-    }
-  };
-
-  // Beautiful styling colors featuring proper vibrant, cheerful yellow!
-  const getColorClasses = (
-    colorTheme: "red" | "green" | "yellow" | "white",
-  ) => {
-    switch (colorTheme) {
-      case "red":
-        return isDarkMode
-          ? "bg-rose-950/20 border-rose-800 text-slate-100 hover:bg-rose-955/30 hover:border-rose-700 shadow-rose-950/5"
-          : "bg-rose-50 border-rose-200 text-rose-950 hover:bg-rose-100/40 hover:border-rose-300 shadow-rose-200/10";
-      case "green":
-        return isDarkMode
-          ? "bg-emerald-950/25 border-emerald-800 text-slate-100 hover:bg-emerald-950/35 hover:border-emerald-700 shadow-emerald-950/5"
-          : "bg-emerald-50 border-emerald-200 text-emerald-950 hover:bg-emerald-100/40 hover:border-emerald-300 shadow-emerald-200/10";
-      case "yellow":
-        // PROPER vibrant, warm cheerful yellow as requested!
-        return isDarkMode
-          ? "bg-yellow-950/40 border-yellow-600/80 text-yellow-100 hover:bg-yellow-900/50 hover:border-yellow-500 shadow-yellow-950/10"
-          : "bg-amber-100/90 border-amber-300 text-amber-950 font-medium hover:bg-amber-200/80 hover:border-amber-400 shadow-amber-200/20";
-      case "white":
-      default:
-        return isDarkMode
-          ? "bg-slate-900 border-slate-800 text-slate-100 hover:bg-slate-850 hover:border-slate-700 shadow-slate-950/5"
-          : "bg-white border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300 shadow-slate-100/30";
-    }
-  };
-
-  const getProgressPercent = (kanbanStage: string): number => {
-    switch (kanbanStage) {
-      case "Inquiry":
-        return 16;
-      case "Documents":
-        return 33;
-      case "Applied":
-        return 50;
-      case "Offer Received":
-        return 66;
-      case "Visa Process":
-        return 83;
-      case "Enrolled":
-        return 100;
-      default:
-        return 16;
-    }
-  };
-
-  // Drag handles and verification
-
-  const confirmMove = async () => {
-    if (!moveConfirm) return;
-
-    const { studentId, toStage } = moveConfirm;
-    const nextStageValue = mapKanbanToStageValue(toStage);
-
-    try {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/students/${studentId}/stage`,
-        {
-          method: "PATCH",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            currentStage: nextStageValue,
-          }),
-        },
+      const progress = getModuleProgress(
+        student,
+        STAGE_MODULE_MAP[currentStage],
       );
-      window.location.reload();
-    } catch (error) {
-      console.error(error);
-    }
-    setMoveConfirm(null);
-  };
 
-  const trackerData = students.map((student) => ({
-    ...student,
-    recordType: "student",
-  }));
+      return progress?.status === "completed" && progress.progress === 100;
+    },
+    [getModuleProgress, mapStageToKanban],
+  );
 
-  const filteredTrackerData = trackerData.filter((item: any) => {
-    const search = filters.search.toLowerCase();
-    const matchesSearch =
-      !search ||
-      item.studentName?.toLowerCase().includes(search) ||
-      item.mobileNumber?.toLowerCase().includes(search) ||
-      item.emailId?.toLowerCase().includes(search);
-
-    const matchesRecordType =
-      !filters.recordType || item.recordType === filters.recordType;
-
-    const matchesStage =
-      !filters.stage || mapStageToKanban(item) === filters.stage;
-
-    const matchesCountry =
-      !filters.country || item.lead?.preferredCountry === filters.country;
-    const matchesIntake =
-      !filters.intake || item.lead?.preferredIntake === filters.intake;
-    let matchesDate = true;
-    const matchesBranch =
-      !filters.branchId || item.branch?.name === filters.branchId;
-    const matchesCounselor =
-      !filters.counselorId || item.counselor?.name === filters.counselorId;
-
-    if (filters.dateRange !== "all") {
-      const date = new Date(item.createdAt);
-      const today = new Date();
-
-      if (filters.dateRange === "today") {
-        matchesDate = date.toDateString() === today.toDateString();
+  const canMoveToStage = useCallback(
+    (student: StudentRecord, destination: KanbanStage) => {
+      if (!canDragStudent(student)) {
+        return false;
       }
 
-      if (filters.dateRange === "week") {
-        const weekAgo = new Date();
-        weekAgo.setDate(today.getDate() - 7);
-        matchesDate = date >= weekAgo;
-      }
-
-      if (filters.dateRange === "month") {
-        matchesDate =
-          date.getMonth() === today.getMonth() &&
-          date.getFullYear() === today.getFullYear();
-      }
-    }
-
-    let matchesModuleStatus = true;
-    if (item.recordType === "student" && filters.moduleStatus) {
-      matchesModuleStatus =
-        getCurrentModuleStatus(item) === filters.moduleStatus;
-    }
-
-    return (
-      matchesSearch &&
-      matchesBranch &&
-      matchesCounselor &&
-      matchesStage &&
-      matchesCountry &&
-      matchesIntake &&
-      matchesDate &&
-      matchesModuleStatus
-    );
-  });
-
-  const branchOptions: string[] = [
-    ...new Set(
-      students
-        .map((s) => s.branch?.name)
-        .filter((name): name is string => Boolean(name)),
-    ),
-  ];
-
-  const counselorOptions: string[] = [
-    ...new Set(
-      students
-        .map((s) => s.counselor?.name)
-        .filter((name): name is string => Boolean(name)),
-    ),
-  ];
-
-  const countryOptions: string[] = [
-    ...new Set(
-      students
-        .map((s) => s.lead?.preferredCountry)
-        .filter((country): country is string => Boolean(country)),
-    ),
-  ];
-
-  const intakeOptions: string[] = [
-    ...new Set(
-      students
-        .map((s) => s.lead?.preferredIntake)
-        .filter((intake): intake is string => Boolean(intake)),
-    ),
-  ];
-
-  const renderStageContent = (student: StudentRecord, stage: string) => {
-    if (stage === "Inquiry") {
-      const profileFields = [
-        student.lead?.passport,
-        student.lead?.preferredCountry,
-        student.lead?.preferredCourse,
-        student.lead?.preferredIntake,
-        student.lead?.bachelorsCourse,
-        student.counselor?.name,
-      ];
-      const completedFields = profileFields.filter(Boolean).length;
-      const profileCompletion = Math.round(
-        (completedFields / profileFields.length) * 100,
-      );
+      const current = mapStageToKanban(student);
 
       return (
-        <div className="space-y-3">
-          <InfoRow
-            label="Passport"
-            value={student.lead?.passport || "Not Added"}
-          />
+        STAGE_ORDER.indexOf(destination) === STAGE_ORDER.indexOf(current) + 1
+      );
+    },
+    [canDragStudent, mapStageToKanban],
+  );
+
+  const handleDragStart = useCallback(
+    (event: DragEvent<HTMLElement>, student: StudentRecord) => {
+      if (!canDragStudent(student)) {
+        event.preventDefault();
+        return;
+      }
+
+      const dragData: DraggedStudent = {
+        studentId: student.id,
+        fromStage: mapStageToKanban(student),
+      };
+
+      dragRef.current = dragData;
+      setDraggedStudent(dragData);
+
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("application/x-student-id", student.id);
+      event.dataTransfer.setData("text/plain", student.id);
+    },
+    [canDragStudent, mapStageToKanban],
+  );
+
+  const handleDragOver = useCallback(
+    (event: DragEvent<HTMLElement>, destination: KanbanStage) => {
+      const dragData = dragRef.current ?? draggedStudent;
+
+      if (!dragData) {
+        return;
+      }
+
+      const student = students.find((item) => item.id === dragData.studentId);
+
+      if (!student || !canMoveToStage(student, destination)) {
+        event.dataTransfer.dropEffect = "none";
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      event.dataTransfer.dropEffect = "move";
+
+      setDragOverStage(destination);
+    },
+    [canMoveToStage, draggedStudent, students],
+  );
+
+  const handleDrop = useCallback(
+    (event: DragEvent<HTMLElement>, destination: KanbanStage) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const studentId =
+        dragRef.current?.studentId ||
+        draggedStudent?.studentId ||
+        event.dataTransfer.getData("application/x-student-id") ||
+        event.dataTransfer.getData("text/plain");
+
+      setDragOverStage(null);
+
+      if (!studentId) {
+        dragRef.current = null;
+        setDraggedStudent(null);
+        return;
+      }
+
+      const student = students.find((item) => item.id === studentId);
+
+      if (!student || !canMoveToStage(student, destination)) {
+        dragRef.current = null;
+        setDraggedStudent(null);
+        return;
+      }
+
+      const fromStage = mapStageToKanban(student);
+
+      setPendingStageMove({
+        studentId: student.id,
+        studentName: student.studentName,
+        fromStage,
+        toStage: destination,
+      });
+
+      dragRef.current = null;
+      setDraggedStudent(null);
+      setDragOverStage(null);
+    },
+    [canMoveToStage, draggedStudent, mapStageToKanban, students],
+  );
+  const handleConfirmStageMove = useCallback(async () => {
+    if (!pendingStageMove || movingStudentId) {
+      return;
+    }
+
+    const { studentId, toStage } = pendingStageMove;
+
+    setMovingStudentId(studentId);
+
+    try {
+      const response = await fetch(`/api/students/${studentId}/stage`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nextStage: toStage,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message ?? "Unable to move student");
+      }
+      setPendingStageMove(null);
+
+      await queryClient.invalidateQueries({
+        queryKey: ["master-tracker"],
+      });
+
+      await queryClient.refetchQueries({
+        queryKey: ["master-tracker"],
+        type: "active",
+      });
+    } catch (error) {
+      console.error("MASTER_TRACKER_STAGE_MOVE_ERROR", error);
+    } finally {
+      setMovingStudentId(null);
+    }
+  }, [movingStudentId, pendingStageMove, queryClient]);
+  const handleCancelStageMove = useCallback(() => {
+    if (movingStudentId) {
+      return;
+    }
+
+    setPendingStageMove(null);
+    dragRef.current = null;
+    setDraggedStudent(null);
+    setDragOverStage(null);
+  }, [movingStudentId]);
+  const handleDragEnd = useCallback(() => {
+    dragRef.current = null;
+    setDraggedStudent(null);
+    setDragOverStage(null);
+  }, []);
+
+  const trackerData: TrackerStudent[] = useMemo(
+    () =>
+      students.map((student) => ({
+        ...student,
+        recordType: "student",
+      })),
+    [students],
+  );
+
+  const filteredTrackerData = useMemo(() => {
+    return trackerData.filter((item) => {
+      const search = filters.search.trim().toLowerCase();
+
+      const matchesSearch =
+        !search ||
+        item.studentName?.toLowerCase().includes(search) ||
+        item.mobileNumber?.toLowerCase().includes(search) ||
+        item.emailId?.toLowerCase().includes(search);
+
+      const matchesStage =
+        !filters.stage || mapStageToKanban(item) === filters.stage;
+
+      const matchesCountry =
+        !filters.country || item.lead?.preferredCountry === filters.country;
+
+      const matchesIntake =
+        !filters.intake || item.lead?.preferredIntake === filters.intake;
+
+      const matchesBranch =
+        !filters.branchId || item.branch?.name === filters.branchId;
+
+      const matchesCounselor =
+        !filters.counselorId || item.counselor?.name === filters.counselorId;
+
+      const matchesModuleStatus =
+        !filters.moduleStatus ||
+        getCurrentModuleStatus(item) === filters.moduleStatus;
+
+      let matchesDate = true;
+
+      if (filters.dateRange !== "all") {
+        const createdDate = new Date(item.createdAt);
+        const today = new Date();
+
+        if (filters.dateRange === "today") {
+          matchesDate = createdDate.toDateString() === today.toDateString();
+        }
+
+        if (filters.dateRange === "week") {
+          const weekAgo = new Date();
+          weekAgo.setDate(today.getDate() - 7);
+          matchesDate = createdDate >= weekAgo;
+        }
+
+        if (filters.dateRange === "month") {
+          matchesDate =
+            createdDate.getMonth() === today.getMonth() &&
+            createdDate.getFullYear() === today.getFullYear();
+        }
+      }
+
+      return (
+        matchesSearch &&
+        matchesStage &&
+        matchesCountry &&
+        matchesIntake &&
+        matchesBranch &&
+        matchesCounselor &&
+        matchesModuleStatus &&
+        matchesDate
+      );
+    });
+  }, [filters, getCurrentModuleStatus, mapStageToKanban, trackerData]);
+
+  const branchOptions = useMemo(
+    () => [
+      ...new Set(
+        students
+          .map((student) => student.branch?.name)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ],
+    [students],
+  );
+
+  const counselorOptions = useMemo(
+    () => [
+      ...new Set(
+        students
+          .map((student) => student.counselor?.name)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ],
+    [students],
+  );
+
+  const countryOptions = useMemo(
+    () => [
+      ...new Set(
+        students
+          .map((student) => student.lead?.preferredCountry)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ],
+    [students],
+  );
+
+  const intakeOptions = useMemo(
+    () => [
+      ...new Set(
+        students
+          .map((student) => student.lead?.preferredIntake)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ],
+    [students],
+  );
+
+  const getCardColor = useCallback(
+    (student: StudentRecord): CardColor => {
+      const stage = mapStageToKanban(student);
+
+      const status = getModuleStatus(student, STAGE_MODULE_MAP[stage]);
+
+      if (status === "completed") {
+        return "green";
+      }
+
+      if (status === "rejected") {
+        return "red";
+      }
+
+      if (
+        status === "started" ||
+        status === "in_progress" ||
+        status === "need_corrections"
+      ) {
+        return "yellow";
+      }
+
+      return "white";
+    },
+    [getModuleStatus, mapStageToKanban],
+  );
+
+  const getCardClasses = (color: CardColor) => {
+    if (color === "green") {
+      return "border-emerald-300 bg-emerald-300 dark:border-emerald-800 dark:bg-emerald-300 dark:text-white";
+    }
+
+    if (color === "yellow") {
+      return "border-amber-300 bg-amber-200 dark:border-amber-800 dark:bg-amber-200";
+    }
+
+    if (color === "red") {
+      return "border-rose-300 bg-rose-200 dark:border-rose-800 dark:bg-rose-950/30";
+    }
+
+    return "border-slate-200 bg-white dark:border-white dark:bg-white";
+  };
+  const formatDate = (value?: string | Date | null): string => {
+    if (!value) {
+      return "-";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return "-";
+    }
+
+    return date.toLocaleDateString("en-GB");
+  };
+
+  const formatStatus = (value?: string | null): string => {
+    if (!value) {
+      return "-";
+    }
+
+    return value
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (character) => character.toUpperCase());
+  };
+
+  const formatAmount = (value?: string | number | null): string => {
+    if (value === null || value === undefined || value === "") {
+      return "-";
+    }
+
+    const amount = Number(value);
+
+    if (Number.isNaN(amount)) {
+      return "-";
+    }
+
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const getNextApplicationFollowUp = (student: StudentRecord) => {
+    const applications = student.applications ?? [];
+
+    const applicationsWithFollowUp = applications
+      .filter((application) => application.followUpDate)
+      .sort(
+        (first, second) =>
+          new Date(first.followUpDate!).getTime() -
+          new Date(second.followUpDate!).getTime(),
+      );
+
+    return applicationsWithFollowUp[0] ?? null;
+  };
+
+  const getLatestRemark = (student: StudentRecord) => {
+    const remarks = student.remarks ?? [];
+
+    if (remarks.length === 0) {
+      return null;
+    }
+
+    return [...remarks].sort(
+      (first, second) =>
+        new Date(second.createdAt).getTime() -
+        new Date(first.createdAt).getTime(),
+    )[0];
+  };
+  const renderStageContent = (student: StudentRecord, stage: KanbanStage) => {
+    if (stage === "Inquiry") {
+      return (
+        <>
           <InfoRow
             label="Country"
-            value={student.lead?.preferredCountry || "Not Selected"}
+            value={student.lead?.preferredCountry || "-"}
           />
           <InfoRow
             label="Intake"
-            value={student.lead?.preferredIntake || "Not Selected"}
+            value={student.lead?.preferredIntake || "-"}
+          />
+          <InfoRow
+            label="Course"
+            value={student.lead?.preferredCourse || "-"}
           />
           <InfoRow
             label="Education"
-            value={student.lead?.bachelorsCourse || "Not Added"}
+            value={student.lead?.bachelorsCourse || "-"}
           />
-        </div>
+          <InfoRow
+            label="Passport"
+            value={student.lead?.passport ? "Available" : "Not Added"}
+          />
+        </>
       );
     }
-
     if (stage === "Documents") {
-      const uploaded = student.documents?.length ?? 0;
+      const documents = student.documents ?? [];
 
-      const status =
-        student.moduleProgress?.find((m) => m.module === "documents")?.status ??
-        "pending";
-
+      const latestDocument = [...documents].sort(
+        (first, second) =>
+          new Date(second.updatedAt).getTime() -
+          new Date(first.updatedAt).getTime(),
+      )[0];
+      const latestRemark = getLatestRemark(student);
       return (
-        <div className="space-y-2">
-          <InfoRow label="Documents" value={uploaded} />
-
-          <InfoRow label="Checklist" value={status.replaceAll("_", " ")} />
-
+        <>
+          <InfoRow label="Uploaded" value={documents.length} />
           <InfoRow
-            label="Updated"
-            value={new Date(student.updatedAt).toLocaleDateString()}
+            label="Status"
+            value={formatStatus(getModuleStatus(student, "documents"))}
           />
-        </div>
+          <InfoRow
+            label="Last Document"
+            value={latestDocument?.documentType || "-"}
+          />
+          <InfoRow
+            label="Last Upload"
+            value={formatDate(latestDocument?.updatedAt)}
+          />
+          <InfoRow label="Latest Remark" value={latestRemark?.note || "-"} />
+        </>
       );
     }
-
     if (stage === "Applied") {
-      const totalApps = student.applications?.length ?? 0;
-      const appliedCount =
-        student.applications?.filter((app) => app.status === "applied")
-          .length ?? 0;
-      const draftCount =
-        student.applications?.filter((app) => app.status === "draft").length ??
-        0;
-      const offerReceivedCount =
-        student.applications?.filter(
-          (app) => app.offerStatus !== "not_received",
-        ).length ?? 0;
+      const applications = student.applications ?? [];
+
+      const appliedApplications = applications.filter(
+        (application) => application.status === "applied",
+      );
+
+      const receivedOffers = applications.filter(
+        (application) =>
+          application.offerStatus === "conditional_offer" ||
+          application.offerStatus === "unconditional_offer",
+      );
+
+      const nextFollowUp = getNextApplicationFollowUp(student);
 
       return (
-        <div className="space-y-2">
-          <InfoRow label="Uni Application" value={totalApps} />
-          <InfoRow label="Uni Applied" value={appliedCount} />
-          <InfoRow label="Uni Draft" value={draftCount} />
-          <InfoRow label="Uni Offers" value={offerReceivedCount} />
-        </div>
+        <>
+          <InfoRow label="Universities" value={applications.length} />
+
+          <InfoRow label="Applied" value={appliedApplications.length} />
+
+          <InfoRow label="Offers" value={receivedOffers.length} />
+
+          <InfoRow
+            label="Next University"
+            value={nextFollowUp?.university?.name || "-"}
+          />
+
+          <InfoRow
+            label="Next Follow-up"
+            value={formatDate(nextFollowUp?.followUpDate)}
+          />
+        </>
       );
     }
-
     if (stage === "Visa Process") {
+      const visa = student.visaProfile;
       return (
-        <div className="space-y-2">
-          <InfoRow label="CAS" value={student.visaProfile?.casStatus ?? "-"} />
+        <>
+          <InfoRow label="Deposit" value={formatStatus(visa?.depositStatus)} />
           <InfoRow
-            label="Visa"
-            value={student.visaProfile?.visaStatus ?? "-"}
+            label="Deposit Deadline"
+            value={formatDate(visa?.depositDeadlineDate)}
           />
+          <InfoRow label="CAS" value={formatStatus(visa?.casStatus)} />
           <InfoRow
-            label="Loan"
-            value={student.loanProfile?.loanStatus ?? "-"}
+            label="CAS Deadline"
+            value={formatDate(visa?.casDeadlineDate)}
           />
-          <InfoRow label="NBFC" value={student.loanProfile?.nbfc ?? "-"} />
-        </div>
+          <InfoRow label="Visa" value={formatStatus(visa?.visaStatus)} />
+        </>
       );
     }
-
-    return null;
+    const loan = student.loanProfile;
+    return (
+      <>
+        <InfoRow label="Assignee" value={loan?.fintechAssignee?.name || "-"} />
+        <InfoRow label="NBFC" value={loan?.nbfc || "-"} />
+        <InfoRow label="Loan Status" value={formatStatus(loan?.loanStatus)} />
+        <InfoRow label="Applied" value={formatAmount(loan?.appliedAmount)} />
+        <InfoRow
+          label="Sanctioned"
+          value={formatAmount(loan?.sanctionedAmount)}
+        />
+      </>
+    );
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[500px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <TrackerFilter
         filters={filters}
         setFilters={setFilters}
@@ -504,168 +759,254 @@ export default function ApplicationsTrackerPage() {
         countryOptions={countryOptions}
         intakeOptions={intakeOptions}
       />
+      <AlertDialog
+        open={pendingStageMove !== null}
+        onOpenChange={(open) => {
+          if (!open && !movingStudentId) {
+            handleCancelStageMove();
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-md rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Stage Movement</AlertDialogTitle>
 
-      {/* Grid container perfectly structured for Mobile (1 col) and Desktop (4 cols) */}
-      <div className="w-full pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 xl:gap-6">
-          {KANBAN_COLUMNS.map((col) => {
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>
+                  Are you sure you want to move{" "}
+                  <span className="font-semibold text-foreground">
+                    {pendingStageMove?.studentName}
+                  </span>{" "}
+                  to the next stage?
+                </p>
+
+                <div className="flex items-center justify-center gap-3 rounded-2xl border bg-muted/40 p-4">
+                  <div className="min-w-0 flex-1 rounded-xl border bg-background px-3 py-3 text-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Current Stage
+                    </p>
+
+                    <p className="mt-1 truncate text-sm font-bold text-foreground">
+                      {pendingStageMove?.fromStage}
+                    </p>
+                  </div>
+
+                  <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+
+                  <div className="min-w-0 flex-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-center dark:border-emerald-900 dark:bg-emerald-950/30">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                      Next Stage
+                    </p>
+
+                    <p className="mt-1 truncate text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                      {pendingStageMove?.toStage}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  After confirmation, the student will move forward and the next
+                  stage progress will start from 0%.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel
+              disabled={Boolean(movingStudentId)}
+              onClick={handleCancelStageMove}
+              className="rounded-xl"
+            >
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              disabled={Boolean(movingStudentId)}
+              onClick={(event) => {
+                event.preventDefault();
+
+                void handleConfirmStageMove();
+              }}
+              className="gap-2 rounded-xl"
+            >
+              {movingStudentId ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Moving...
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="h-4 w-4" />
+                  Confirm & Move
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <div className="w-full overflow-x-auto overscroll-x-contain pb-4">
+        <div className="grid min-w-[1400px] grid-cols-5 items-start gap-4">
+          {KANBAN_COLUMNS.map((column) => {
             const columnStudents = filteredTrackerData.filter(
-              (student: any) => mapStageToKanban(student) === col.id,
+              (student) => mapStageToKanban(student) === column.id,
             );
 
+            const isValidDropColumn =
+              draggedStudent !== null &&
+              STAGE_ORDER.indexOf(column.id) ===
+                STAGE_ORDER.indexOf(draggedStudent.fromStage) + 1;
+
+            const isDragOver = dragOverStage === column.id && isValidDropColumn;
+
             return (
-              <div
-                key={col.id}
-                className="flex flex-col w-full h-full rounded-[28px] border border-slate-200/60 bg-slate-50/45 p-4 xl:p-5 shadow-sm dark:border-slate-800/60 dark:bg-slate-950/40"
+              <section
+                key={column.id}
+                onDragEnter={(event) => {
+                  if (isValidDropColumn) {
+                    event.preventDefault();
+                    setDragOverStage(column.id);
+                  }
+                }}
+                onDragOver={(event) => handleDragOver(event, column.id)}
+                onDrop={(event) => handleDrop(event, column.id)}
+                className={`flex min-h-[600px] min-w-0 flex-col rounded-2xl border p-4 transition-colors ${
+                  isDragOver
+                    ? "border-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/20"
+                    : isValidDropColumn
+                      ? "border-blue-400 bg-blue-50/40 dark:bg-blue-950/20"
+                      : "border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/40"
+                }`}
               >
-                {/* Header section of each Kanban category */}
-                <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200/50 dark:border-slate-800/50">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl ${col.badgeStyle}`}
-                    >
-                      {col.label}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-black px-2.5 py-1 bg-slate-100 dark:bg-slate-900 rounded-lg text-slate-500">
+                <div className="mb-4 flex h-10 shrink-0 items-center justify-between border-b pb-3">
+                  <span
+                    className={`whitespace-nowrap rounded-lg px-3 py-1 text-[10px] font-black uppercase ${column.badgeStyle}`}
+                  >
+                    {column.label}
+                  </span>
+
+                  <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold dark:bg-slate-900">
                     {columnStudents.length}
                   </span>
                 </div>
 
-                {/* Vertical list of student cards */}
                 <div className="flex flex-col gap-3">
                   {columnStudents.length === 0 ? (
-                    <div className="py-12 px-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-850 text-center text-slate-400 font-bold text-xs flex flex-col items-center justify-center">
-                      <span className="text-xl mb-1">📭</span>
-                      <span>No students at this stage</span>
+                    <div className="flex h-40 items-center justify-center rounded-xl border border-dashed text-center text-xs font-semibold text-slate-400">
+                      {isValidDropColumn ? "Drop student here" : "No students"}
                     </div>
                   ) : (
                     columnStudents.map((student) => {
-                      const colorKey = getStudentColorThemeKey(student);
-                      const colorClass = getColorClasses(colorKey);
-                      let progressPercent = 0;
+                      const stage = mapStageToKanban(student);
 
-                      switch (col.id) {
-                        case "Inquiry":
-                          progressPercent =
-                            student.moduleProgress?.find(
-                              (m: any) => m.module === "basic_information",
-                            )?.progress ?? 0;
-                          break;
+                      const moduleProgress = getModuleProgress(
+                        student,
+                        STAGE_MODULE_MAP[stage],
+                      );
 
-                        case "Documents":
-                          progressPercent =
-                            student.moduleProgress?.find(
-                              (m: any) => m.module === "documents",
-                            )?.progress ?? 0;
-                          break;
+                      const progress = moduleProgress?.progress ?? 0;
 
-                        case "Applied":
-                          progressPercent =
-                            student.moduleProgress?.find(
-                              (m: any) =>
-                                m.module === "university_applications",
-                            )?.progress ?? 0;
-                          break;
+                      const color = getCardColor(student);
 
-                        case "Visa Process":
-                          progressPercent =
-                            student.moduleProgress?.find(
-                              (m: any) => m.module === "visa_process",
-                            )?.progress ?? 0;
-                          break;
-                      }
+                      const draggable = canDragStudent(student);
 
-                      const progressColor =
-                        colorKey === "green"
-                          ? "bg-emerald-500"
-                          : colorKey === "yellow"
-                            ? "bg-amber-500"
-                            : colorKey === "red"
-                              ? "bg-rose-500"
-                              : "bg-slate-400";
+                      const moving = movingStudentId === student.id;
 
                       return (
-                        <div
+                        <article
                           key={student.id}
-                          draggable
-                          onClick={() => onSelectStudent(student.id)}
-                          className={`relative p-5 rounded-[24px] border shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-pointer overflow-hidden ${colorClass}`}
+                          draggable={draggable && !moving}
+                          onDragStart={(event) =>
+                            handleDragStart(event, student)
+                          }
+                          onDragEnd={handleDragEnd}
+                          onClick={() => {
+                            if (!moving) {
+                              router.push(`/student-profiles/${student.id}`);
+                            }
+                          }}
+                          className={`relative flex h-[390px] min-w-0 flex-col rounded-2xl border p-4 shadow-sm transition-shadow ${getCardClasses(
+                            color,
+                          )} ${
+                            draggable
+                              ? "cursor-grab hover:shadow-md active:cursor-grabbing"
+                              : "cursor-pointer"
+                          }`}
                         >
-                          {/* Header */}
-                          <div>
-                            <div className="flex items-start justify-between gap-3">
+                          {moving && (
+                            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-background/80">
+                              <Loader2 className="h-6 w-6 animate-spin" />
+                            </div>
+                          )}
+
+                          <div className="flex h-8 shrink-0 items-center justify-between gap-2">
+                            <div className="flex min-w-0 items-center gap-2">
+                              {draggable ? (
+                                <GripVertical className="h-4 w-4 shrink-0 text-emerald-600" />
+                              ) : (
+                                <LockKeyhole className="h-4 w-4 shrink-0 text-slate-400" />
+                              )}
+
+                              <h3 className="truncate text-sm font-bold">
+                                {student.studentName}
+                              </h3>
+                            </div>
+
+                            <span className="shrink-0 rounded-full bg-background/70 px-2 py-1 text-[10px] font-bold uppercase">
+                              {(student.lead?.preferredCountry ?? "---").slice(
+                                0,
+                                3,
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="mt-4 flex h-[174px] shrink-0 flex-col gap-2 overflow-hidden">
+                            {renderStageContent(student, stage)}
+                          </div>
+
+                          <div className="mt-4 shrink-0">
+                            <div className="mb-2 flex items-center justify-between text-[11px] font-semibold">
+                              <span>Progress</span>
+                              <span>{progress}%</span>
+                            </div>
+
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
                               <div
-                                className="flex items-center gap-2 min-w-0"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="text-slate-400 cursor-grab hover:text-slate-600 transition-colors">
-                                  <GripVertical className="h-4 w-4" />
-                                </div>
-
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <h5
-                                      onClick={() =>
-                                        onSelectStudent(student.id)
-                                      }
-                                      className="font-bold text-sm truncate cursor-pointer hover:underline"
-                                    >
-                                      {student.studentName}
-                                    </h5>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="px-2 py-1 rounded-full bg-white/60 dark:bg-slate-800/60 shrink-0">
-                                <span className="text-[10px] font-bold uppercase text-black dark:text-white">
-                                  {(
-                                    student?.lead?.preferredCountry ?? "---"
-                                  ).substring(0, 3)}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="mt-5">
-                              {renderStageContent(student, col.id)}
-                            </div>
-
-                            {/* Progress */}
-                            <div className="mt-5">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-[11px] font-semibold text-slate-500">
-                                  Progress
-                                </span>
-                                <span className="text-[11px] font-bold">
-                                  {progressPercent}%
-                                </span>
-                              </div>
-                              <div className="w-full h-2 rounded-full bg-slate-200/70 dark:bg-slate-800 overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
-                                  style={{ width: `${progressPercent}%` }}
-                                />
-                              </div>
+                                className={`h-full rounded-full transition-[width] duration-300 ${
+                                  color === "green"
+                                    ? "bg-emerald-500"
+                                    : color === "yellow"
+                                      ? "bg-amber-500"
+                                      : color === "red"
+                                        ? "bg-rose-500"
+                                        : "bg-slate-400"
+                                }`}
+                                style={{
+                                  width: `${Math.min(
+                                    100,
+                                    Math.max(0, progress),
+                                  )}%`,
+                                }}
+                              />
                             </div>
                           </div>
 
-                          {/* Footer */}
-                          <div className="mt-5 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-semibold text-slate-500">
-                                {student?.lead?.preferredIntake || "Fall 2026"}
-                              </span>
-                              <span className="px-2.5 py-1 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-bold">
-                                {student?.counselor?.name || "Unassigned"}
-                              </span>
-                            </div>
+                          <div className="mt-auto flex h-12 shrink-0 items-end justify-between gap-2 border-t pt-3">
+                            <span className="min-w-0 truncate text-[11px] font-semibold text-slate-500">
+                              {student.lead?.preferredIntake || "Not Selected"}
+                            </span>
+
+                            <span className="max-w-[50%] shrink-0 truncate rounded-md bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-600">
+                              {student.counselor?.name || "Unassigned"}
+                            </span>
                           </div>
-                        </div>
+                        </article>
                       );
                     })
                   )}
                 </div>
-              </div>
+              </section>
             );
           })}
         </div>
