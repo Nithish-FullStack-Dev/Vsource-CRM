@@ -1,19 +1,20 @@
 // hooks/useStudents.ts
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { studentService } from "@/services/student/student.service";
+import {
+  StudentFilters,
+  studentService,
+} from "@/services/student/student.service";
 import { STUDENTKEY } from "@/services/student/query-key";
 
-export const useStudents = (
-  filters?: Record<string, any>
-) => {
+export const useStudents = (filters?: StudentFilters) => {
   return useQuery({
     queryKey: [...STUDENTKEY.all, filters],
 
-    queryFn: () =>
-      studentService.getStudents(filters),
+    queryFn: () => studentService.getStudents(filters),
 
     staleTime: 0,
+    placeholderData: keepPreviousData,
   });
 };

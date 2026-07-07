@@ -1,11 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, Shield, ShieldOff, Trash2 } from "lucide-react";
+import { Eye, Search, Shield, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 import { useStudents } from "@/hooks/student/useStudents";
 import { StudentRecord } from "@/types/student";
 import { useRouter } from "next/navigation";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useDebounce } from "use-debounce";
+import { Input } from "@/components/ui/input";
 
 interface StudentTableProps {
   isDarkMode: boolean;
@@ -22,9 +38,23 @@ export function StudentTable({
     Record<string, boolean>
   >({});
   const router = useRouter();
-  const { data, isLoading, isError, error } = useStudents();
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 500);
+
+  const { data, isLoading, isError, error } = useStudents({
+    page,
+    limit,
+    search: debouncedSearch || undefined,
+  });
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   const students = Array.isArray(data?.data) ? data.data : [];
+  const meta = data?.meta;
 
   const getText = (
     value: string | number | null | undefined,
@@ -172,6 +202,19 @@ export function StudentTable({
 
   return (
     <div className="space-y-4" id="student-module-master-table">
+      <div className="flex items-center justify-between">
+        <div className="relative w-96">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by student name, email or mobile..."
+            className="pl-10"
+          />
+        </div>
+      </div>
+
       <div className="relative overflow-auto rounded-3xl border border-slate-200/85 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <table className="w-max min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
           <colgroup>
@@ -339,6 +382,11 @@ export function StudentTable({
               <th
                 className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
               >
+                NEXT FOLLOWUP DATE
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
                 REMARKS
               </th>
               <th
@@ -370,6 +418,25 @@ export function StudentTable({
                   : [];
                 const latestRemark = remarks.at(-1)?.note ?? "No remarks added";
                 const password = getText(student?.password, "Not set");
+                const latestTimeline = Array.isArray(student?.timeline)
+                  ? student.timeline.reduce<string | null>((latest, item) => {
+                      if (!item.followupDate) return latest;
+
+                      if (
+                        !latest ||
+                        new Date(item.followupDate).getTime() >
+                          new Date(latest).getTime()
+                      ) {
+                        return item.followupDate;
+                      }
+
+                      return latest;
+                    }, null)
+                  : null;
+
+                const latestTimelineDate = latestTimeline
+                  ? new Date(latestTimeline).toLocaleDateString("en-IN")
+                  : "No timeline added";
 
                 return (
                   <tr
@@ -377,19 +444,19 @@ export function StudentTable({
                     className="bg-white transition-colors hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/40"
                   >
                     <td
-                      className={`${stickyCellClass} left-0 w-[64px] px-3 py-3.5 text-center align-middle font-mono font-bold text-slate-400`}
+                      className={`${stickyCellClass} left-0 w-16 px-3 py-3.5 text-center align-middle font-mono font-bold text-slate-400`}
                     >
-                      {index + 1}
+                      {(page - 1) * limit + index + 1}
                     </td>
 
                     <td
-                      className={`${stickyCellClass} left-[64px] w-[112px] px-3 py-3.5 align-middle font-mono text-[11px] font-black tracking-wider text-slate-500`}
+                      className={`${stickyCellClass} left-16 w-28 px-3 py-3.5 align-middle font-mono text-[11px] font-black tracking-wider text-slate-500`}
                     >
                       {student?.id ? student.id.slice(0, 8).toUpperCase() : "-"}
                     </td>
 
                     <td
-                      className={`${stickyCellClass} left-[176px] w-[220px] cursor-pointer truncate px-4 py-3.5 align-middle font-extrabold text-slate-900 hover:underline dark:text-white`}
+                      className={`${stickyCellClass} left-44 w-55 cursor-pointer truncate px-4 py-3.5 align-middle font-extrabold text-slate-900 hover:underline dark:text-white`}
                       onClick={() => student?.id && onSelectStudent(student.id)}
                       title={getText(
                         student?.studentName,
@@ -446,7 +513,7 @@ export function StudentTable({
                       className={`${normalCellClass} font-mono text-[11px] text-slate-600 dark:text-slate-400`}
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="max-w-[105px] truncate">
+                        <span className="max-w-26.25 truncate">
                           {visiblePasswords[student.id]
                             ? password
                             : password === "Not set"
@@ -609,7 +676,12 @@ export function StudentTable({
                     </td>
 
                     <td
-                      className={`${normalCellClass} max-w-[220px] truncate text-[11px] text-slate-500`}
+                      className={`${normalCellClass} max-w-55 truncate text-[11px] text-slate-500`}
+                    >
+                      {latestTimelineDate}
+                    </td>
+                    <td
+                      className={`${normalCellClass} max-w-55 truncate text-[11px] text-slate-500`}
                       title={latestRemark}
                     >
                       {latestRemark}
@@ -647,6 +719,71 @@ export function StudentTable({
             )}
           </tbody>
         </table>
+      </div>
+      <div className="flex items-center justify-between py-4">
+        <div className="text-sm text-muted-foreground">
+          Showing {(page - 1) * limit + 1}–
+          {Math.min(page * limit, meta?.total ?? 0)} of {meta?.total ?? 0}
+        </div>
+
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page > 1) {
+                    setPage((p) => p - 1);
+                  }
+                }}
+                className={page === 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+
+            <PaginationItem>
+              <span className="px-4 text-sm font-medium">
+                Page {meta?.page} of {meta?.totalPages}
+              </span>
+            </PaginationItem>
+
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+
+                  if (page < (meta?.totalPages ?? 1)) {
+                    setPage((p) => p + 1);
+                  }
+                }}
+                className={
+                  page === meta?.totalPages
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+        <Select
+          value={String(limit)}
+          onValueChange={(value) => {
+            setLimit(Number(value));
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-24">
+            <SelectValue />
+          </SelectTrigger>
+
+          <SelectContent>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="20">20</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
