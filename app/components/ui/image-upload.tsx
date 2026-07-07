@@ -36,11 +36,11 @@ export function ImageUpload({
       toast.error("File size must be under 5MB.");
       return;
     }
-
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("folder", "universities");
       const { data } = await axios.post("/api/upload", formData);
       if (data.success) {
         onChange(data.url);
@@ -48,7 +48,8 @@ export function ImageUpload({
       } else {
         toast.error(data.message || "Upload failed.");
       }
-    } catch {
+    } catch (error) {
+      console.error("[ImageUpload] Upload error:", error);
       toast.error("Upload failed. Please try again.");
     } finally {
       setIsUploading(false);
@@ -134,7 +135,7 @@ export function ImageUpload({
             isDragging
               ? "border-primary bg-primary/5"
               : "border-border hover:border-primary/50 hover:bg-muted/50",
-            isUploading && "pointer-events-none opacity-70"
+            isUploading && "pointer-events-none opacity-70",
           )}
         >
           {isUploading ? (
@@ -146,9 +147,7 @@ export function ImageUpload({
             <>
               <ImageIcon className="h-7 w-7 text-muted-foreground" />
               <div className="text-center">
-                <p className="text-xs font-medium">
-                  Click or drag & drop
-                </p>
+                <p className="text-xs font-medium">Click or drag & drop</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   PNG, JPG, WebP, SVG up to 5MB
                 </p>
