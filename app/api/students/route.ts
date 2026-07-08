@@ -11,6 +11,7 @@ import {
   parsePagination,
 } from "@/lib/api-helpers";
 import { Prisma } from "@/generated/prisma/client";
+import { VisaStatus, CasStatus } from "@/generated/prisma/enums";
 import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { decrypt } from "@/lib/encryption";
@@ -69,12 +70,18 @@ export async function GET(req: NextRequest) {
     // Visa Profile Filter
     const visaProfileFilter: Prisma.StudentVisaProfileWhereInput = {};
 
-    if (visaStatus) {
-      visaProfileFilter.visaStatus = visaStatus;
+    if (
+      visaStatus &&
+      Object.values(VisaStatus).includes(visaStatus as VisaStatus)
+    ) {
+      visaProfileFilter.visaStatus = visaStatus as VisaStatus;
     }
 
-    if (casStatus) {
-      visaProfileFilter.casStatus = casStatus;
+    if (
+      casStatus &&
+      Object.values(CasStatus).includes(casStatus as CasStatus)
+    ) {
+      visaProfileFilter.casStatus = casStatus as CasStatus;
     }
 
     if (Object.keys(visaProfileFilter).length > 0) {
@@ -95,7 +102,6 @@ export async function GET(req: NextRequest) {
         is: loanProfileFilter,
       };
     }
-
     const andFilters: Prisma.StudentWhereInput[] = [];
 
     // Branch Manager -> Only students from assigned branches

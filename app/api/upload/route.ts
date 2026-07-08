@@ -1,36 +1,40 @@
-// app\api\upload\route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, stat } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type RouteContext = {
-  params: Promise<{
-    path: string[];
-  }>;
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+const ALLOWED_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+]);
+
+const EXTENSIONS: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+  "image/svg+xml": ".svg",
 };
 
-const CONTENT_TYPES: Record<string, string> = {
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".png": "image/png",
-  ".webp": "image/webp",
-  ".gif": "image/gif",
-  ".svg": "image/svg+xml",
-  ".pdf": "application/pdf",
-};
-
-export async function GET(_req: NextRequest, { params }: RouteContext) {
+export async function POST(req: NextRequest) {
   try {
-    const { path: pathSegments } = await params;
+    const formData = await req.formData();
 
-    if (!pathSegments?.length) {
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
       return NextResponse.json(
         {
           success: false,
-          message: "File path is required",
+          message: "File is required",
         },
         {
           status: 400,
@@ -38,76 +42,80 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
       );
     }
 
-    const uploadsDirectory = path.resolve(process.cwd(), "public", "uploads");
-
-    const requestedFile = path.resolve(uploadsDirectory, ...pathSegments);
-
-    // Prevent directory traversal attacks
-    if (
-      requestedFile !== uploadsDirectory &&
-      !requestedFile.startsWith(`${uploadsDirectory}${path.sep}`)
-    ) {
+    if (!ALLOWED_TYPES.has(file.type)) {
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid file path",
+          message: "Only JPG, PNG, WebP, GIF and SVG files are allowed",
         },
         {
-          status: 403,
+          status: 400,
         },
       );
     }
 
-    const fileStats = await stat(requestedFile);
-
-    if (!fileStats.isFile()) {
+    if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         {
           success: false,
-          message: "File not found",
+          message: "File size must not exceed 5MB",
         },
         {
-          status: 404,
+          status: 400,
         },
       );
     }
 
-    const fileBuffer = await readFile(requestedFile);
+    const extension =
+      EXTENSIONS[file.type] || path.extname(file.name).toLowerCase() || ".bin";
 
-    const extension = path.extname(requestedFile).toLowerCase();
+    const fileName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
 
-    const contentType = CONTENT_TYPES[extension] ?? "application/octet-stream";
+    const uploadDirectory = path.join(
+      process.cwd(),
+      "public",
+      "uploads",
+      "universities",
+    );
 
-    return new NextResponse(fileBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": String(fileBuffer.length),
-        "Cache-Control": "public, max-age=86400",
-        "X-Content-Type-Options": "nosniff",
-      },
+    await mkdir(uploadDirectory, {
+      recursive: true,
     });
+
+    const bytes = await file.arrayBuffer();
+
+    const buffer = Buffer.from(bytes);
+
+    const filePath = path.join(uploadDirectory, fileName);
+
+    await writeFile(filePath, buffer);
+
+    const fileUrl = `/api/upload/universities/${fileName}`;
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "File uploaded successfully",
+        data: {
+          url: fileUrl,
+          fileName,
+          originalName: file.name,
+          size: file.size,
+          type: file.type,
+        },
+        url: fileUrl,
+      },
+      {
+        status: 201,
+      },
+    );
   } catch (error) {
-    const nodeError = error as NodeJS.ErrnoException;
-
-    if (nodeError.code === "ENOENT" || nodeError.code === "ENOTDIR") {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "File not found",
-        },
-        {
-          status: 404,
-        },
-      );
-    }
-
-    console.error("[UPLOAD_FILE_GET_ERROR]", error);
+    console.error("[UPLOAD_POST_ERROR]", error);
 
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to load file",
+        message: "Failed to upload file",
       },
       {
         status: 500,
