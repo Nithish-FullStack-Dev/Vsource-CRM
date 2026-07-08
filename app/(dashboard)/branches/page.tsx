@@ -10,6 +10,7 @@ import {
   Pencil,
   Plus,
   Search,
+  ShieldCheck,
   Trash2,
   Users,
 } from "lucide-react";
@@ -390,31 +391,47 @@ export default function BranchesPage() {
                 </div>
 
                 <CardContent className="p-5">
-                  <div className="mt-5 grid grid-cols-3 gap-3">
-                    <div className="rounded-xl bg-muted/50 p-3 text-center">
-                      <Users className="mx-auto mb-2 h-4 w-4" />
+                  <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="flex min-h-[115px] flex-col items-center justify-center rounded-xl bg-muted/50 p-3 text-center">
+                      <Users className="mb-2 h-4 w-4" />
 
-                      <p className="text-lg font-bold">{branch.usersCount}</p>
+                      <p className="text-lg font-bold">
+                        {branch.usersCount ?? 0}
+                      </p>
 
                       <p className="text-xs">Users</p>
                     </div>
 
-                    <div className="rounded-xl bg-muted/50 p-3 text-center">
-                      <FileText className="mx-auto mb-2 h-4 w-4" />
-
-                      <p className="text-lg font-bold">{branch?.leadsCount} </p>
-
-                      <p className="text-xs">Leads</p>
-                    </div>
-
-                    <div className="rounded-xl bg-muted/50 p-3 text-center">
-                      <GraduationCap className="mx-auto mb-2 h-4 w-4" />
+                    <div className="flex min-h-[115px] flex-col items-center justify-center rounded-xl bg-muted/50 p-3 text-center">
+                      <FileText className="mb-2 h-4 w-4" />
 
                       <p className="text-lg font-bold">
-                        {branch.studentsCount}
+                        {branch.leadsCount ?? 0}
                       </p>
 
-                      <p className="text-xs">Students</p>
+                      <p className="text-xs">Walk-Ins</p>
+                    </div>
+
+                    <div className="flex min-h-[115px] flex-col items-center justify-center rounded-xl bg-muted/50 p-3 text-center">
+                      <GraduationCap className="mb-2 h-4 w-4" />
+
+                      <p className="text-lg font-bold">
+                        {branch.studentsCount ?? 0}
+                      </p>
+
+                      <p className="text-xs">Applications</p>
+                    </div>
+
+                    <div className="flex min-h-[115px] flex-col items-center justify-center rounded-xl bg-muted/50 p-3 text-center">
+                      <ShieldCheck className="mb-2 h-4 w-4" />
+
+                      <p className="text-lg font-bold">
+                        {branch.visaApprovalsCount ?? 0}
+                      </p>
+
+                      <p className="text-xs whitespace-nowrap">
+                        Visa Approvals
+                      </p>
                     </div>
                   </div>
 

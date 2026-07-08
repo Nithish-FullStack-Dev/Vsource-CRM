@@ -25,6 +25,7 @@ export interface Branch {
   usersCount: number;
   leadsCount: number;
   studentsCount: number;
+  visaApprovalsCount: number;
 
   createdAt: string;
 }
