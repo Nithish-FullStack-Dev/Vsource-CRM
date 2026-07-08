@@ -1,3 +1,4 @@
+// app\(dashboard)\student-profiles\[id]\page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -51,6 +52,7 @@ import { useStudentTimeline } from "@/hooks/student/timeline/useStudentTimeline"
 import { useCreateStudentTimeline } from "@/hooks/student/timeline/useCreateStudentTimeline";
 import { Badge } from "@/components/ui/badge";
 import StudentRemarksTimelineTab from "@/components/student/StudentRemarksTimelineTab";
+import StudentComplianceStepper from "./StudentComplianceStep";
 
 const tabs = [
   {
@@ -215,7 +217,142 @@ export default function Home() {
       ) ?? null
     );
   }, [students, selectedStudentId]);
+  const complianceProgress = useMemo(() => {
+    if (!selectedStudent) {
+      return {
+        currentIndex: 0,
+        completedIndexes: new Set<number>(),
+      };
+    }
 
+    const completedIndexes = new Set<number>();
+
+    const applications = selectedStudent.applications ?? [];
+    const visa = selectedStudent.visaProfile;
+    const loan = selectedStudent.loanProfile;
+    const stageIndexMap: Partial<
+      Record<NonNullable<StudentRecord["currentStage"]>, number>
+    > = {
+      application_started: 0,
+      application_submitted: 1,
+      offer_received: 2,
+
+      enrolled: 4,
+
+      deposit_pending: 5,
+      deposit_paid: 5,
+
+      cas_pending: 5,
+      cas_received: 5,
+
+      visa_filing: 5,
+
+      visa_approved: 9,
+      visa_rejected: 9,
+    };
+
+    const kanbanCurrentIndex =
+      stageIndexMap[selectedStudent.currentStage ?? "application_started"] ?? 0;
+    let currentIndex = 0;
+    if (kanbanCurrentIndex < 1) {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+    completedIndexes.add(0);
+    currentIndex = 1;
+    if (kanbanCurrentIndex < 2) {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+    completedIndexes.add(1);
+    currentIndex = 2;
+    const hasAppliedApplication = applications.some(
+      (application) => application.status === "applied",
+    );
+
+    if (!hasAppliedApplication) {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+    completedIndexes.add(2);
+    currentIndex = 3;
+    const hasReceivedOffer = applications.some(
+      (application) =>
+        application.offerStatus === "UCOL" ||
+        application.offerStatus === "CCOL",
+    );
+
+    if (!hasReceivedOffer) {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+    completedIndexes.add(3);
+    currentIndex = 4;
+    if (kanbanCurrentIndex < 4) {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+    if (kanbanCurrentIndex < 5) {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+
+    completedIndexes.add(4);
+    currentIndex = 5;
+    if (visa?.ihsPaidStatus !== "PAID") {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+
+    completedIndexes.add(5);
+    currentIndex = 6;
+    if (visa?.casStatus !== "RECEIVED") {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+
+    completedIndexes.add(6);
+    currentIndex = 7;
+    if (loan?.disbursed !== true) {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+    completedIndexes.add(7);
+    currentIndex = 8;
+    if (visa?.depositStatus !== "PAID") {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+    completedIndexes.add(8);
+    currentIndex = 9;
+    if (visa?.visaStatus === "APPROVED") {
+      completedIndexes.add(9);
+    }
+    return {
+      currentIndex,
+      completedIndexes,
+    };
+  }, [selectedStudent]);
   useEffect(() => {
     if (selectedStudent?.studentName) {
       setTitle(selectedStudent.studentName);
@@ -399,7 +536,10 @@ export default function Home() {
                     </button>
                   )}
                 </div>
-
+                <StudentComplianceStepper
+                  currentIndex={complianceProgress.currentIndex}
+                  completedIndexes={complianceProgress.completedIndexes}
+                />
                 <div className="space-y-6">
                   <div className="overflow-x-auto">
                     <div className="flex gap-2 min-w-max">
