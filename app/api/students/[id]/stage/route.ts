@@ -1,7 +1,9 @@
 // app\api\students\[id]\stage\route.ts
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 import db from "@/lib/prisma";
+import { verifyToken } from "@/lib/jwt";
 import {
   StudentModuleStatus,
   StudentModuleType,
@@ -38,15 +40,6 @@ const STAGE_MODULE_MAP: Record<KanbanStage, StudentModuleType> = {
   "Visa Process": StudentModuleType.visa_process,
 };
 
-/**
- * Kanban stage -> actual Prisma StudentStage.
- *
- * IMPORTANT:
- * currentStage in Prisma cannot contain:
- * "Inquiry", "Documents", etc.
- *
- * It must contain a valid StudentStage enum value.
- */
 const KANBAN_TO_STUDENT_STAGE: Record<KanbanStage, StudentStage> = {
   Inquiry: StudentStage.application_started,
   Documents: StudentStage.application_submitted,
@@ -57,12 +50,11 @@ const KANBAN_TO_STUDENT_STAGE: Record<KanbanStage, StudentStage> = {
 
 const STUDENT_STAGE_TO_KANBAN: Partial<Record<StudentStage, KanbanStage>> = {
   [StudentStage.application_started]: "Inquiry",
-
   [StudentStage.application_submitted]: "Documents",
-
   [StudentStage.offer_received]: "Applied",
 
   [StudentStage.enrolled]: "Loan Process",
+
   [StudentStage.deposit_pending]: "Visa Process",
   [StudentStage.deposit_paid]: "Visa Process",
   [StudentStage.cas_pending]: "Visa Process",
@@ -71,6 +63,12 @@ const STUDENT_STAGE_TO_KANBAN: Partial<Record<StudentStage, KanbanStage>> = {
   [StudentStage.visa_approved]: "Visa Process",
   [StudentStage.visa_rejected]: "Visa Process",
 };
+
+const BACKWARD_ALLOWED_ROLES = new Set(["super admin", "director"]);
+
+function normalizeRoleName(roleName?: string | null): string {
+  return roleName?.trim().toLowerCase() ?? "";
+}
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
@@ -87,7 +85,65 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         },
       );
     }
+    const token = (await cookies()).get("access_token")?.value;
 
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized",
+        },
+        {
+          status: 401,
+        },
+      );
+    }
+
+    const payload = await verifyToken(token);
+
+    if (!payload?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid authentication token",
+        },
+        {
+          status: 401,
+        },
+      );
+    }
+
+    const currentUser = await db.user.findUnique({
+      where: {
+        id: payload.id as string,
+      },
+      select: {
+        id: true,
+        name: true,
+
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Authenticated user not found",
+        },
+        {
+          status: 401,
+        },
+      );
+    }
+
+    const currentUserRole = normalizeRoleName(currentUser.role?.name);
+
+    const canMoveBackward = BACKWARD_ALLOWED_ROLES.has(currentUserRole);
     const body = await request.json();
 
     const nextStage = body.nextStage as KanbanStage;
@@ -103,11 +159,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         },
       );
     }
-
     const student = await db.student.findUnique({
       where: {
         id,
       },
+
       select: {
         id: true,
         currentStage: true,
@@ -134,12 +190,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         },
       );
     }
-
-    /**
-     * Resolve current Kanban stage from actual Prisma enum.
-     *
-     * If currentStage is null, student starts from Inquiry.
-     */
     const currentKanbanStage: KanbanStage = student.currentStage
       ? (STUDENT_STAGE_TO_KANBAN[student.currentStage] ?? "Inquiry")
       : "Inquiry";
@@ -148,64 +198,57 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const destinationStageIndex = STAGE_ORDER.indexOf(nextStage);
 
-    /**
-     * Final column cannot move forward.
-     */
-    if (currentKanbanStage === "Loan Process") {
+    const stageDifference = destinationStageIndex - currentStageIndex;
+
+    const isForwardMove = stageDifference === 1;
+
+    const isBackwardMove = stageDifference === -1;
+    if (!isForwardMove && !isBackwardMove) {
       return NextResponse.json(
         {
           success: false,
-          message: "Loan Process is the final stage",
+          message: "Student can move only one stage at a time",
         },
         {
           status: 400,
         },
       );
     }
-
-    /**
-     * STRICT FORWARD-ONLY VALIDATION.
-     *
-     * Inquiry -> Documents        YES
-     * Documents -> Applied        YES
-     * Applied -> Visa Process     YES
-     * Visa Process -> Loan        YES
-     *
-     * Inquiry -> Applied          NO
-     * Documents -> Inquiry        NO
-     */
-    if (destinationStageIndex !== currentStageIndex + 1) {
+    if (isBackwardMove && !canMoveBackward) {
       return NextResponse.json(
         {
           success: false,
-          message: "Student can move only one stage forward",
+          message: "Only Admin and Director can move students backward",
         },
         {
-          status: 400,
+          status: 403,
         },
       );
     }
+    if (isForwardMove) {
+      const currentModule = STAGE_MODULE_MAP[currentKanbanStage];
 
+      const currentModuleProgress = student.moduleProgress.find(
+        (item) => item.module === currentModule,
+      );
+
+      if (
+        currentModuleProgress?.status !== StudentModuleStatus.completed ||
+        currentModuleProgress.progress !== 100
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Current module must be completed with 100% progress before moving forward",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+    }
     const currentModule = STAGE_MODULE_MAP[currentKanbanStage];
-
-    const currentModuleProgress = student.moduleProgress.find(
-      (item) => item.module === currentModule,
-    );
-    if (
-      currentModuleProgress?.status !== StudentModuleStatus.completed ||
-      currentModuleProgress.progress !== 100
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Current module must be completed with 100% progress before moving",
-        },
-        {
-          status: 400,
-        },
-      );
-    }
 
     const nextModule = STAGE_MODULE_MAP[nextStage];
 
@@ -226,31 +269,60 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           currentStage: true,
         },
       });
-      await tx.studentModuleProgress.upsert({
-        where: {
-          studentId_module: {
+      if (isForwardMove) {
+        await tx.studentModuleProgress.upsert({
+          where: {
+            studentId_module: {
+              studentId: id,
+              module: nextModule,
+            },
+          },
+
+          update: {
+            status: StudentModuleStatus.not_started,
+            progress: 0,
+          },
+
+          create: {
             studentId: id,
             module: nextModule,
+            status: StudentModuleStatus.not_started,
+            progress: 0,
           },
-        },
+        });
+      }
+      if (isBackwardMove) {
+        await tx.studentModuleProgress.upsert({
+          where: {
+            studentId_module: {
+              studentId: id,
+              module: currentModule,
+            },
+          },
 
-        update: {
-          status: StudentModuleStatus.not_started,
-          progress: 0,
-        },
+          update: {
+            status: StudentModuleStatus.not_started,
+            progress: 0,
+          },
 
-        create: {
-          studentId: id,
-          module: nextModule,
-          status: StudentModuleStatus.not_started,
-          progress: 0,
-        },
-      });
+          create: {
+            studentId: id,
+            module: currentModule,
+            status: StudentModuleStatus.not_started,
+            progress: 0,
+          },
+        });
+      }
 
       return updatedStudent;
     });
 
-    return ok(result, "Student moved successfully");
+    return ok(
+      result,
+      isBackwardMove
+        ? "Student moved backward successfully"
+        : "Student moved forward successfully",
+    );
   } catch (error) {
     console.error("PATCH_STUDENT_STAGE_ERROR", error);
 
