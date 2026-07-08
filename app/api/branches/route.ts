@@ -1,7 +1,7 @@
 /**
  * api/branches/route.ts
- * GET  /api/branches  — list all branches (paginated, filterable)
- * POST /api/branches  — create a new branch
+ * GET  /api/branches
+ * POST /api/branches
  */
 
 import { NextRequest } from "next/server";
@@ -21,17 +21,34 @@ export async function GET(req: NextRequest) {
     const { skip, take, page, limit } = parsePagination(sp);
 
     const search = sp.get("search") ?? undefined;
+
     const status =
       sp.get("status") !== null ? sp.get("status") === "true" : undefined;
 
     const where = {
       ...(search && {
         OR: [
-          { name: { contains: search, mode: "insensitive" as const } },
-          { code: { contains: search, mode: "insensitive" as const } },
-          { city: { contains: search, mode: "insensitive" as const } },
+          {
+            name: {
+              contains: search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            code: {
+              contains: search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            city: {
+              contains: search,
+              mode: "insensitive" as const,
+            },
+          },
         ],
       }),
+
       ...(status !== undefined && { status }),
     };
 
@@ -40,7 +57,10 @@ export async function GET(req: NextRequest) {
         where,
         skip,
         take,
-        orderBy: { createdAt: "desc" },
+        orderBy: {
+          createdAt: "desc",
+        },
+
         include: {
           _count: {
             select: {
@@ -50,16 +70,41 @@ export async function GET(req: NextRequest) {
               mbbsLeads: true,
             },
           },
+
+          students: {
+            where: {
+              visaProfile: {
+                is: {
+                  visaStatus: "APPROVED",
+                },
+              },
+            },
+
+            select: {
+              id: true,
+            },
+          },
         },
       }),
-      db.branch.count({ where }),
+
+      db.branch.count({
+        where,
+      }),
     ]);
 
-    const formattedBranches = branches.map((b: (typeof branches)[number]) => ({
-      ...b,
-      usersCount: b._count?.users || 0,
-      leadsCount: (b._count?.leads || 0) + (b._count?.mbbsLeads || 0),
-      studentsCount: b._count?.students || 0,
+    const formattedBranches = branches.map((branch) => ({
+      ...branch,
+
+      usersCount: branch._count.users,
+
+      leadsCount: branch._count.leads + branch._count.mbbsLeads,
+
+      studentsCount: branch._count.students,
+
+      visaApprovalsCount: branch.students.length,
+
+      students: undefined,
+
       _count: undefined,
     }));
 
@@ -72,7 +117,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = BranchCreateSchema.parse(await req.json());
-    const branch = await db.branch.create({ data: body });
+
+    const branch = await db.branch.create({
+      data: body,
+    });
+
     return created(branch, "Branch created successfully");
   } catch (err) {
     return handleError(err);
