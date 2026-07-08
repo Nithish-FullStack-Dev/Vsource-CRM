@@ -43,10 +43,9 @@ type FormState = {
   nbfc: string;
   loanStatus: string;
   pfStatus: string;
-  appliedAmount: string;
-  sanctionedAmount: string;
+  depositDate: string;
   disbursed: boolean;
-  disbursedAmount: string;
+  disbursedDate: string;
 };
 
 const initialFormState: FormState = {
@@ -54,24 +53,9 @@ const initialFormState: FormState = {
   nbfc: "",
   loanStatus: "",
   pfStatus: "",
-  appliedAmount: "",
-  sanctionedAmount: "",
+  depositDate: "",
   disbursed: false,
-  disbursedAmount: "",
-};
-
-const formatAmount = (value?: string | number | null) => {
-  if (value === null || value === undefined || value === "") return "-";
-
-  const amount = Number(value);
-
-  if (!Number.isFinite(amount)) return "-";
-
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(amount);
+  disbursedDate: "",
 };
 
 const formatStatus = (value?: string | null) => {
@@ -82,36 +66,19 @@ const formatStatus = (value?: string | null) => {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
-const getStringValue = (value?: string | number | null) => {
-  if (value === null || value === undefined) return "";
-
-  return String(value);
-};
-
-const getNullableNumber = (value: string) => {
-  const normalizedValue = value.trim();
-
-  if (!normalizedValue) return null;
-
-  const numberValue = Number(normalizedValue);
-
-  return Number.isFinite(numberValue) ? numberValue : null;
-};
-
-const createFormState = (profile?: StudentLoanProfile | null): FormState => {
-  if (!profile) return initialFormState;
-
-  return {
-    fintechAssigneeId: profile.fintechAssigneeId ?? "",
-    nbfc: profile.nbfc ?? "",
-    loanStatus: profile.loanStatus ?? "",
-    pfStatus: profile.pfStatus ?? "",
-    appliedAmount: getStringValue(profile.appliedAmount),
-    sanctionedAmount: getStringValue(profile.sanctionedAmount),
-    disbursed: profile.disbursed ?? false,
-    disbursedAmount: getStringValue(profile.disbursedAmount),
-  };
-};
+const createFormState = (profile?: StudentLoanProfile | null): FormState => ({
+  fintechAssigneeId: profile?.fintechAssigneeId ?? "",
+  nbfc: profile?.nbfc ?? "",
+  loanStatus: profile?.loanStatus ?? "",
+  pfStatus: profile?.pfStatus ?? "",
+  depositDate: profile?.depositDate
+    ? new Date(profile.depositDate).toISOString().slice(0, 16)
+    : "",
+  disbursed: profile?.disbursed ?? false,
+  disbursedDate: profile?.disbursedDate
+    ? new Date(profile.disbursedDate).toISOString().slice(0, 16)
+    : "",
+});
 
 type DetailItemProps = {
   label: string;
@@ -196,52 +163,19 @@ export function StudentLoanProfileSection({
 
     if (!studentId || saveMutation.isPending) return;
 
-    const appliedAmount = getNullableNumber(form.appliedAmount);
-    const sanctionedAmount = getNullableNumber(form.sanctionedAmount);
-    const disbursedAmount = getNullableNumber(form.disbursedAmount);
-
-    if (form.appliedAmount && appliedAmount === null) {
-      toast.error("Enter a valid applied amount");
-      return;
-    }
-
-    if (form.sanctionedAmount && sanctionedAmount === null) {
-      toast.error("Enter a valid sanctioned amount");
-      return;
-    }
-
-    if (form.disbursed && form.disbursedAmount && disbursedAmount === null) {
-      toast.error("Enter a valid disbursed amount");
-      return;
-    }
-
-    if (
-      appliedAmount !== null &&
-      sanctionedAmount !== null &&
-      sanctionedAmount > appliedAmount
-    ) {
-      toast.error("Sanctioned amount cannot be greater than applied amount");
-      return;
-    }
-
-    if (
-      sanctionedAmount !== null &&
-      disbursedAmount !== null &&
-      disbursedAmount > sanctionedAmount
-    ) {
-      toast.error("Disbursed amount cannot be greater than sanctioned amount");
-      return;
-    }
-
     const payload: StudentLoanProfilePayload = {
-      fintechAssigneeId: form.fintechAssigneeId.trim() || null,
+      fintechAssigneeId: form.fintechAssigneeId || null,
       nbfc: form.nbfc || null,
       loanStatus: form.loanStatus || null,
       pfStatus: form.pfStatus || null,
-      appliedAmount,
-      sanctionedAmount,
+      depositDate: form.depositDate
+        ? new Date(form.depositDate).toISOString()
+        : null,
       disbursed: form.disbursed,
-      disbursedAmount: form.disbursed ? disbursedAmount : null,
+      disbursedDate:
+        form.disbursed && form.disbursedDate
+          ? new Date(form.disbursedDate).toISOString()
+          : null,
     };
 
     try {
@@ -394,7 +328,7 @@ export function StudentLoanProfileSection({
                 </h5>
 
                 <p className="text-[10px] text-slate-400">
-                  NBFC, sanction and disbursement information
+                  NBFC, deposit and disbursement information
                 </p>
               </div>
             </div>
@@ -429,16 +363,24 @@ export function StudentLoanProfileSection({
               />
 
               <DetailItem
-                label="Applied Amount"
-                value={formatAmount(profile.appliedAmount)}
-                icon={WalletCards}
+                label="Deposit Date"
+                value={
+                  profile.depositDate
+                    ? new Date(profile.depositDate).toLocaleString()
+                    : "-"
+                }
+                icon={CreditCard}
                 isDarkMode={isDarkMode}
               />
 
               <DetailItem
-                label="Sanctioned Amount"
-                value={formatAmount(profile.sanctionedAmount)}
-                icon={WalletCards}
+                label="Disbursed Date"
+                value={
+                  profile.disbursedDate
+                    ? new Date(profile.disbursedDate).toLocaleDateString()
+                    : "-"
+                }
+                icon={CheckCircle2}
                 isDarkMode={isDarkMode}
               />
 
@@ -446,17 +388,6 @@ export function StudentLoanProfileSection({
                 label="Disbursed"
                 value={profile.disbursed ? "Yes" : "No"}
                 icon={CheckCircle2}
-                isDarkMode={isDarkMode}
-              />
-
-              <DetailItem
-                label="Disbursed Amount"
-                value={
-                  profile.disbursed
-                    ? formatAmount(profile.disbursedAmount)
-                    : "-"
-                }
-                icon={WalletCards}
                 isDarkMode={isDarkMode}
               />
             </div>
@@ -484,7 +415,8 @@ export function StudentLoanProfileSection({
                 </DialogTitle>
 
                 <p className="mt-1 text-xs text-slate-400">
-                  Update fintech, NBFC, amount and disbursement details.
+                  Update fintech assignment, NBFC, deposit and disbursement
+                  details.
                 </p>
               </div>
 
@@ -512,7 +444,7 @@ export function StudentLoanProfileSection({
                   </h5>
 
                   <p className="text-[10px] text-slate-400">
-                    Fintech, NBFC, amount and disbursement details
+                    Fintech assignment, NBFC, deposit and disbursement details
                   </p>
                 </div>
               </div>
@@ -620,52 +552,13 @@ export function StudentLoanProfileSection({
 
                 <div>
                   <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Applied Amount
+                    Deposit Date
                   </label>
 
                   <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={form.appliedAmount}
-                    onKeyDown={(event) => {
-                      if (["-", "+", "e", "E"].includes(event.key)) {
-                        event.preventDefault();
-                      }
-                    }}
-                    onChange={(event) => {
-                      const value = Math.max(
-                        0,
-                        Number(event.target.value) || 0,
-                      );
-                      updateField("appliedAmount", value.toString());
-                    }}
-                    className={inputClassName}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Sanctioned Amount
-                  </label>
-
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={form.sanctionedAmount}
-                    onKeyDown={(event) => {
-                      if (["-", "+", "e", "E"].includes(event.key)) {
-                        event.preventDefault();
-                      }
-                    }}
-                    onChange={(event) => {
-                      const value = Math.max(
-                        0,
-                        Number(event.target.value) || 0,
-                      );
-                      updateField("sanctionedAmount", value.toString());
-                    }}
+                    type="datetime-local"
+                    value={form.depositDate}
+                    onChange={(e) => updateField("depositDate", e.target.value)}
                     className={inputClassName}
                   />
                 </div>
@@ -695,7 +588,7 @@ export function StudentLoanProfileSection({
                         updateField("disbursed", event.target.checked);
 
                         if (!event.target.checked) {
-                          updateField("disbursedAmount", "");
+                          updateField("disbursedDate", "");
                         }
                       }}
                       className="h-4 w-4 accent-red-600"
@@ -704,25 +597,17 @@ export function StudentLoanProfileSection({
                 </div>
 
                 {form.disbursed && (
-                  <div className="md:col-span-2">
+                  <div>
                     <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                      Disbursed Amount
+                      Disbursed Date
                     </label>
 
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.disbursedAmount}
-                      onKeyDown={(event) => {
-                        if (["-", "+", "e", "E"].includes(event.key)) {
-                          event.preventDefault();
-                        }
-                      }}
-                      onChange={(event) =>
-                        updateField("disbursedAmount", event.target.value)
+                      type="datetime-local"
+                      value={form.disbursedDate}
+                      onChange={(e) =>
+                        updateField("disbursedDate", e.target.value)
                       }
-                      placeholder="0.00"
                       className={inputClassName}
                     />
                   </div>

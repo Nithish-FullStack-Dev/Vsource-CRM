@@ -264,6 +264,7 @@ export type StudentVisaProfilePayload = {
 
   universityStartDate: string | null;
 };
+
 export type StudentLoanProfile = {
   id?: string;
 
@@ -282,13 +283,11 @@ export type StudentLoanProfile = {
 
   pfStatus?: string | null;
 
-  appliedAmount?: string | number | null;
-
-  sanctionedAmount?: string | number | null;
+  depositDate?: string | null;
 
   disbursed?: boolean;
 
-  disbursedAmount?: string | number | null;
+  disbursedDate?: string | null;
 
   createdAt?: string;
 

@@ -164,6 +164,35 @@ enum GraduationStatus {
   pursuing
 }
 
+enum EnglishTestType {
+  IELTS
+  TOEFL
+  DUOLINGO
+  PTE
+}
+
+model LeadEnglishTest {
+  id String @id @default(uuid())
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  testType EnglishTestType
+
+  totalScore     Float?
+  listeningScore Float?
+  readingScore   Float?
+  writingScore   Float?
+  speakingScore  Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leadId, testType])
+  @@index([leadId])
+  @@index([testType])
+}
+
 model Lead {
   id String @id @default(uuid())
 
@@ -222,12 +251,7 @@ model Lead {
   verbalScore            Float?
   analyticalWritingScore Float?
 
-  englishTestType String?
-
-  listeningScore Float?
-  writingScore   Float?
-  readingScore   Float?
-  speakingScore  Float?
+  englishTests LeadEnglishTest[]
 
   gapsIfAny String?
 
@@ -490,27 +514,23 @@ model Student {
 }
 
 enum ApplicationStatus {
-  draft
+  on_hold
 
   applied
 
-  pending
-
-  under_review
-
-  conditional
-
-  rejected
+  drop
 }
 
 enum OfferStatus {
-  not_received
+  PENDING
 
-  conditional_offer
+  PRIORITY_UCOL
 
-  unconditional_offer
+  PRIORITY_COL
 
-  rejected
+  COL
+
+  UCOL
 }
 
 model StudentApplication {
@@ -539,9 +559,9 @@ model StudentApplication {
 
   followUpDate DateTime?
 
-  status ApplicationStatus @default(draft)
+  status ApplicationStatus @default(on_hold)
 
-  offerStatus OfferStatus @default(not_received)
+  offerStatus OfferStatus @default(PENDING)
 
   // Snapshot Values
   countryName    String?
@@ -561,6 +581,30 @@ model StudentApplication {
   @@index([intakeId])
 }
 
+enum IhsPaidStatus {
+  PAID
+
+  PENDING
+
+  PAID_PARTIALLY
+}
+
+enum VisaStatus {
+  APPROVED
+
+  REJECTED
+
+  DECISION_PENDING
+}
+
+enum CasStatus {
+  APPLIED
+
+  RECEIVED
+
+  PENDING
+}
+
 model StudentVisaProfile {
   id String @id @default(uuid())
 
@@ -570,13 +614,13 @@ model StudentVisaProfile {
   depositDeadlineDate DateTime?
   depositStatus       String?
 
-  ihsPaidStatus  String?
+  ihsPaidStatus  IhsPaidStatus @default(PENDING)
   visaPaidStatus String?
 
   casDeadlineDate DateTime?
-  casStatus       String?
+  casStatus       CasStatus @default(PENDING)
 
-  visaStatus          String?
+  visaStatus          VisaStatus @default(DECISION_PENDING)
   universityStartDate DateTime?
 
   createdAt DateTime @default(now())
@@ -601,12 +645,10 @@ model StudentLoanProfile {
   loanStatus String?
   pfStatus   String?
 
-  appliedAmount Decimal? @db.Decimal(12, 2)
+  depositDate DateTime?
 
-  sanctionedAmount Decimal? @db.Decimal(12, 2)
-
-  disbursed       Boolean  @default(false)
-  disbursedAmount Decimal? @db.Decimal(12, 2)
+  disbursed     Boolean   @default(false)
+  disbursedDate DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

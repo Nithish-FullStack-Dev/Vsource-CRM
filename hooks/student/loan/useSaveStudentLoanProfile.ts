@@ -11,10 +11,9 @@ export type StudentLoanProfilePayload = {
   nbfc: string | null;
   loanStatus: string | null;
   pfStatus: string | null;
-  appliedAmount: number | null;
-  sanctionedAmount: number | null;
+  depositDate: string | null;
   disbursed: boolean;
-  disbursedAmount: number | null;
+  disbursedDate: string | null;
 };
 
 type SaveStudentLoanProfileVariables = {
