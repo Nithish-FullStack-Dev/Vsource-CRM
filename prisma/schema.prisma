@@ -605,6 +605,12 @@ enum CasStatus {
   PENDING
 }
 
+enum DepositStatus {
+  PAID
+
+  PENDING
+}
+
 model StudentVisaProfile {
   id String @id @default(uuid())
 
@@ -612,7 +618,7 @@ model StudentVisaProfile {
   student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   depositDeadlineDate DateTime?
-  depositStatus       String?
+  depositStatus       DepositStatus @default(PENDING)
 
   ihsPaidStatus  IhsPaidStatus @default(PENDING)
   visaPaidStatus String?

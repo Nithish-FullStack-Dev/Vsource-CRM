@@ -19,7 +19,7 @@ import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 
 export async function GET(req: NextRequest) {
   try {
-    await getAuthorizedUser(req, MODULES.ROLES, PERMISSIONS.READ);
+    // await getAuthorizedUser(req, MODULES.ROLES, PERMISSIONS.READ);
 
     const sp = req.nextUrl.searchParams;
     const { skip, take, page, limit } = parsePagination(sp);

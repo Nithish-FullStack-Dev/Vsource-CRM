@@ -38,6 +38,7 @@ import {
   CourseOption,
 } from "@/components/student/CreatableCourseCombobox";
 import { toast } from "sonner";
+
 interface Props {
   student: StudentRecord;
   isDarkMode: boolean;
@@ -52,6 +53,14 @@ interface UniversityDropdownItem {
   countryId: string;
   tier?: string;
 }
+
+type Status = "on_hold" | "applied" | "drop";
+type OfferStatus =
+  | "PENDING"
+  | "PRIORITY_UCOL"
+  | "PRIORITY_COL"
+  | "COL"
+  | "UCOL";
 
 export default function StudentApplicationsSection({
   student,
@@ -76,8 +85,9 @@ export default function StudentApplicationsSection({
   const [portal, setPortal] = useState("");
   const [applicationDate, setApplicationDate] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
-  const [status, setStatus] = useState("draft");
-  const [offerStatus, setOfferStatus] = useState("not_received");
+  const [status, setStatus] = useState<Status>("on_hold");
+
+  const [offerStatus, setOfferStatus] = useState<OfferStatus>("PENDING");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -126,8 +136,8 @@ export default function StudentApplicationsSection({
       setPortal("");
       setApplicationDate("");
       setFollowUpDate("");
-      setStatus("draft");
-      setOfferStatus("not_received");
+      setStatus("on_hold");
+      setOfferStatus("PENDING");
       setEditingId(null);
       setShowForm(false);
     } catch (error) {
@@ -171,8 +181,8 @@ export default function StudentApplicationsSection({
         : "",
     );
 
-    setStatus(app.status || "draft");
-    setOfferStatus(app.offerStatus || "not_received");
+    setStatus(app.status || "on_hold");
+    setOfferStatus(app.offerStatus || "PENDING");
 
     setShowForm(true);
 
@@ -348,19 +358,20 @@ export default function StudentApplicationsSection({
                   Application Status
                 </label>
 
-                <Select value={status} onValueChange={setStatus}>
+                <Select
+                  value={status}
+                  onValueChange={(val) => setStatus(val as Status)}
+                >
                   <SelectTrigger className="h-11 rounded-2xl">
                     <SelectValue />
                   </SelectTrigger>
 
                   <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="applied">Applied</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="conditional">
-                      Conditional Offer
-                    </SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectContent>
+                      <SelectItem value="on_hold">On Hold</SelectItem>
+                      <SelectItem value="applied">Applied</SelectItem>
+                      <SelectItem value="drop">Drop</SelectItem>
+                    </SelectContent>
                   </SelectContent>
                 </Select>
               </div>
@@ -370,23 +381,24 @@ export default function StudentApplicationsSection({
                   Offer Status
                 </label>
 
-                <Select value={offerStatus} onValueChange={setOfferStatus}>
+                <Select
+                  value={offerStatus}
+                  onValueChange={(val) => setOfferStatus(val as OfferStatus)}
+                >
                   <SelectTrigger className="h-11 rounded-2xl">
                     <SelectValue />
                   </SelectTrigger>
 
                   <SelectContent>
-                    <SelectItem value="not_received">Not Received</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
 
-                    <SelectItem value="conditional_offer">
-                      Conditional Offer
-                    </SelectItem>
+                    <SelectItem value="PRIORITY_UCOL">Priority UCOL</SelectItem>
 
-                    <SelectItem value="unconditional_offer">
-                      Unconditional Offer
-                    </SelectItem>
+                    <SelectItem value="PRIORITY_COL">Priority COL</SelectItem>
 
-                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="COL">COL</SelectItem>
+
+                    <SelectItem value="UCOL">UCOL</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

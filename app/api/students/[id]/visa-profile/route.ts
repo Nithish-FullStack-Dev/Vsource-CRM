@@ -1,15 +1,19 @@
 import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
+import {
+  CasStatus,
+  DepositStatus,
+  IhsPaidStatus,
+  VisaStatus,
+} from "@/generated/prisma/enums";
 
 const parseNullableDate = (value: unknown) => {
   if (!value || typeof value !== "string") return null;
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) return null;
-
-  return date;
+  return Number.isNaN(date.getTime()) ? null : date;
 };
 
 async function saveVisaProfile(
@@ -24,25 +28,38 @@ async function saveVisaProfile(
       where: {
         studentId,
       },
+
       create: {
         studentId,
+
         depositDeadlineDate: parseNullableDate(body.depositDeadlineDate),
-        depositStatus: body.depositStatus,
-        ihsPaidStatus: body.ihsPaidStatus,
-        visaPaidStatus: body.visaPaidStatus,
+        depositStatus: body.depositStatus as DepositStatus | undefined,
+
+        ihsPaidStatus: body.ihsPaidStatus as IhsPaidStatus | undefined,
+
+        visaPaidStatus: body.visaPaidStatus ?? null,
+
         casDeadlineDate: parseNullableDate(body.casDeadlineDate),
-        casStatus: body.casStatus,
-        visaStatus: body.visaStatus,
+        casStatus: body.casStatus as CasStatus | undefined,
+
+        visaStatus: body.visaStatus as VisaStatus | undefined,
+
         universityStartDate: parseNullableDate(body.universityStartDate),
       },
+
       update: {
         depositDeadlineDate: parseNullableDate(body.depositDeadlineDate),
-        depositStatus: body.depositStatus,
-        ihsPaidStatus: body.ihsPaidStatus,
-        visaPaidStatus: body.visaPaidStatus,
+        depositStatus: body.depositStatus as DepositStatus | undefined,
+
+        ihsPaidStatus: body.ihsPaidStatus as IhsPaidStatus | undefined,
+
+        visaPaidStatus: body.visaPaidStatus ?? null,
+
         casDeadlineDate: parseNullableDate(body.casDeadlineDate),
-        casStatus: body.casStatus,
-        visaStatus: body.visaStatus,
+        casStatus: body.casStatus as CasStatus | undefined,
+
+        visaStatus: body.visaStatus as VisaStatus | undefined,
+
         universityStartDate: parseNullableDate(body.universityStartDate),
       },
     });

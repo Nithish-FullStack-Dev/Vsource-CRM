@@ -8,12 +8,17 @@ import { toast } from "sonner";
 
 export type StudentVisaProfilePayload = {
   depositDeadlineDate: string | null;
-  depositStatus: string | null;
-  ihsPaidStatus: string | null;
+  depositStatus: "PENDING" | "PAID" | null;
+
+  ihsPaidStatus: "PENDING" | "PAID" | "PAID_PARTIALLY" | null;
+
   visaPaidStatus: string | null;
+
   casDeadlineDate: string | null;
-  casStatus: string | null;
-  visaStatus: string | null;
+  casStatus: "PENDING" | "APPLIED" | "RECEIVED" | null;
+
+  visaStatus: "DECISION_PENDING" | "APPROVED" | "REJECTED" | null;
+
   universityStartDate: string | null;
 };
 
