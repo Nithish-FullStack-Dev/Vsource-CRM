@@ -1,8 +1,10 @@
+// app\(dashboard)\master-tracker\page.tsx
 "use client";
 
 import React, {
   DragEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -58,7 +60,16 @@ type InfoRowProps = {
   label: string;
   value: React.ReactNode;
 };
+type CurrentUser = {
+  id: string;
+  name: string;
+  email: string;
 
+  role?: {
+    id: string;
+    name: string;
+  };
+};
 const KANBAN_COLUMNS: {
   id: KanbanStage;
   label: string;
@@ -142,7 +153,7 @@ export default function ApplicationsTrackerPage() {
   const students: StudentRecord[] = data?.students ?? [];
 
   const dragRef = useRef<DraggedStudent | null>(null);
-
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [filters, setFilters] = useState(INITIAL_FILTERS);
 
   const [draggedStudent, setDraggedStudent] = useState<DraggedStudent | null>(
@@ -170,7 +181,41 @@ export default function ApplicationsTrackerPage() {
     },
     [getModuleProgress],
   );
+  useEffect(() => {
+    let mounted = true;
 
+    const loadCurrentUser = async () => {
+      try {
+        const response = await fetch("/api/auth/me", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const user = (await response.json()) as CurrentUser;
+
+        if (mounted) {
+          setCurrentUser(user);
+        }
+      } catch (error) {
+        console.error("MASTER_TRACKER_CURRENT_USER_ERROR", error);
+      }
+    };
+
+    void loadCurrentUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  const canMoveBackward = useMemo(() => {
+    const roleName = currentUser?.role?.name?.trim().toLowerCase();
+
+    return roleName === "super admin" || roleName === "director";
+  }, [currentUser]);
   const mapStageToKanban = useCallback(
     (student: StudentRecord): KanbanStage => {
       switch (student.currentStage) {
@@ -213,7 +258,45 @@ export default function ApplicationsTrackerPage() {
   const canDragStudent = useCallback(
     (student: StudentRecord): boolean => {
       const currentStage = mapStageToKanban(student);
-      if (currentStage === "Visa Process") {
+
+      const currentStageIndex = STAGE_ORDER.indexOf(currentStage);
+
+      const progress = getModuleProgress(
+        student,
+        STAGE_MODULE_MAP[currentStage],
+      );
+
+      const canMoveForward =
+        currentStageIndex < STAGE_ORDER.length - 1 &&
+        progress?.status === "completed" &&
+        progress.progress === 100;
+
+      const canMoveBack = canMoveBackward && currentStageIndex > 0;
+
+      return canMoveForward || canMoveBack;
+    },
+    [canMoveBackward, getModuleProgress, mapStageToKanban],
+  );
+
+  const canMoveToStage = useCallback(
+    (student: StudentRecord, destination: KanbanStage): boolean => {
+      const currentStage = mapStageToKanban(student);
+
+      const currentStageIndex = STAGE_ORDER.indexOf(currentStage);
+
+      const destinationStageIndex = STAGE_ORDER.indexOf(destination);
+
+      const stageDifference = destinationStageIndex - currentStageIndex;
+
+      const isForwardMove = stageDifference === 1;
+
+      const isBackwardMove = stageDifference === -1;
+
+      if (isBackwardMove) {
+        return canMoveBackward;
+      }
+
+      if (!isForwardMove) {
         return false;
       }
 
@@ -224,22 +307,7 @@ export default function ApplicationsTrackerPage() {
 
       return progress?.status === "completed" && progress.progress === 100;
     },
-    [getModuleProgress, mapStageToKanban],
-  );
-
-  const canMoveToStage = useCallback(
-    (student: StudentRecord, destination: KanbanStage) => {
-      if (!canDragStudent(student)) {
-        return false;
-      }
-
-      const current = mapStageToKanban(student);
-
-      return (
-        STAGE_ORDER.indexOf(destination) === STAGE_ORDER.indexOf(current) + 1
-      );
-    },
-    [canDragStudent, mapStageToKanban],
+    [canMoveBackward, getModuleProgress, mapStageToKanban],
   );
 
   const handleDragStart = useCallback(
@@ -626,21 +694,25 @@ export default function ApplicationsTrackerPage() {
             label="Country"
             value={student.lead?.preferredCountry || "-"}
           />
+
           <InfoRow
             label="Intake"
             value={student.lead?.preferredIntake || "-"}
           />
+
           <InfoRow
             label="Course"
             value={student.lead?.preferredCourse || "-"}
           />
+
           <InfoRow
             label="Education"
             value={student.lead?.bachelorsCourse || "-"}
           />
+
           <InfoRow
-            label="Passport"
-            value={student.lead?.passport ? "Available" : "Not Added"}
+            label="Loan Required"
+            value={student.lead?.loanRequirement ? "Yes" : "No"}
           />
         </>
       );
@@ -653,22 +725,28 @@ export default function ApplicationsTrackerPage() {
           new Date(second.updatedAt).getTime() -
           new Date(first.updatedAt).getTime(),
       )[0];
+
       const latestRemark = getLatestRemark(student);
+
       return (
         <>
           <InfoRow label="Uploaded" value={documents.length} />
+
           <InfoRow
-            label="Status"
-            value={formatStatus(getModuleStatus(student, "documents"))}
+            label="Progress"
+            value={`${getModuleProgress(student, "documents")?.progress ?? 0}%`}
           />
+
           <InfoRow
             label="Last Document"
             value={latestDocument?.documentType || "-"}
           />
+
           <InfoRow
             label="Last Upload"
             value={formatDate(latestDocument?.updatedAt)}
           />
+
           <InfoRow label="Latest Remark" value={latestRemark?.note || "-"} />
         </>
       );
@@ -680,10 +758,9 @@ export default function ApplicationsTrackerPage() {
         (application) => application.status === "applied",
       );
 
-      const receivedOffers = applications.filter(
+      const offersReceived = applications.filter(
         (application) =>
-          application.offerStatus === "conditional_offer" ||
-          application.offerStatus === "unconditional_offer",
+          application.offerStatus && application.offerStatus !== "PENDING",
       );
 
       const nextFollowUp = getNextApplicationFollowUp(student);
@@ -692,9 +769,9 @@ export default function ApplicationsTrackerPage() {
         <>
           <InfoRow label="Universities" value={applications.length} />
 
-          <InfoRow label="Applied" value={appliedApplications.length} />
+          <InfoRow label="Applications" value={appliedApplications.length} />
 
-          <InfoRow label="Offers" value={receivedOffers.length} />
+          <InfoRow label="Offers" value={offersReceived.length} />
 
           <InfoRow
             label="Next University"
@@ -708,34 +785,41 @@ export default function ApplicationsTrackerPage() {
         </>
       );
     }
-    if (stage === "Visa Process") {
-      const visa = student.visaProfile;
+    if (stage === "Loan Process") {
+      const loan = student.loanProfile;
+
       return (
         <>
-          <InfoRow label="Deposit" value={formatStatus(visa?.depositStatus)} />
           <InfoRow
-            label="Deposit Deadline"
-            value={formatDate(visa?.depositDeadlineDate)}
+            label="Assignee"
+            value={loan?.fintechAssignee?.name || "Unassigned"}
           />
-          <InfoRow label="CAS" value={formatStatus(visa?.casStatus)} />
-          <InfoRow
-            label="CAS Deadline"
-            value={formatDate(visa?.casDeadlineDate)}
-          />
-          <InfoRow label="Visa" value={formatStatus(visa?.visaStatus)} />
+
+          <InfoRow label="NBFC" value={loan?.nbfc || "-"} />
+
+          <InfoRow label="Loan Status" value={formatStatus(loan?.loanStatus)} />
+
+          <InfoRow label="PF Status" value={formatStatus(loan?.pfStatus)} />
+
+          <InfoRow label="Disbursed" value={loan?.disbursed ? "Yes" : "No"} />
         </>
       );
     }
-    const loan = student.loanProfile;
+    const visa = student.visaProfile;
+
     return (
       <>
-        <InfoRow label="Assignee" value={loan?.fintechAssignee?.name || "-"} />
-        <InfoRow label="NBFC" value={loan?.nbfc || "-"} />
-        <InfoRow label="Loan Status" value={formatStatus(loan?.loanStatus)} />
-        <InfoRow label="Applied" value={formatAmount(loan?.appliedAmount)} />
+        <InfoRow label="Deposit" value={formatStatus(visa?.depositStatus)} />
+
+        <InfoRow label="CAS" value={formatStatus(visa?.casStatus)} />
+
+        <InfoRow label="IHS" value={formatStatus(visa?.ihsPaidStatus)} />
+
+        <InfoRow label="Visa" value={formatStatus(visa?.visaStatus)} />
+
         <InfoRow
-          label="Sanctioned"
-          value={formatAmount(loan?.sanctionedAmount)}
+          label="Start Date"
+          value={formatDate(visa?.universityStartDate)}
         />
       </>
     );
@@ -778,7 +862,15 @@ export default function ApplicationsTrackerPage() {
                   <span className="font-semibold text-foreground">
                     {pendingStageMove?.studentName}
                   </span>{" "}
-                  to the next stage?
+                  from{" "}
+                  <span className="font-semibold text-foreground">
+                    {pendingStageMove?.fromStage}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-semibold text-foreground">
+                    {pendingStageMove?.toStage}
+                  </span>
+                  ?
                 </p>
 
                 <div className="flex items-center justify-center gap-3 rounded-2xl border bg-muted/40 p-4">
@@ -806,8 +898,11 @@ export default function ApplicationsTrackerPage() {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  After confirmation, the student will move forward and the next
-                  stage progress will start from 0%.
+                  {pendingStageMove &&
+                  STAGE_ORDER.indexOf(pendingStageMove.toStage) <
+                    STAGE_ORDER.indexOf(pendingStageMove.fromStage)
+                    ? "Admin/Director backward movement will preserve the existing module progress."
+                    : "After confirmation, the student will move forward and the next stage progress will start from 0%."}
                 </p>
               </div>
             </AlertDialogDescription>
@@ -853,10 +948,25 @@ export default function ApplicationsTrackerPage() {
               (student) => mapStageToKanban(student) === column.id,
             );
 
-            const isValidDropColumn =
-              draggedStudent !== null &&
-              STAGE_ORDER.indexOf(column.id) ===
-                STAGE_ORDER.indexOf(draggedStudent.fromStage) + 1;
+            const isValidDropColumn = (() => {
+              if (!draggedStudent) {
+                return false;
+              }
+
+              const currentStageIndex = STAGE_ORDER.indexOf(
+                draggedStudent.fromStage,
+              );
+
+              const destinationStageIndex = STAGE_ORDER.indexOf(column.id);
+
+              const stageDifference = destinationStageIndex - currentStageIndex;
+
+              const isForwardMove = stageDifference === 1;
+
+              const isBackwardMove = canMoveBackward && stageDifference === -1;
+
+              return isForwardMove || isBackwardMove;
+            })();
 
             const isDragOver = dragOverStage === column.id && isValidDropColumn;
 
