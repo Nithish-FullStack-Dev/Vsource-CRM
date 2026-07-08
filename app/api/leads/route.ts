@@ -1,7 +1,7 @@
 /**
  * api/leads/route.ts
- * GET  /api/leads  — list leads with rich filters
- * POST /api/leads  — create a lead
+ * GET  /api/leads — list leads with rich filters
+ * POST /api/leads — create a lead
  */
 
 import { NextRequest } from "next/server";
@@ -34,12 +34,15 @@ export async function GET(req: NextRequest) {
     const branchId = sp.get("branchId") ?? undefined;
     const status = sp.get("status") as LeadStatus | null;
     const leadType = sp.get("leadType") as LeadType | null;
+
     const isConverted =
       sp.get("isConverted") !== null
         ? sp.get("isConverted") === "true"
         : undefined;
+
     const source = sp.get("source") ?? undefined;
     const preferredCountry = sp.get("preferredCountry") ?? undefined;
+
     const from = sp.get("from") ? new Date(sp.get("from")!) : undefined;
     const to = sp.get("to") ? new Date(sp.get("to")!) : undefined;
 
@@ -57,7 +60,9 @@ export async function GET(req: NextRequest) {
     ) {
       andFilters.push({
         OR: [
-          { createdById: currentUser.id },
+          {
+            createdById: currentUser.id,
+          },
           {
             counselors: {
               some: {
@@ -76,18 +81,40 @@ export async function GET(req: NextRequest) {
       ...(isConverted !== undefined && { isConverted }),
       ...(source && { source }),
       ...(preferredCountry && { preferredCountry }),
+
       ...((from || to) && {
         createdAt: {
           ...(from && { gte: from }),
           ...(to && { lte: to }),
         },
       }),
+
       ...(search && {
         OR: [
-          { studentName: { contains: search, mode: "insensitive" as const } },
-          { mobileNumber: { contains: search, mode: "insensitive" as const } },
-          { emailId: { contains: search, mode: "insensitive" as const } },
-          { leadNumber: { contains: search, mode: "insensitive" as const } },
+          {
+            studentName: {
+              contains: search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            mobileNumber: {
+              contains: search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            emailId: {
+              contains: search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            leadNumber: {
+              contains: search,
+              mode: "insensitive" as const,
+            },
+          },
         ],
       }),
 
@@ -101,7 +128,10 @@ export async function GET(req: NextRequest) {
         where,
         skip,
         take,
-        orderBy: { createdAt: "desc" },
+        orderBy: {
+          createdAt: "desc",
+        },
+
         include: {
           branch: {
             select: {
@@ -123,15 +153,23 @@ export async function GET(req: NextRequest) {
             },
           },
 
+          englishTests: {
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
+
           timelines: {
             orderBy: {
               createdAt: "desc",
             },
+
             select: {
               id: true,
               description: true,
               nextFollowup: true,
               createdAt: true,
+
               createdBy: {
                 select: {
                   id: true,
@@ -148,7 +186,10 @@ export async function GET(req: NextRequest) {
           },
         },
       }),
-      db.lead.count({ where }),
+
+      db.lead.count({
+        where,
+      }),
     ]);
 
     return ok(leads, undefined, buildMeta(total, page, limit));
@@ -167,7 +208,12 @@ export async function POST(req: NextRequest) {
 
     const body = LeadCreateSchema.parse(await req.json());
 
-    const { counselorIds, ...leadData } = body;
+    const {
+      counselorIds,
+      englishTests,
+      assignedCounselorId: _assignedCounselorId,
+      ...leadData
+    } = body;
 
     const allLeads = await db.lead.findMany({
       select: {
@@ -183,26 +229,43 @@ export async function POST(req: NextRequest) {
 
     const leadNumber = `LD${String(highestLeadNumber + 1).padStart(4, "0")}`;
 
-    const existingLead = await db.lead.findFirst({
-      where: {
-        OR: [
-          {
-            mobileNumber: leadData.mobileNumber,
-          },
-          {
-            emailId: leadData.emailId,
-          },
-        ],
-      },
-    });
+    const duplicateFilters: Prisma.LeadWhereInput[] = [];
 
-    if (existingLead) {
-      if (existingLead.mobileNumber === leadData.mobileNumber) {
-        throw new Error("Mobile number already exists");
-      }
+    if (leadData.mobileNumber) {
+      duplicateFilters.push({
+        mobileNumber: leadData.mobileNumber,
+      });
+    }
 
-      if (existingLead.emailId === leadData.emailId) {
-        throw new Error("Email address already exists");
+    if (leadData.emailId) {
+      duplicateFilters.push({
+        emailId: leadData.emailId,
+      });
+    }
+
+    if (duplicateFilters.length > 0) {
+      const existingLead = await db.lead.findFirst({
+        where: {
+          OR: duplicateFilters,
+        },
+
+        select: {
+          mobileNumber: true,
+          emailId: true,
+        },
+      });
+
+      if (existingLead) {
+        if (
+          leadData.mobileNumber &&
+          existingLead.mobileNumber === leadData.mobileNumber
+        ) {
+          throw new Error("Mobile number already exists");
+        }
+
+        if (leadData.emailId && existingLead.emailId === leadData.emailId) {
+          throw new Error("Email address already exists");
+        }
       }
     }
 
@@ -214,7 +277,9 @@ export async function POST(req: NextRequest) {
     const lead = await db.lead.create({
       data: {
         ...leadData,
+
         leadNumber,
+
         createdById: currentUser.id,
         updatedById: currentUser.id,
 
@@ -228,6 +293,20 @@ export async function POST(req: NextRequest) {
                 })),
               }
             : undefined,
+
+        englishTests:
+          englishTests && englishTests.length > 0
+            ? {
+                create: englishTests.map((test) => ({
+                  testType: test.testType,
+                  totalScore: test.totalScore,
+                  listeningScore: test.listeningScore,
+                  readingScore: test.readingScore,
+                  writingScore: test.writingScore,
+                  speakingScore: test.speakingScore,
+                })),
+              }
+            : undefined,
       },
 
       include: {
@@ -235,17 +314,26 @@ export async function POST(req: NextRequest) {
           select: {
             id: true,
             name: true,
+            code: true,
           },
         },
 
         counselors: {
-          include: {
+          select: {
+            isPrimary: true,
+
             counselor: {
               select: {
                 id: true,
                 name: true,
               },
             },
+          },
+        },
+
+        englishTests: {
+          orderBy: {
+            createdAt: "asc",
           },
         },
       },

@@ -87,7 +87,35 @@ interface PageActionsProps {
   followupNote: string;
   setFollowupNote: React.Dispatch<React.SetStateAction<string>>;
 }
-const englishTestOptions = ["IELTS", "TOEFL", "DUOLINGO", "PTE"];
+type EnglishTestType = "IELTS" | "TOEFL" | "DUOLINGO" | "PTE";
+
+type EnglishScoreField =
+  | "totalScore"
+  | "listeningScore"
+  | "readingScore"
+  | "writingScore"
+  | "speakingScore";
+
+const englishTestOptions: EnglishTestType[] = [
+  "IELTS",
+  "TOEFL",
+  "DUOLINGO",
+  "PTE",
+];
+
+const englishTestScoreLimits: Record<
+  EnglishTestType,
+  {
+    total: number;
+    section: number;
+    decimals: number;
+  }
+> = {
+  IELTS: { total: 9, section: 9, decimals: 1 },
+  TOEFL: { total: 120, section: 30, decimals: 0 },
+  PTE: { total: 90, section: 90, decimals: 0 },
+  DUOLINGO: { total: 160, section: 160, decimals: 0 },
+};
 export default function PageActions(props: PageActionsProps) {
   const {
     selected,
@@ -220,12 +248,16 @@ export default function PageActions(props: PageActionsProps) {
     label: string;
     value?: string | number | null;
   }) {
+    const displayValue =
+      value === null || value === undefined || value === "" ? "—" : value;
+
     return (
-      <div>
+      <div className="min-w-0">
         <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {label}
         </p>
-        <p className="text-sm font-medium break-words">{value || "—"}</p>
+
+        <p className="break-words text-sm font-medium">{displayValue}</p>
       </div>
     );
   }
@@ -257,70 +289,214 @@ export default function PageActions(props: PageActionsProps) {
 
     return date.toLocaleDateString("en-GB");
   };
+  const addEnglishTest = (testType: EnglishTestType) => {
+    if (!editingLead) return;
+
+    const currentTests = editingLead.englishTests ?? [];
+
+    if (currentTests.some((test) => test.testType === testType)) {
+      toast.error(`${testType} is already added`);
+      return;
+    }
+
+    setEditingLead({
+      ...editingLead,
+      englishTests: [
+        ...currentTests,
+        {
+          testType,
+          totalScore: null,
+          listeningScore: null,
+          readingScore: null,
+          writingScore: null,
+          speakingScore: null,
+        },
+      ],
+    });
+  };
+
+  const removeEnglishTest = (index: number) => {
+    if (!editingLead) return;
+
+    setEditingLead({
+      ...editingLead,
+      englishTests: (editingLead.englishTests ?? []).filter(
+        (_, testIndex) => testIndex !== index,
+      ),
+    });
+  };
+
+  const updateEnglishTestScore = (
+    index: number,
+    field: EnglishScoreField,
+    rawValue: string,
+  ) => {
+    if (!editingLead) return;
+
+    const tests = [...(editingLead.englishTests ?? [])];
+    const test = tests[index];
+
+    if (!test) return;
+
+    const limits = englishTestScoreLimits[test.testType];
+
+    const max = field === "totalScore" ? limits.total : limits.section;
+
+    let value = rawValue.replace(/[^0-9.]/g, "");
+
+    const parts = value.split(".");
+
+    if (parts.length > 2) {
+      value = `${parts[0]}.${parts.slice(1).join("")}`;
+    }
+
+    if (limits.decimals === 0) {
+      value = value.replace(/\./g, "");
+    } else if (value.includes(".")) {
+      const [integerPart, decimalPart = ""] = value.split(".");
+
+      value = `${integerPart}.${decimalPart.slice(0, limits.decimals)}`;
+    }
+
+    if (value !== "") {
+      const numericValue = Number(value);
+
+      if (Number.isNaN(numericValue)) return;
+
+      if (numericValue > max) {
+        value = String(max);
+      }
+    }
+
+    tests[index] = {
+      ...test,
+      [field]: value === "" ? null : Number(value),
+    };
+
+    setEditingLead({
+      ...editingLead,
+      englishTests: tests,
+    });
+  };
   return (
     <>
       {/* 1. DETAILED RECORD VIEW SHEET */}
       <Sheet
         open={!!selected}
-        onOpenChange={(value) => !value && setSelected(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelected(null);
+          }
+        }}
       >
-        <SheetContent className="w-full sm:max-w-4xl overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-4xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {selected && (
             <>
-              <SheetHeader className="border-b pb-4">
-                <SheetTitle className="text-2xl font-bold">
-                  {selected?.studentName}
-                </SheetTitle>
-                <SheetDescription>
-                  Serial Number: {selected?.leadNumber}
-                </SheetDescription>
+              {/* HEADER */}
+              <SheetHeader className="border-b pb-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <SheetTitle className="break-words text-2xl font-bold">
+                      {selected.studentName || "Unnamed Student"}
+                    </SheetTitle>
+
+                    <SheetDescription className="mt-1">
+                      WalkIn Number:{" "}
+                      <span className="font-mono font-semibold text-foreground">
+                        {selected.leadNumber}
+                      </span>
+                    </SheetDescription>
+                  </div>
+                </div>
               </SheetHeader>
 
               <div className="space-y-6 py-6">
                 {/* BASIC INFORMATION */}
-                <div className="rounded-xl border bg-card">
-                  <div className="border-b px-5 py-3">
-                    <h3 className="font-semibold text-lg">Basic Information</h3>
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                  <div className="border-b bg-muted/30 px-5 py-4">
+                    <h3 className="text-base font-semibold">
+                      Basic Information
+                    </h3>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Student personal and lead information
+                    </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
+
+                  <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
                     <DetailItem
                       label="Student Name"
-                      value={selected?.studentName}
+                      value={selected.studentName}
                     />
+
                     <DetailItem
                       label="Father Name"
-                      value={selected?.fatherName}
+                      value={selected.fatherName}
                     />
+
                     <DetailItem
                       label="Mobile Number"
-                      value={selected?.mobileNumber}
+                      value={selected.mobileNumber}
                     />
+
                     <DetailItem
                       label="Email Address"
-                      value={selected?.emailId}
+                      value={selected.emailId}
                     />
-                    <DetailItem label="Place" value={selected?.place} />
+
+                    <DetailItem label="Place" value={selected.place} />
+
                     <DetailItem
                       label="Passport Number"
-                      value={selected?.passport}
+                      value={selected.passport}
                     />
-                    <DetailItem label="Lead Source" value={selected?.source} />
-                    <DetailItem label="Branch" value={selected?.branch?.name} />
+
+                    <DetailItem
+                      label="Passport Expiry Date"
+                      value={formatDate(selected.passportExpireDate)}
+                    />
+
+                    <DetailItem
+                      label="Counselling Date"
+                      value={formatDate(selected.counsellingDate)}
+                    />
+
+                    <DetailItem label="Lead Source" value={selected.source} />
+
+                    <DetailItem label="Branch" value={selected.branch?.name} />
+
                     <DetailItem
                       label="Graduation Status"
-                      value={selected?.graduationStatus}
+                      value={
+                        selected.graduationStatus
+                          ? selected.graduationStatus === "completed"
+                            ? "Completed"
+                            : "Pursuing"
+                          : null
+                      }
                     />
-                    <div>
-                      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+
+                    <DetailItem
+                      label="Loan Requirement"
+                      value={selected.loanRequirement ? "Yes" : "No"}
+                    />
+
+                    {/* ASSIGNED COUNSELORS */}
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Assigned Counselors
                       </p>
 
                       <div className="flex flex-wrap gap-2">
-                        {selected?.counselors?.length ? (
-                          selected?.counselors.map((coun, idx) => (
-                            <Badge key={coun.counselor?.id || idx}>
-                              {coun?.counselor?.name}
-                              {coun.isPrimary && " (Primary)"}
+                        {selected.counselors?.length ? (
+                          selected.counselors.map((item, index) => (
+                            <Badge
+                              key={item.counselor?.id || index}
+                              variant={item.isPrimary ? "default" : "secondary"}
+                            >
+                              {item.counselor?.name || "Unknown Counselor"}
+
+                              {item.isPrimary && " (Primary)"}
                             </Badge>
                           ))
                         ) : (
@@ -331,113 +507,249 @@ export default function PageActions(props: PageActionsProps) {
                       </div>
                     </div>
                   </div>
-                </div>
+                </section>
 
                 {/* EDUCATIONAL INFORMATION */}
-                <div className="rounded-xl border bg-card">
-                  <div className="border-b px-5 py-3">
-                    <h3 className="font-semibold text-lg">
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                  <div className="border-b bg-muted/30 px-5 py-4">
+                    <h3 className="text-base font-semibold">
                       Educational Information
                     </h3>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Academic history and graduation details
+                    </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
+
+                  <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
                     <DetailItem
                       label="10th Percentage"
-                      value={selected.tenthPercentage}
+                      value={
+                        selected.tenthPercentage != null
+                          ? `${selected.tenthPercentage}%`
+                          : null
+                      }
                     />
+
                     <DetailItem
                       label="10th Passing Year"
                       value={selected.tenthYearOfPassing}
                     />
+
                     <DetailItem
                       label="12th Percentage"
-                      value={selected.twelfthPercentage}
+                      value={
+                        selected.twelfthPercentage != null
+                          ? `${selected.twelfthPercentage}%`
+                          : null
+                      }
                     />
+
                     <DetailItem
                       label="12th Passing Year"
                       value={selected.twelfthYearOfPassing}
                     />
+
                     <DetailItem
-                      label="University"
+                      label="University / College"
                       value={selected.bachelorsUniversityName}
                     />
+
                     <DetailItem
-                      label="Course"
+                      label="Bachelor Course"
                       value={selected.bachelorsCourse}
                     />
+
                     <DetailItem
-                      label="Bachelor Percentage"
+                      label="Bachelor Percentage / CGPA"
                       value={selected.bachelorsPercentage}
                     />
+
                     <DetailItem
                       label="Bachelor Passing Year"
                       value={selected.bachelorsYearOfPassing}
                     />
+
                     <DetailItem label="Backlogs" value={selected.backlogs} />
                   </div>
+
                   <div className="border-t p-5">
                     <DetailBlock
                       label="Education Gaps"
                       value={selected.gapsIfAny}
                     />
                   </div>
-                </div>
+                </section>
 
-                {/* EPT Details */}
-                <div className="rounded-xl border bg-card">
-                  <div className="border-b px-5 py-3">
-                    <h3 className="font-semibold text-lg">EPT Details</h3>
+                {/* ENGLISH PROFICIENCY TESTS */}
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                  <div className="border-b bg-muted/30 px-5 py-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="text-base font-semibold">
+                          English Proficiency Tests
+                        </h3>
+
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Selected tests and individual score details
+                        </p>
+                      </div>
+
+                      <Badge variant="secondary">
+                        {selected.englishTests?.length || 0}{" "}
+                        {selected.englishTests?.length === 1 ? "Test" : "Tests"}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
+
+                  <div className="p-5">
+                    {selected.englishTests?.length ? (
+                      <div className="space-y-4">
+                        {selected.englishTests.map((test, index) => (
+                          <div
+                            key={test.id || `${test.testType}-${index}`}
+                            className="overflow-hidden rounded-2xl border bg-muted/10"
+                          >
+                            {/* TEST HEADER */}
+                            <div className="flex flex-col gap-3 border-b bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-background text-sm font-bold">
+                                  {index + 1}
+                                </div>
+
+                                <div>
+                                  <p className="font-semibold">
+                                    {test.testType}
+                                  </p>
+
+                                  <p className="text-xs text-muted-foreground">
+                                    English proficiency test scores
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                  Total Score
+                                </span>
+
+                                <Badge variant="outline">
+                                  {test.totalScore ?? "—"}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            {/* TEST SCORES */}
+                            <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3 lg:grid-cols-5">
+                              <DetailItem
+                                label="Total Score"
+                                value={test.totalScore}
+                              />
+
+                              <DetailItem
+                                label="Listening"
+                                value={test.listeningScore}
+                              />
+
+                              <DetailItem
+                                label="Reading"
+                                value={test.readingScore}
+                              />
+
+                              <DetailItem
+                                label="Writing"
+                                value={test.writingScore}
+                              />
+
+                              <DetailItem
+                                label="Speaking"
+                                value={test.speakingScore}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex min-h-32 items-center justify-center rounded-2xl border border-dashed bg-muted/10 p-6">
+                        <div className="text-center">
+                          <p className="text-sm font-medium">
+                            No English tests added
+                          </p>
+
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            English proficiency test information is not
+                            available for this lead.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {/* GRE / GMAT */}
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                  <div className="border-b bg-muted/30 px-5 py-4">
+                    <h3 className="text-base font-semibold">
+                      GRE / GMAT Details
+                    </h3>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Graduate admission test scores
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-4">
                     <DetailItem
-                      label="English Test"
-                      value={selected.englishTestType}
-                    />
-                    <DetailItem
-                      label="Listening"
-                      value={selected.listeningScore}
-                    />
-                    <DetailItem label="Reading" value={selected.readingScore} />
-                    <DetailItem label="Writing" value={selected.writingScore} />
-                    <DetailItem
-                      label="Speaking"
-                      value={selected.speakingScore}
-                    />
-                    <DetailItem
-                      label="GRE / GMAT"
+                      label="Total Score"
                       value={selected.greGmatScore}
                     />
+
                     <DetailItem
                       label="Quantitative"
                       value={selected.quantitativeScore}
                     />
+
                     <DetailItem label="Verbal" value={selected.verbalScore} />
+
                     <DetailItem
-                      label="AWA"
+                      label="Analytical Writing"
                       value={selected.analyticalWritingScore}
                     />
                   </div>
-                </div>
+                </section>
 
                 {/* STUDY PREFERENCES */}
-                <div className="rounded-xl border bg-card">
-                  <div className="border-b px-5 py-3">
-                    <h3 className="font-semibold text-lg">
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                  <div className="border-b bg-muted/30 px-5 py-4">
+                    <h3 className="text-base font-semibold">
                       Study Preferences & Experience
                     </h3>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Preferred study destination and professional experience
+                    </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
+
+                  <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
                     <DetailItem
                       label="Preferred Country"
                       value={selected.preferredCountry}
                     />
+
                     <DetailItem
                       label="Preferred Intake"
                       value={selected.preferredIntake}
                     />
-                    <div>
-                      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Preferred Tiers
+
+                    <DetailItem
+                      label="Preferred Course"
+                      value={selected.preferredCourse}
+                    />
+
+                    {/* PREFERRED TIERS */}
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Preferred University Tiers
                       </p>
 
                       <div className="flex flex-wrap gap-2">
@@ -449,32 +761,39 @@ export default function PageActions(props: PageActionsProps) {
                           ))
                         ) : (
                           <span className="text-sm text-muted-foreground">
-                            Not Selected
+                            No university tiers selected
                           </span>
                         )}
                       </div>
                     </div>
-                    <DetailItem
-                      label="Preferred Course"
-                      value={selected.preferredCourse}
-                    />
                   </div>
+
                   <div className="border-t p-5">
                     <DetailBlock
                       label="Work Experience"
                       value={selected.workExperience}
                     />
                   </div>
-                </div>
+                </section>
 
                 {/* CRM INFORMATION */}
-                <div className="rounded-xl border bg-card">
-                  <div className="border-b px-5 py-3">
-                    <h3 className="text-lg font-semibold">CRM Information</h3>
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                  <div className="border-b bg-muted/30 px-5 py-4">
+                    <h3 className="text-base font-semibold">CRM Information</h3>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Lead status, follow-up and remarks
+                    </p>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
-                    <DetailItem label="Status" value={selected.status} />
+                  <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Status
+                      </p>
+
+                      <Badge className="capitalize">{selected.status}</Badge>
+                    </div>
 
                     <DetailItem
                       label="Created Date"
@@ -482,58 +801,97 @@ export default function PageActions(props: PageActionsProps) {
                     />
 
                     <DetailItem
-                      label="Next Followup"
+                      label="Next Follow-up"
                       value={formatDate(selected.nextFollowup)}
+                    />
+
+                    <DetailItem
+                      label="Converted"
+                      value={selected.isConverted ? "Yes" : "No"}
                     />
                   </div>
 
                   <div className="border-t p-5">
                     <DetailBlock label="Remarks" value={selected.remarks} />
                   </div>
+                </section>
 
-                  <div className="border-t p-5">
-                    <h4 className="mb-4 text-sm font-semibold">
-                      Follow-up History
-                    </h4>
+                {/* FOLLOW-UP HISTORY */}
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                  <div className="border-b bg-muted/30 px-5 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-semibold">
+                          Follow-up History
+                        </h3>
 
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Previous notes and scheduled follow-ups
+                        </p>
+                      </div>
+
+                      <Badge variant="secondary">
+                        {selected.timelines?.length || 0}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-5">
                     {selected.timelines?.length ? (
                       <div className="space-y-3">
                         {selected.timelines.map((timeline) => (
                           <div
                             key={timeline.id}
-                            className="rounded-xl border bg-muted/20 p-4"
+                            className="rounded-2xl border bg-muted/10 p-4"
                           >
-                            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-                              <p className="font-medium">
-                                {timeline.nextFollowup
-                                  ? formatDate(timeline.nextFollowup)
-                                  : "No follow-up date"}
-                              </p>
+                            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                              <div>
+                                <p className="text-sm font-semibold">
+                                  {timeline.nextFollowup
+                                    ? `Follow-up: ${formatDate(
+                                        timeline.nextFollowup,
+                                      )}`
+                                    : "Follow-up Note"}
+                                </p>
 
-                              <span className="text-xs text-muted-foreground">
-                                Added {formatDate(timeline.createdAt)}
+                                <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+                                  {timeline.description || "No description"}
+                                </p>
+                              </div>
+
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {formatDate(timeline.createdAt)}
                               </span>
                             </div>
 
-                            <p className="mt-2 text-sm text-muted-foreground">
-                              {timeline.description}
-                            </p>
-
                             {timeline.createdBy?.name && (
-                              <p className="mt-2 text-xs text-muted-foreground">
-                                Added by {timeline.createdBy.name}
-                              </p>
+                              <div className="mt-3 border-t pt-3">
+                                <p className="text-xs text-muted-foreground">
+                                  Added by{" "}
+                                  <span className="font-medium text-foreground">
+                                    {timeline.createdBy.name}
+                                  </span>
+                                </p>
+                              </div>
                             )}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No follow-up history available.
-                      </p>
+                      <div className="flex min-h-32 items-center justify-center rounded-2xl border border-dashed bg-muted/10 p-6">
+                        <div className="text-center">
+                          <p className="text-sm font-medium">
+                            No follow-up history
+                          </p>
+
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Follow-up notes have not been added for this lead.
+                          </p>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
+                </section>
               </div>
             </>
           )}
@@ -1453,220 +1811,197 @@ export default function PageActions(props: PageActionsProps) {
                     />
                   </div>
 
-                  <div className="sm:col-span-2 border-t pt-4">
-                    <h3 className="font-semibold text-base">EPT Details</h3>
+                  {/* ENGLISH PROFICIENCY TESTS */}
+                  <div className="sm:col-span-2 border-t pt-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="text-base font-semibold">
+                          English Proficiency Tests
+                        </h3>
+
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Add multiple tests and update individual scores
+                        </p>
+                      </div>
+
+                      <Select
+                        value=""
+                        onValueChange={(value) =>
+                          addEnglishTest(value as EnglishTestType)
+                        }
+                      >
+                        <SelectTrigger className="w-full sm:w-[220px]">
+                          <SelectValue placeholder="Add English Test" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {englishTestOptions.map((testType) => {
+                            const alreadyAdded = editingLead.englishTests?.some(
+                              (test) => test.testType === testType,
+                            );
+
+                            return (
+                              <SelectItem
+                                key={testType}
+                                value={testType}
+                                disabled={alreadyAdded}
+                              >
+                                {testType}
+                                {alreadyAdded ? " (Added)" : ""}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div className="grid gap-1.5">
-                    <Label>English Test Type</Label>
+                  <div className="sm:col-span-2">
+                    {editingLead.englishTests?.length ? (
+                      <div className="space-y-4">
+                        {editingLead.englishTests.map((test, index) => {
+                          const limits = englishTestScoreLimits[test.testType];
 
-                    <Select
-                      value={editingLead.englishTestType || ""}
-                      onValueChange={(value) =>
-                        setEditingLead({
-                          ...editingLead,
-                          englishTestType: value,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select Test" />
-                      </SelectTrigger>
+                          const scoreFields: {
+                            field: EnglishScoreField;
+                            label: string;
+                            max: number;
+                          }[] = [
+                            {
+                              field: "totalScore",
+                              label: "Total Score",
+                              max: limits.total,
+                            },
+                            {
+                              field: "listeningScore",
+                              label: "Listening",
+                              max: limits.section,
+                            },
+                            {
+                              field: "readingScore",
+                              label: "Reading",
+                              max: limits.section,
+                            },
+                            {
+                              field: "writingScore",
+                              label: "Writing",
+                              max: limits.section,
+                            },
+                            {
+                              field: "speakingScore",
+                              label: "Speaking",
+                              max: limits.section,
+                            },
+                          ];
 
-                      <SelectContent>
-                        {englishTestOptions.map((test) => (
-                          <SelectItem key={test} value={test}>
-                            {test}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                          return (
+                            <div
+                              key={test.id || `${test.testType}-${index}`}
+                              className="overflow-hidden rounded-2xl border bg-background shadow-sm"
+                            >
+                              <div className="flex flex-col gap-3 border-b bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-semibold">
+                                      {test.testType}
+                                    </p>
 
-                  <div className="grid gap-1.5">
-                    <Label>Listening</Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="L Score"
-                      maxLength={6}
-                      value={editingLead.listeningScore ?? ""}
-                      onKeyDown={(e) => {
-                        if (["-", "+", "e", "E"].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onInput={(e) => {
-                        const input = e.currentTarget;
+                                    <Badge variant="secondary">
+                                      English Test
+                                    </Badge>
+                                  </div>
 
-                        let value = input.value.replace(/[^0-9.]/g, "");
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    Total max {limits.total} · Section max{" "}
+                                    {limits.section}
+                                    {limits.decimals === 0
+                                      ? " · Whole numbers only"
+                                      : ` · ${limits.decimals} decimal allowed`}
+                                  </p>
+                                </div>
 
-                        // Allow only one decimal point
-                        const parts = value.split(".");
-                        if (parts.length > 2) {
-                          value = parts[0] + "." + parts.slice(1).join("");
-                        }
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeEnglishTest(index)}
+                                  className="w-full sm:w-auto"
+                                >
+                                  Remove Test
+                                </Button>
+                              </div>
 
-                        // Allow up to 3 digits before decimal and 2 after
-                        if (value.includes(".")) {
-                          const [intPart, decimalPart] = value.split(".");
-                          value =
-                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
-                        } else {
-                          value = value.slice(0, 3);
-                        }
+                              <div className="grid grid-cols-2 gap-4 p-4 lg:grid-cols-5">
+                                {scoreFields.map((scoreField) => (
+                                  <div
+                                    key={scoreField.field}
+                                    className={
+                                      scoreField.field === "totalScore"
+                                        ? "col-span-2 space-y-2 lg:col-span-1"
+                                        : "space-y-2"
+                                    }
+                                  >
+                                    <Label
+                                      htmlFor={`edit-${test.testType}-${scoreField.field}-${index}`}
+                                      className="text-xs font-medium"
+                                    >
+                                      {scoreField.label}
+                                    </Label>
 
-                        input.value = value;
-                      }}
-                      onChange={(e) => {
-                        const value = e.target.value;
+                                    <Input
+                                      id={`edit-${test.testType}-${scoreField.field}-${index}`}
+                                      type="text"
+                                      inputMode={
+                                        limits.decimals > 0
+                                          ? "decimal"
+                                          : "numeric"
+                                      }
+                                      placeholder={`Max ${scoreField.max}`}
+                                      value={test[scoreField.field] ?? ""}
+                                      onKeyDown={(event) => {
+                                        if (
+                                          ["-", "+", "e", "E"].includes(
+                                            event.key,
+                                          )
+                                        ) {
+                                          event.preventDefault();
+                                        }
 
-                        setEditingLead({
-                          ...editingLead,
-                          listeningScore:
-                            value === "" ? undefined : Number(value),
-                        });
-                      }}
-                    />
-                  </div>
+                                        if (
+                                          limits.decimals === 0 &&
+                                          event.key === "."
+                                        ) {
+                                          event.preventDefault();
+                                        }
+                                      }}
+                                      onChange={(event) =>
+                                        updateEnglishTestScore(
+                                          index,
+                                          scoreField.field,
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex min-h-36 items-center justify-center rounded-2xl border border-dashed bg-muted/10 p-6">
+                        <div className="text-center">
+                          <p className="text-sm font-medium">
+                            No English tests added
+                          </p>
 
-                  <div className="grid gap-1.5">
-                    <Label>Reading</Label>
-                    <Input
-                      type="number"
-                      maxLength={6}
-                      min={0}
-                      step="0.01"
-                      value={editingLead.readingScore ?? ""}
-                      onKeyDown={(e) => {
-                        if (["-", "+", "e", "E"].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onInput={(e) => {
-                        const input = e.currentTarget;
-
-                        let value = input.value.replace(/[^0-9.]/g, "");
-
-                        // Allow only one decimal point
-                        const parts = value.split(".");
-                        if (parts.length > 2) {
-                          value = parts[0] + "." + parts.slice(1).join("");
-                        }
-
-                        // Allow up to 3 digits before decimal and 2 after
-                        if (value.includes(".")) {
-                          const [intPart, decimalPart] = value.split(".");
-                          value =
-                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
-                        } else {
-                          value = value.slice(0, 3);
-                        }
-
-                        input.value = value;
-                      }}
-                      onChange={(e) => {
-                        const value = e.target.value;
-
-                        setEditingLead({
-                          ...editingLead,
-                          readingScore:
-                            value === "" ? undefined : Number(value),
-                        });
-                      }}
-                    />
-                  </div>
-
-                  <div className="grid gap-1.5">
-                    <Label>Writing</Label>
-                    <Input
-                      type="number"
-                      maxLength={6}
-                      min={0}
-                      step="0.01"
-                      value={editingLead.writingScore ?? ""}
-                      onKeyDown={(e) => {
-                        if (["-", "+", "e", "E"].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onInput={(e) => {
-                        const input = e.currentTarget;
-
-                        let value = input.value.replace(/[^0-9.]/g, "");
-
-                        // Allow only one decimal point
-                        const parts = value.split(".");
-                        if (parts.length > 2) {
-                          value = parts[0] + "." + parts.slice(1).join("");
-                        }
-
-                        // Allow up to 3 digits before decimal and 2 after
-                        if (value.includes(".")) {
-                          const [intPart, decimalPart] = value.split(".");
-                          value =
-                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
-                        } else {
-                          value = value.slice(0, 3);
-                        }
-
-                        input.value = value;
-                      }}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setEditingLead({
-                          ...editingLead,
-                          writingScore:
-                            value === "" ? undefined : Number(value),
-                        });
-                      }}
-                    />
-                  </div>
-
-                  <div className="grid gap-1.5">
-                    <Label>Speaking</Label>
-                    <Input
-                      type="number"
-                      maxLength={6}
-                      min={0}
-                      step="0.01"
-                      value={editingLead.speakingScore ?? ""}
-                      onKeyDown={(e) => {
-                        if (["-", "+", "e", "E"].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onInput={(e) => {
-                        const input = e.currentTarget;
-
-                        let value = input.value.replace(/[^0-9.]/g, "");
-
-                        // Allow only one decimal point
-                        const parts = value.split(".");
-                        if (parts.length > 2) {
-                          value = parts[0] + "." + parts.slice(1).join("");
-                        }
-
-                        // Allow up to 3 digits before decimal and 2 after
-                        if (value.includes(".")) {
-                          const [intPart, decimalPart] = value.split(".");
-                          value =
-                            intPart.slice(0, 3) + "." + decimalPart.slice(0, 2);
-                        } else {
-                          value = value.slice(0, 3);
-                        }
-
-                        input.value = value;
-                      }}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setEditingLead({
-                          ...editingLead,
-                          speakingScore:
-                            value === "" ? undefined : Number(value),
-                        });
-                      }}
-                    />
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Select IELTS, TOEFL, DUOLINGO, or PTE above.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="sm:col-span-2 border-t pt-4">
                     <h3 className="font-semibold text-base">GRE / GMAT</h3>

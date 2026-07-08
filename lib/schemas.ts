@@ -113,7 +113,17 @@ const LeadStatusEnum = z.enum([
   "lost",
 ]);
 const LeadTypeEnum = z.enum(["study_abroad", "mbbs"]);
+const EnglishTestTypeEnum = z.enum(["IELTS", "TOEFL", "DUOLINGO", "PTE"]);
 
+export const LeadEnglishTestSchema = z.object({
+  testType: EnglishTestTypeEnum,
+
+  totalScore: optFloat,
+  listeningScore: optFloat,
+  readingScore: optFloat,
+  writingScore: optFloat,
+  speakingScore: optFloat,
+});
 export const LeadCreateSchema = z.object({
   leadNumber: optStr,
   leadType: LeadTypeEnum.default("study_abroad"),
@@ -156,12 +166,21 @@ export const LeadCreateSchema = z.object({
   verbalScore: optFloat,
   analyticalWritingScore: optFloat,
 
-  englishTestType: optStr,
-  listeningScore: optFloat,
-  writingScore: optFloat,
-  readingScore: optFloat,
-  speakingScore: optFloat,
+  englishTests: z
+    .array(LeadEnglishTestSchema)
+    .max(4, "Maximum 4 English proficiency tests are allowed")
+    .refine(
+      (tests) => {
+        const testTypes = tests.map((test) => test.testType);
 
+        return new Set(testTypes).size === testTypes.length;
+      },
+      {
+        message: "Duplicate English proficiency tests are not allowed",
+      },
+    )
+    .optional()
+    .default([]),
   gapsIfAny: optStr,
 
   status: LeadStatusEnum.default("new"),

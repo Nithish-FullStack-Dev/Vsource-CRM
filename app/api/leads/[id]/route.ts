@@ -56,10 +56,16 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
             counselor: {
               select: {
-                name: true,
                 id: true,
+                name: true,
               },
             },
+          },
+        },
+
+        englishTests: {
+          orderBy: {
+            createdAt: "asc",
           },
         },
 
@@ -111,13 +117,21 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
     const body = LeadUpdateSchema.parse(await req.json());
 
-    const { counselorIds, followupDate, followupNote, branchId, ...leadData } =
-      body;
+    const {
+      counselorIds,
+      englishTests,
+      assignedCounselorId: _assignedCounselorId,
+      followupDate,
+      followupNote,
+      branchId,
+      ...leadData
+    } = body;
 
     const existingLead = await db.lead.findUnique({
       where: {
         id,
       },
+
       select: {
         id: true,
       },
@@ -154,9 +168,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         where: {
           id,
         },
+
         data: updateData,
       });
 
+      /*
+       * Update assigned counselors only when counselorIds
+       * is explicitly provided in the PATCH request.
+       */
       if (counselorIds !== undefined) {
         await tx.leadCounselor.deleteMany({
           where: {
@@ -176,6 +195,47 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         }
       }
 
+      /*
+       * Update English proficiency tests only when
+       * englishTests is explicitly provided.
+       *
+       * Current strategy:
+       * 1. Delete existing tests.
+       * 2. Create the latest tests received from frontend.
+       *
+       * Everything happens inside one transaction.
+       */
+      if (englishTests !== undefined) {
+        await tx.leadEnglishTest.deleteMany({
+          where: {
+            leadId: id,
+          },
+        });
+
+        if (englishTests.length > 0) {
+          await tx.leadEnglishTest.createMany({
+            data: englishTests.map((test) => ({
+              leadId: id,
+
+              testType: test.testType,
+
+              totalScore: test.totalScore,
+
+              listeningScore: test.listeningScore,
+
+              readingScore: test.readingScore,
+
+              writingScore: test.writingScore,
+
+              speakingScore: test.speakingScore,
+            })),
+          });
+        }
+      }
+
+      /*
+       * Create follow-up timeline entry.
+       */
       if (followupDate || followupNote?.trim()) {
         await tx.leadTimeline.create({
           data: {
@@ -216,6 +276,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                   name: true,
                 },
               },
+            },
+          },
+
+          englishTests: {
+            orderBy: {
+              createdAt: "asc",
             },
           },
 
