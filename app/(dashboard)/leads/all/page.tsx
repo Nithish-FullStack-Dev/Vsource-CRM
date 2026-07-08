@@ -181,7 +181,7 @@ export default function AllLeadsPage() {
     }
   };
 
-  const handleUpdateLead = async (event: FormEvent) => {
+  const handleUpdateLead = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!editingLead) return;
@@ -189,18 +189,78 @@ export default function AllLeadsPage() {
     try {
       setIsUpdating(true);
 
+      const payload = {
+        counsellingDate: editingLead.counsellingDate || null,
+
+        studentName: editingLead.studentName || undefined,
+        fatherName: editingLead.fatherName || undefined,
+        mobileNumber: editingLead.mobileNumber || undefined,
+        emailId: editingLead.emailId || undefined,
+
+        place: editingLead.place || undefined,
+        passport: editingLead.passport || undefined,
+        passportExpireDate: editingLead.passportExpireDate || null,
+
+        source: editingLead.source || undefined,
+        branchId: editingLead.branchId,
+
+        counselorIds: selectedCounselors,
+
+        preferredCountry: editingLead.preferredCountry || undefined,
+        preferredIntake: editingLead.preferredIntake || undefined,
+        preferredCourse: editingLead.preferredCourse || undefined,
+        preferredTiers: editingLead.preferredTiers || [],
+
+        graduationStatus: editingLead.graduationStatus || null,
+        loanRequirement: editingLead.loanRequirement ?? false,
+
+        tenthPercentage: editingLead.tenthPercentage,
+        tenthYearOfPassing: editingLead.tenthYearOfPassing,
+
+        twelfthPercentage: editingLead.twelfthPercentage,
+        twelfthYearOfPassing: editingLead.twelfthYearOfPassing,
+
+        bachelorsCourse: editingLead.bachelorsCourse || undefined,
+        bachelorsUniversityName:
+          editingLead.bachelorsUniversityName || undefined,
+        bachelorsPercentage: editingLead.bachelorsPercentage,
+        bachelorsYearOfPassing: editingLead.bachelorsYearOfPassing,
+
+        backlogs: editingLead.backlogs,
+
+        workExperience: editingLead.workExperience || undefined,
+
+        greGmatScore: editingLead.greGmatScore,
+        quantitativeScore: editingLead.quantitativeScore,
+        verbalScore: editingLead.verbalScore,
+        analyticalWritingScore: editingLead.analyticalWritingScore,
+
+        englishTests: (editingLead.englishTests || []).map((test) => ({
+          testType: test.testType,
+          totalScore: test.totalScore ?? null,
+          listeningScore: test.listeningScore ?? null,
+          readingScore: test.readingScore ?? null,
+          writingScore: test.writingScore ?? null,
+          speakingScore: test.speakingScore ?? null,
+        })),
+
+        gapsIfAny: editingLead.gapsIfAny || undefined,
+
+        remarks: editingLead.remarks || undefined,
+
+        followupDate: followupDate || undefined,
+        followupNote: followupNote.trim() || undefined,
+      };
+
       const response = await fetch(`${API_BASE_URL}/leads/${editingLead.id}`, {
         method: "PATCH",
         credentials: "include",
+
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...editingLead,
-          counselorIds: selectedCounselors,
-          followupDate: followupDate || undefined,
-          followupNote: followupNote.trim() || undefined,
-        }),
+
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
@@ -218,6 +278,7 @@ export default function AllLeadsPage() {
       toast.success("Lead updated successfully");
 
       setEditingLead(null);
+      setSelectedCounselors([]);
       setFollowupDate("");
       setFollowupNote("");
     } catch (error) {

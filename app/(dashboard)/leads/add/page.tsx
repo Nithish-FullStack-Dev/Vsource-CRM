@@ -2,7 +2,7 @@
 "use client";
 
 import { z } from "zod";
-import { useForm, Controller } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader, PageTransition } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,17 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
-  CalendarIcon,
-  GraduationCap,
-  MapPin,
-  Globe,
   BookOpen,
   Briefcase,
+  Check,
+  CheckCircle2,
+  ChevronsUpDown,
+  Globe,
+  GraduationCap,
   Loader2,
+  MapPin,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { Branch, getBranches } from "@/lib/branches";
 import { useEffect, useState } from "react";
@@ -45,7 +49,6 @@ import {
 } from "@/lib/master-settings";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Command,
@@ -68,6 +71,39 @@ import { useAuth } from "@/store";
 import { RoutePermission } from "@/components/guards/RoutePermission";
 import { MODULES } from "@/lib/module-codes";
 import { Badge } from "@/components/ui/badge";
+const englishTestOptions = ["IELTS", "TOEFL", "DUOLINGO", "PTE"] as const;
+
+type EnglishTestType = (typeof englishTestOptions)[number];
+
+type EnglishTestScoreLimit = {
+  total: number;
+  section: number;
+  decimals: number;
+};
+
+const englishTestScoreLimits: Record<EnglishTestType, EnglishTestScoreLimit> = {
+  IELTS: {
+    total: 9,
+    section: 9,
+    decimals: 1,
+  },
+  TOEFL: {
+    total: 120,
+    section: 30,
+    decimals: 0,
+  },
+  DUOLINGO: {
+    total: 160,
+    section: 160,
+    decimals: 0,
+  },
+  PTE: {
+    total: 90,
+    section: 90,
+    decimals: 0,
+  },
+};
+
 const optionalNumber = z.preprocess((value) => {
   if (
     value === "" ||
@@ -78,8 +114,72 @@ const optionalNumber = z.preprocess((value) => {
     return undefined;
   }
 
-  return Number(value);
+  const numberValue = Number(value);
+
+  return Number.isNaN(numberValue) ? undefined : numberValue;
 }, z.number().optional());
+
+const englishTestSchema = z
+  .object({
+    testType: z.enum(englishTestOptions),
+    totalScore: optionalNumber,
+    listeningScore: optionalNumber,
+    readingScore: optionalNumber,
+    writingScore: optionalNumber,
+    speakingScore: optionalNumber,
+  })
+  .superRefine((data, ctx) => {
+    const limits = englishTestScoreLimits[data.testType];
+
+    const validateScore = (
+      value: number | undefined,
+      field:
+        | "totalScore"
+        | "listeningScore"
+        | "readingScore"
+        | "writingScore"
+        | "speakingScore",
+      maxScore: number,
+    ) => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (value < 0 || value > maxScore) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `Score must be between 0 and ${maxScore}`,
+        });
+
+        return;
+      }
+
+      const decimalPlaces = value.toString().split(".")[1]?.length ?? 0;
+
+      if (decimalPlaces > limits.decimals) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message:
+            limits.decimals === 0
+              ? `${data.testType} accepts whole numbers only`
+              : `Maximum ${limits.decimals} decimal place allowed`,
+        });
+      }
+    };
+
+    validateScore(data.totalScore, "totalScore", limits.total);
+
+    validateScore(data.listeningScore, "listeningScore", limits.section);
+
+    validateScore(data.readingScore, "readingScore", limits.section);
+
+    validateScore(data.writingScore, "writingScore", limits.section);
+
+    validateScore(data.speakingScore, "speakingScore", limits.section);
+  });
+
 const leadFormSchema = z.object({
   counsellingDate: z.string().optional(),
   studentName: z.string().min(1, "Student name is required"),
@@ -114,11 +214,10 @@ const leadFormSchema = z.object({
   quantitativeScore: optionalNumber,
   verbalScore: optionalNumber,
   analyticalWritingScore: optionalNumber,
-  englishTestType: z.string().optional(),
-  listeningScore: optionalNumber,
-  writingScore: optionalNumber,
-  readingScore: optionalNumber,
-  speakingScore: optionalNumber,
+  englishTests: z
+    .array(englishTestSchema)
+    .max(4, "Maximum 4 English proficiency tests are allowed")
+    .default([]),
   gapsIfAny: z.string().optional(),
   status: z.string().optional(),
   source: z.string().optional(),
@@ -138,8 +237,6 @@ const leadFormSchema = z.object({
 });
 
 type LeadFormValues = z.input<typeof leadFormSchema>;
-
-const englishTestOptions = ["IELTS", "TOEFL", "DUOLINGO", "PTE"];
 
 export default function AddLeadPage() {
   const router = useRouter();
@@ -246,11 +343,7 @@ export default function AddLeadPage() {
       backlogs: 0,
       gapsIfAny: "",
 
-      englishTestType: "",
-      listeningScore: undefined,
-      readingScore: undefined,
-      writingScore: undefined,
-      speakingScore: undefined,
+      englishTests: [],
 
       greGmatScore: undefined,
       quantitativeScore: undefined,
@@ -266,7 +359,14 @@ export default function AddLeadPage() {
       status: "draft",
     },
   });
-
+  const {
+    fields: englishTestFields,
+    append: appendEnglishTest,
+    remove: removeEnglishTest,
+  } = useFieldArray({
+    control,
+    name: "englishTests",
+  });
   const selectedBranchId = watch("branchId");
 
   interface Counselor {
@@ -274,7 +374,62 @@ export default function AddLeadPage() {
     name: string;
     email: string;
   }
+  const buildScoreInputHandler =
+    (maxScore: number, decimals: number) =>
+    (event: React.FormEvent<HTMLInputElement>) => {
+      const input = event.currentTarget;
 
+      let value = input.value.replace(/[^0-9.]/g, "");
+
+      // Remove additional decimal points
+      const parts = value.split(".");
+
+      if (parts.length > 2) {
+        value = `${parts[0]}.${parts.slice(1).join("")}`;
+      }
+
+      // Whole-number tests
+      if (decimals === 0) {
+        value = value.replace(/\./g, "");
+      }
+
+      // Decimal tests such as IELTS
+      if (decimals > 0 && value.includes(".")) {
+        const [integerPart, decimalPart = ""] = value.split(".");
+
+        value = `${integerPart}.${decimalPart.slice(0, decimals)}`;
+      }
+
+      // Prevent score above maximum
+      if (value !== "" && value !== ".") {
+        const numericValue = Number(value);
+
+        if (!Number.isNaN(numericValue) && numericValue > maxScore) {
+          value = String(maxScore);
+        }
+      }
+
+      input.value = value;
+    };
+  const addEnglishTest = (testType: EnglishTestType) => {
+    const alreadyAdded = englishTestFields.some(
+      (test) => test.testType === testType,
+    );
+
+    if (alreadyAdded) {
+      toast.error(`${testType} has already been added`);
+      return;
+    }
+
+    appendEnglishTest({
+      testType,
+      totalScore: undefined,
+      listeningScore: undefined,
+      readingScore: undefined,
+      writingScore: undefined,
+      speakingScore: undefined,
+    });
+  };
   const { data: counselors = [], isLoading: counselorsLoading } = useQuery<
     Counselor[]
   >({
@@ -338,12 +493,12 @@ export default function AddLeadPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(data?.message || data?.error || "Failed to create lead");
+        toast.error(data?.message || data?.error || "Failed to create walkin");
 
         return;
       }
 
-      toast.success("Lead created successfully");
+      toast.success("Walkin created successfully");
 
       if (continueFlow) {
         router.push("/leads/all");
@@ -354,7 +509,7 @@ export default function AddLeadPage() {
     } catch (error: any) {
       console.error(error);
 
-      toast.error(error?.message || "Failed to create lead");
+      toast.error(error?.message || "Failed to create walkin");
     } finally {
       setIsSaving(false);
     }
@@ -365,7 +520,7 @@ export default function AddLeadPage() {
       <RoutePermission action="create" moduleCode={MODULES.MASTER_LEADS}>
         <div className="mx-auto max-w-6xl space-y-6 pb-12">
           <PageHeader
-            title="Add New Lead"
+            title="Add New Walkin"
             description="Register a new student for counselling and process tracking."
           />
 
@@ -540,7 +695,7 @@ export default function AddLeadPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Lead Source</Label>
+                        <Label>Walkin Source</Label>
                         <Controller
                           control={control}
                           name="source"
@@ -1155,6 +1310,16 @@ export default function AddLeadPage() {
                         {...register("gapsIfAny")}
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center">
+                        <Briefcase className="mr-2 h-4 w-4" /> Work Experience
+                      </Label>
+                      <Textarea
+                        placeholder="Details of current or past employment..."
+                        rows={2}
+                        {...register("workExperience")}
+                      />
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
                 {/* Section 3: EPT Details */}
@@ -1171,269 +1336,246 @@ export default function AddLeadPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-8 p-6">
-                    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                      {/* English Proficiency */}
-                      <div className="space-y-4 rounded-xl border p-4 bg-muted/20">
-                        <h4 className="font-medium text-foreground">
-                          English Proficiency Test
-                        </h4>
-                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                          <div className="space-y-2 col-span-2 sm:col-span-3">
-                            <Label>Test Type</Label>
-                            <Controller
-                              control={control}
-                              name="englishTestType"
-                              render={({ field }) => (
-                                <Select
-                                  onValueChange={field.onChange}
-                                  value={field.value}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select Test" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {englishTestOptions.map((i) => (
-                                      <SelectItem key={i} value={i}>
-                                        {i}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            />
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.7fr)]">
+                      {/* English Proficiency Tests */}
+                      <div className="space-y-5 rounded-2xl border bg-muted/20 p-4 sm:p-5">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-primary" />
+
+                            <h4 className="font-semibold text-foreground">
+                              English Proficiency Tests
+                            </h4>
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs">Listening</Label>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="L Score"
-                              maxLength={6}
-                              {...register("listeningScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
-                                validate: (value) => {
-                                  if (value === undefined || value === "")
-                                    return true;
 
-                                  const num = Number(value);
-
-                                  return (
-                                    (!isNaN(num) &&
-                                      num >= 0 &&
-                                      num <= 999.99 &&
-                                      /^\d{1,3}(\.\d{1,2})?$/.test(
-                                        String(value),
-                                      )) ||
-                                    "Enter a valid score"
-                                  );
-                                },
-                              })}
-                              onKeyDown={(e) => {
-                                if (["-", "+", "e", "E"].includes(e.key)) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              onInput={(e) => {
-                                const input = e.currentTarget;
-                                let value = input.value.replace(/[^0-9.]/g, "");
-
-                                const parts = value.split(".");
-                                if (parts.length > 2) {
-                                  value =
-                                    parts[0] + "." + parts.slice(1).join("");
-                                }
-
-                                if (value.includes(".")) {
-                                  const [intPart, decimalPart] =
-                                    value.split(".");
-                                  value =
-                                    intPart.slice(0, 3) +
-                                    "." +
-                                    decimalPart.slice(0, 2);
-                                } else {
-                                  value = value.slice(0, 3);
-                                }
-
-                                input.value = value;
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs">Reading</Label>
-                            <Input
-                              placeholder="R Score"
-                              type="number"
-                              inputMode="decimal"
-                              step="0.5"
-                              maxLength={6}
-                              {...register("readingScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
-                                validate: (value) => {
-                                  if (value === undefined || value === "")
-                                    return true;
-
-                                  const num = Number(value);
-
-                                  return (
-                                    (!isNaN(num) &&
-                                      num >= 0 &&
-                                      num <= 999.99 &&
-                                      /^\d{1,3}(\.\d{1,2})?$/.test(
-                                        String(value),
-                                      )) ||
-                                    "Enter a valid score"
-                                  );
-                                },
-                              })}
-                              onKeyDown={(e) => {
-                                if (["-", "+", "e", "E"].includes(e.key)) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              onInput={(e) => {
-                                const input = e.currentTarget;
-                                let value = input.value.replace(/[^0-9.]/g, "");
-
-                                const parts = value.split(".");
-                                if (parts.length > 2) {
-                                  value =
-                                    parts[0] + "." + parts.slice(1).join("");
-                                }
-
-                                if (value.includes(".")) {
-                                  const [intPart, decimalPart] =
-                                    value.split(".");
-                                  value =
-                                    intPart.slice(0, 3) +
-                                    "." +
-                                    decimalPart.slice(0, 2);
-                                } else {
-                                  value = value.slice(0, 3);
-                                }
-
-                                input.value = value;
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs">Writing</Label>
-                            <Input
-                              placeholder="W Score"
-                              type="number"
-                              step="0.5"
-                              inputMode="decimal"
-                              maxLength={6}
-                              {...register("writingScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
-                                validate: (value) => {
-                                  if (value === undefined || value === "")
-                                    return true;
-
-                                  const num = Number(value);
-
-                                  return (
-                                    (!isNaN(num) &&
-                                      num >= 0 &&
-                                      num <= 999.99 &&
-                                      /^\d{1,3}(\.\d{1,2})?$/.test(
-                                        String(value),
-                                      )) ||
-                                    "Enter a valid score"
-                                  );
-                                },
-                              })}
-                              onKeyDown={(e) => {
-                                if (["-", "+", "e", "E"].includes(e.key)) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              onInput={(e) => {
-                                const input = e.currentTarget;
-                                let value = input.value.replace(/[^0-9.]/g, "");
-
-                                const parts = value.split(".");
-                                if (parts.length > 2) {
-                                  value =
-                                    parts[0] + "." + parts.slice(1).join("");
-                                }
-
-                                if (value.includes(".")) {
-                                  const [intPart, decimalPart] =
-                                    value.split(".");
-                                  value =
-                                    intPart.slice(0, 3) +
-                                    "." +
-                                    decimalPart.slice(0, 2);
-                                } else {
-                                  value = value.slice(0, 3);
-                                }
-
-                                input.value = value;
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs">Speaking</Label>
-                            <Input
-                              placeholder="S Score"
-                              type="number"
-                              step="0.5"
-                              inputMode="decimal"
-                              maxLength={6}
-                              {...register("speakingScore", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
-                                validate: (value) => {
-                                  if (value === undefined || value === "")
-                                    return true;
-
-                                  const num = Number(value);
-
-                                  return (
-                                    (!isNaN(num) &&
-                                      num >= 0 &&
-                                      num <= 999.99 &&
-                                      /^\d{1,3}(\.\d{1,2})?$/.test(
-                                        String(value),
-                                      )) ||
-                                    "Enter a valid score"
-                                  );
-                                },
-                              })}
-                              onKeyDown={(e) => {
-                                if (["-", "+", "e", "E"].includes(e.key)) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              onInput={(e) => {
-                                const input = e.currentTarget;
-                                let value = input.value.replace(/[^0-9.]/g, "");
-
-                                const parts = value.split(".");
-                                if (parts.length > 2) {
-                                  value =
-                                    parts[0] + "." + parts.slice(1).join("");
-                                }
-
-                                if (value.includes(".")) {
-                                  const [intPart, decimalPart] =
-                                    value.split(".");
-                                  value =
-                                    intPart.slice(0, 3) +
-                                    "." +
-                                    decimalPart.slice(0, 2);
-                                } else {
-                                  value = value.slice(0, 3);
-                                }
-
-                                input.value = value;
-                              }}
-                            />
-                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Add one or more tests completed by the student.
+                          </p>
                         </div>
+
+                        {/* Available Tests */}
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          {englishTestOptions.map((testType) => {
+                            const isAdded = englishTestFields.some(
+                              (test) => test.testType === testType,
+                            );
+
+                            return (
+                              <Button
+                                key={testType}
+                                type="button"
+                                variant={isAdded ? "secondary" : "outline"}
+                                disabled={isAdded}
+                                onClick={() => addEnglishTest(testType)}
+                                className="h-auto min-h-20 flex-col gap-2 rounded-xl px-3 py-4"
+                              >
+                                {isAdded ? (
+                                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                ) : (
+                                  <Plus className="h-5 w-5" />
+                                )}
+
+                                <span className="text-sm font-semibold">
+                                  {testType}
+                                </span>
+
+                                <span className="text-[11px] font-normal text-muted-foreground">
+                                  {isAdded ? "Added" : "Add Test"}
+                                </span>
+                              </Button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Selected Tests */}
+                        {englishTestFields.map((test, index) => {
+                          const testType = test.testType as EnglishTestType;
+
+                          const limits = englishTestScoreLimits[testType];
+
+                          const scoreFields = [
+                            {
+                              name: "totalScore",
+                              label: "Total Score",
+                              max: limits.total,
+                            },
+                            {
+                              name: "listeningScore",
+                              label: "Listening",
+                              max: limits.section,
+                            },
+                            {
+                              name: "readingScore",
+                              label: "Reading",
+                              max: limits.section,
+                            },
+                            {
+                              name: "writingScore",
+                              label: "Writing",
+                              max: limits.section,
+                            },
+                            {
+                              name: "speakingScore",
+                              label: "Speaking",
+                              max: limits.section,
+                            },
+                          ] as const;
+
+                          return (
+                            <div
+                              key={test.id}
+                              className="overflow-hidden rounded-2xl border bg-background shadow-sm"
+                            >
+                              {/* Header */}
+                              <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                                    <BookOpen className="h-4 w-4 text-primary" />
+                                  </div>
+
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="truncate text-sm font-semibold">
+                                        {testType}
+                                      </p>
+
+                                      <Badge
+                                        variant="secondary"
+                                        className="hidden sm:inline-flex"
+                                      >
+                                        English Test
+                                      </Badge>
+                                    </div>
+
+                                    <p className="mt-0.5 text-xs text-muted-foreground">
+                                      Total max {limits.total} · Section max{" "}
+                                      {limits.section}
+                                      {limits.decimals === 0
+                                        ? " · Whole numbers only"
+                                        : ` · ${limits.decimals} decimal allowed`}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeEnglishTest(index)}
+                                  className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                  aria-label={`Remove ${testType}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+
+                              {/* Hidden Test Type */}
+                              <input
+                                type="hidden"
+                                {...register(`englishTests.${index}.testType`)}
+                              />
+
+                              {/* Score Inputs */}
+                              <div className="p-4">
+                                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+                                  {scoreFields.map((scoreField) => {
+                                    const fieldError =
+                                      errors.englishTests?.[index]?.[
+                                        scoreField.name
+                                      ];
+
+                                    return (
+                                      <div
+                                        key={scoreField.name}
+                                        className={
+                                          scoreField.name === "totalScore"
+                                            ? "col-span-2 space-y-2 lg:col-span-1"
+                                            : "space-y-2"
+                                        }
+                                      >
+                                        <Label
+                                          htmlFor={`englishTests-${index}-${scoreField.name}`}
+                                          className="text-xs font-medium"
+                                        >
+                                          {scoreField.label}
+                                        </Label>
+
+                                        <Input
+                                          id={`englishTests-${index}-${scoreField.name}`}
+                                          type="text"
+                                          inputMode={
+                                            limits.decimals > 0
+                                              ? "decimal"
+                                              : "numeric"
+                                          }
+                                          placeholder={`Max ${scoreField.max}`}
+                                          aria-invalid={Boolean(fieldError)}
+                                          className={
+                                            fieldError
+                                              ? "border-destructive focus-visible:ring-destructive"
+                                              : ""
+                                          }
+                                          {...register(
+                                            `englishTests.${index}.${scoreField.name}`,
+                                            {
+                                              setValueAs: (value) =>
+                                                value === ""
+                                                  ? undefined
+                                                  : Number(value),
+                                            },
+                                          )}
+                                          onKeyDown={(event) => {
+                                            if (
+                                              ["-", "+", "e", "E"].includes(
+                                                event.key,
+                                              )
+                                            ) {
+                                              event.preventDefault();
+                                            }
+
+                                            if (
+                                              limits.decimals === 0 &&
+                                              event.key === "."
+                                            ) {
+                                              event.preventDefault();
+                                            }
+                                          }}
+                                          onInput={buildScoreInputHandler(
+                                            scoreField.max,
+                                            limits.decimals,
+                                          )}
+                                        />
+
+                                        {fieldError?.message && (
+                                          <p className="text-xs font-medium text-destructive">
+                                            {fieldError.message}
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Summary */}
+                        {englishTestFields.length > 0 && (
+                          <div className="flex flex-col gap-2 rounded-xl bg-muted/40 px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                            <span>
+                              {englishTestFields.length}{" "}
+                              {englishTestFields.length === 1
+                                ? "test"
+                                : "tests"}{" "}
+                              added
+                            </span>
+
+                            <span>
+                              {4 - englishTestFields.length} remaining
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* GRE/GMAT */}
@@ -1461,8 +1603,8 @@ export default function AddLeadPage() {
                                   return (
                                     (!isNaN(num) &&
                                       num >= 0 &&
-                                      num <= 999.99 &&
-                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                      num <= 10 &&
+                                      /^\d{1,2}(\.\d{1,2})?$/.test(
                                         String(value),
                                       )) ||
                                     "Enter a valid score"
@@ -1488,13 +1630,20 @@ export default function AddLeadPage() {
                                   const [intPart, decimalPart] =
                                     value.split(".");
                                   value =
-                                    intPart.slice(0, 3) +
+                                    intPart.slice(0, 2) +
                                     "." +
                                     decimalPart.slice(0, 2);
                                 } else {
-                                  value = value.slice(0, 3);
+                                  value = value.slice(0, 2);
                                 }
 
+                                // Clamp to max 10
+                                if (value !== "" && value !== ".") {
+                                  const num = Number(value);
+                                  if (!isNaN(num) && num > 10) {
+                                    value = "10";
+                                  }
+                                }
                                 input.value = value;
                               }}
                             />
@@ -1518,8 +1667,8 @@ export default function AddLeadPage() {
                                   return (
                                     (!isNaN(num) &&
                                       num >= 0 &&
-                                      num <= 999.99 &&
-                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                      num <= 10 &&
+                                      /^\d{1,2}(\.\d{1,2})?$/.test(
                                         String(value),
                                       )) ||
                                     "Enter a valid score"
@@ -1545,11 +1694,19 @@ export default function AddLeadPage() {
                                   const [intPart, decimalPart] =
                                     value.split(".");
                                   value =
-                                    intPart.slice(0, 3) +
+                                    intPart.slice(0, 2) +
                                     "." +
                                     decimalPart.slice(0, 2);
                                 } else {
-                                  value = value.slice(0, 3);
+                                  value = value.slice(0, 2);
+                                }
+
+                                // Clamp to max 10
+                                if (value !== "" && value !== ".") {
+                                  const num = Number(value);
+                                  if (!isNaN(num) && num > 10) {
+                                    value = "10";
+                                  }
                                 }
 
                                 input.value = value;
@@ -1575,8 +1732,8 @@ export default function AddLeadPage() {
                                   return (
                                     (!isNaN(num) &&
                                       num >= 0 &&
-                                      num <= 999.99 &&
-                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                      num <= 10 &&
+                                      /^\d{1,2}(\.\d{1,2})?$/.test(
                                         String(value),
                                       )) ||
                                     "Enter a valid score"
@@ -1602,11 +1759,19 @@ export default function AddLeadPage() {
                                   const [intPart, decimalPart] =
                                     value.split(".");
                                   value =
-                                    intPart.slice(0, 3) +
+                                    intPart.slice(0, 2) +
                                     "." +
                                     decimalPart.slice(0, 2);
                                 } else {
-                                  value = value.slice(0, 3);
+                                  value = value.slice(0, 2);
+                                }
+
+                                // Clamp to max 10
+                                if (value !== "" && value !== ".") {
+                                  const num = Number(value);
+                                  if (!isNaN(num) && num > 10) {
+                                    value = "10";
+                                  }
                                 }
 
                                 input.value = value;
@@ -1635,8 +1800,8 @@ export default function AddLeadPage() {
                                   return (
                                     (!isNaN(num) &&
                                       num >= 0 &&
-                                      num <= 999.99 &&
-                                      /^\d{1,3}(\.\d{1,2})?$/.test(
+                                      num <= 10 &&
+                                      /^\d{1,2}(\.\d{1,2})?$/.test(
                                         String(value),
                                       )) ||
                                     "Enter a valid score"
@@ -1662,11 +1827,19 @@ export default function AddLeadPage() {
                                   const [intPart, decimalPart] =
                                     value.split(".");
                                   value =
-                                    intPart.slice(0, 3) +
+                                    intPart.slice(0, 2) +
                                     "." +
                                     decimalPart.slice(0, 2);
                                 } else {
-                                  value = value.slice(0, 3);
+                                  value = value.slice(0, 2);
+                                }
+
+                                // Clamp to max 10
+                                if (value !== "" && value !== ".") {
+                                  const num = Number(value);
+                                  if (!isNaN(num) && num > 10) {
+                                    value = "10";
+                                  }
                                 }
 
                                 input.value = value;
@@ -1826,17 +1999,6 @@ export default function AddLeadPage() {
                         />
                       </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label className="flex items-center">
-                        <Briefcase className="mr-2 h-4 w-4" /> Work Experience
-                      </Label>
-                      <Textarea
-                        placeholder="Details of current or past employment..."
-                        rows={2}
-                        {...register("workExperience")}
-                      />
-                    </div>
                   </AccordionContent>
                 </AccordionItem>
                 <div className="sticky bottom-4 z-10 flex flex-col-reverse gap-3 rounded-2xl bg-background/80 p-4 shadow-lg backdrop-blur-md border sm:flex-row sm:justify-end">
@@ -1864,10 +2026,10 @@ export default function AddLeadPage() {
                     {isSaving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving Lead...
+                        Saving Walkin...
                       </>
                     ) : (
-                      "Save Lead & Continue"
+                      "Save Walkin & Continue"
                     )}
                   </Button>
                 </div>

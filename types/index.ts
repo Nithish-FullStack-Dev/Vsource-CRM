@@ -21,6 +21,23 @@ export type ApplicationStage =
   | "visa"
   | "enrolled";
 
+export type EnglishTestType = "IELTS" | "TOEFL" | "PTE" | "DUOLINGO";
+
+export interface LeadEnglishTest {
+  id?: string;
+  leadId?: string;
+
+  testType: EnglishTestType;
+
+  totalScore?: number | null;
+  listeningScore?: number | null;
+  readingScore?: number | null;
+  writingScore?: number | null;
+  speakingScore?: number | null;
+
+  createdAt?: string;
+  updatedAt?: string;
+}
 export interface Lead {
   id: string;
   leadNumber: string;
@@ -82,12 +99,7 @@ export interface Lead {
   verbalScore?: number;
   analyticalWritingScore?: number;
 
-  englishTestType?: string;
-
-  listeningScore?: number;
-  readingScore?: number;
-  writingScore?: number;
-  speakingScore?: number;
+  englishTests?: LeadEnglishTest[];
 
   gapsIfAny?: string;
 
