@@ -37,12 +37,12 @@ type StudentVisaProfileSectionProps = {
 
 type FormState = {
   depositDeadlineDate: string;
-  depositStatus: string;
-  ihsPaidStatus: string;
+  depositStatus: "" | "PENDING" | "PAID";
+  ihsPaidStatus: "" | "PENDING" | "PAID" | "PAID_PARTIALLY";
   visaPaidStatus: string;
   casDeadlineDate: string;
-  casStatus: string;
-  visaStatus: string;
+  casStatus: "" | "PENDING" | "APPLIED" | "RECEIVED";
+  visaStatus: "" | "DECISION_PENDING" | "APPROVED" | "REJECTED";
   universityStartDate: string;
 };
 
@@ -505,16 +505,16 @@ export function StudentVisaProfileSection({
                   <select
                     value={form.depositStatus}
                     onChange={(event) =>
-                      updateField("depositStatus", event.target.value)
+                      updateField(
+                        "depositStatus",
+                        event.target.value as FormState["depositStatus"],
+                      )
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select deposit status</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="partially_paid">Partially Paid</option>
-                    <option value="waived">Waived</option>
-                    <option value="not_required">Not Required</option>
+                    <option value="">Select Deposit Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="PAID">Paid</option>
                   </select>
                 </div>
 
@@ -526,14 +526,17 @@ export function StudentVisaProfileSection({
                   <select
                     value={form.ihsPaidStatus}
                     onChange={(event) =>
-                      updateField("ihsPaidStatus", event.target.value)
+                      updateField(
+                        "ihsPaidStatus",
+                        event.target.value as FormState["ihsPaidStatus"],
+                      )
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select IHS status</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="not_required">Not Required</option>
+                    <option value="">Select IHS Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="PAID">Paid</option>
+                    <option value="PAID_PARTIALLY">Paid Partially</option>
                   </select>
                 </div>
 
@@ -545,14 +548,16 @@ export function StudentVisaProfileSection({
                   <select
                     value={form.visaPaidStatus}
                     onChange={(event) =>
-                      updateField("visaPaidStatus", event.target.value)
+                      updateField(
+                        "visaPaidStatus",
+                        event.target.value as FormState["visaPaidStatus"],
+                      )
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select visa payment status</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="not_required">Not Required</option>
+                    <option value="">Select Visa Fee Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="PAID">Paid</option>
                   </select>
                 </div>
 
@@ -579,17 +584,17 @@ export function StudentVisaProfileSection({
                   <select
                     value={form.casStatus}
                     onChange={(event) =>
-                      updateField("casStatus", event.target.value)
+                      updateField(
+                        "casStatus",
+                        event.target.value as FormState["casStatus"],
+                      )
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select CAS status</option>
-                    <option value="not_started">Not Started</option>
-                    <option value="documents_pending">Documents Pending</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="received">Received</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="not_required">Not Required</option>
+                    <option value="">Select CAS Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="APPLIED">Applied</option>
+                    <option value="RECEIVED">Received</option>
                   </select>
                 </div>
 
@@ -601,18 +606,17 @@ export function StudentVisaProfileSection({
                   <select
                     value={form.visaStatus}
                     onChange={(event) =>
-                      updateField("visaStatus", event.target.value)
+                      updateField(
+                        "visaStatus",
+                        event.target.value as FormState["visaStatus"],
+                      )
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select visa status</option>
-                    <option value="not_started">Not Started</option>
-                    <option value="documents_pending">Documents Pending</option>
-                    <option value="applied">Applied</option>
-                    <option value="decision_pending">Decision Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="withdrawn">Withdrawn</option>
+                    <option value="">Select Visa Status</option>
+                    <option value="DECISION_PENDING">Decision Pending</option>
+                    <option value="APPROVED">Approved</option>
+                    <option value="REJECTED">Rejected</option>
                   </select>
                 </div>
 

@@ -227,42 +227,23 @@ export type StudentVisaProfile = {
   studentId?: string;
 
   depositDeadlineDate?: string | null;
-
   depositStatus?: string | null;
 
-  ihsPaidStatus?: string | null;
+  ihsPaidStatus?: "PAID" | "PENDING" | "PAID_PARTIALLY";
 
   visaPaidStatus?: string | null;
 
   casDeadlineDate?: string | null;
 
-  casStatus?: string | null;
+  casStatus?: "APPLIED" | "RECEIVED" | "PENDING";
 
-  visaStatus?: string | null;
+  visaStatus?: "APPROVED" | "REJECTED" | "DECISION_PENDING";
 
   universityStartDate?: string | null;
 
   createdAt?: string;
 
   updatedAt?: string;
-};
-
-export type StudentVisaProfilePayload = {
-  depositDeadlineDate: string | null;
-
-  depositStatus: string | null;
-
-  ihsPaidStatus: string | null;
-
-  visaPaidStatus: string | null;
-
-  casDeadlineDate: string | null;
-
-  casStatus: string | null;
-
-  visaStatus: string | null;
-
-  universityStartDate: string | null;
 };
 
 export type StudentLoanProfile = {

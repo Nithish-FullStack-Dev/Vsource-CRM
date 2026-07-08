@@ -3,6 +3,33 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
+import { ApplicationStatus, OfferStatus } from "@/generated/prisma/enums";
+
+const parseApplicationStatus = (
+  value: unknown,
+): ApplicationStatus | undefined => {
+  switch (value) {
+    case "on_hold":
+    case "applied":
+    case "drop":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const parseOfferStatus = (value: unknown): OfferStatus | undefined => {
+  switch (value) {
+    case "PENDING":
+    case "PRIORITY_UCOL":
+    case "PRIORITY_COL":
+    case "COL":
+    case "UCOL":
+      return value;
+    default:
+      return undefined;
+  }
+};
 
 export async function POST(
   req: NextRequest,
@@ -98,8 +125,8 @@ export async function POST(
 
         followUpDate: body.followUpDate ? new Date(body.followUpDate) : null,
 
-        status: body.status,
-        offerStatus: body.offerStatus,
+        status: parseApplicationStatus(body.status),
+        offerStatus: parseOfferStatus(body.offerStatus),
 
         countryName: country?.name,
         universityName: university.name,
