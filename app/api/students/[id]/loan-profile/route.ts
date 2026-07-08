@@ -2,16 +2,6 @@ import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
 
-const parseNullableAmount = (value: unknown) => {
-  if (value === null || value === undefined || value === "") return null;
-
-  const amount = Number(value);
-
-  if (!Number.isFinite(amount)) return null;
-
-  return amount;
-};
-
 async function saveLoanProfile(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -20,36 +10,34 @@ async function saveLoanProfile(
     const { id: studentId } = await params;
     const body = await req.json();
 
-    const appliedAmount = parseNullableAmount(body.appliedAmount);
-    const sanctionedAmount = parseNullableAmount(body.sanctionedAmount);
-    const disbursedAmount = body.disbursed
-      ? parseNullableAmount(body.disbursedAmount)
-      : null;
-
     const profile = await db.studentLoanProfile.upsert({
       where: {
         studentId,
       },
       create: {
         studentId,
-        fintechAssigneeId: body.fintechAssigneeId,
-        nbfc: body.nbfc,
-        loanStatus: body.loanStatus,
-        pfStatus: body.pfStatus,
-        appliedAmount,
-        sanctionedAmount,
+        fintechAssigneeId: body.fintechAssigneeId || null,
+        nbfc: body.nbfc || null,
+        loanStatus: body.loanStatus || null,
+        pfStatus: body.pfStatus || null,
+        depositDate: body.depositDate ? new Date(body.depositDate) : null,
         disbursed: body.disbursed ?? false,
-        disbursedAmount,
+        disbursedDate:
+          body.disbursed && body.disbursedDate
+            ? new Date(body.disbursedDate)
+            : null,
       },
       update: {
-        fintechAssigneeId: body.fintechAssigneeId,
-        nbfc: body.nbfc,
-        loanStatus: body.loanStatus,
-        pfStatus: body.pfStatus,
-        appliedAmount,
-        sanctionedAmount,
+        fintechAssigneeId: body.fintechAssigneeId || null,
+        nbfc: body.nbfc || null,
+        loanStatus: body.loanStatus || null,
+        pfStatus: body.pfStatus || null,
+        depositDate: body.depositDate ? new Date(body.depositDate) : null,
         disbursed: body.disbursed ?? false,
-        disbursedAmount,
+        disbursedDate:
+          body.disbursed && body.disbursedDate
+            ? new Date(body.disbursedDate)
+            : null,
       },
       include: {
         fintechAssignee: {

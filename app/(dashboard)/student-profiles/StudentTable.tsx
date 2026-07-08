@@ -372,7 +372,7 @@ export function StudentTable({
               <th
                 className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
               >
-                SANCTIONED
+                DEPOSIT DATE
               </th>
               <th
                 className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
@@ -437,6 +437,12 @@ export function StudentTable({
                 const latestTimelineDate = latestTimeline
                   ? new Date(latestTimeline).toLocaleDateString("en-IN")
                   : "No timeline added";
+
+                const depositDate = loanProfile?.depositDate
+                  ? new Date(loanProfile.depositDate).toLocaleDateString(
+                      "en-IN",
+                    )
+                  : "Not set";
 
                 return (
                   <tr
@@ -664,15 +670,21 @@ export function StudentTable({
                     </td>
 
                     <td
-                      className={`${normalCellClass} font-mono font-black text-slate-800 dark:text-slate-300`}
+                      className={`${normalCellClass} font-mono text-[11px] font-semibold text-slate-500`}
                     >
-                      {getAmount(loanProfile?.sanctionedAmount)}
+                      {depositDate}
                     </td>
 
-                    <td
-                      className={`${normalCellClass} font-mono font-bold text-emerald-600`}
-                    >
-                      {getAmount(loanProfile?.disbursedAmount)}
+                    <td className={`${normalCellClass} text-center`}>
+                      <span
+                        className={`inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-bold ${
+                          loanProfile?.disbursed
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800"
+                            : "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-700"
+                        }`}
+                      >
+                        {loanProfile?.disbursed ? "Yes" : "No"}
+                      </span>
                     </td>
 
                     <td

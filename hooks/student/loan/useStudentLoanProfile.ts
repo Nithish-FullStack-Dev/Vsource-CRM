@@ -4,18 +4,23 @@ import { api } from "@/lib/api";
 export type StudentLoanProfile = {
   id: string;
   studentId: string;
+
   fintechAssigneeId?: string | null;
   fintechAssignee?: {
     id: string;
     name: string;
   } | null;
+
   nbfc?: string | null;
+
   loanStatus?: string | null;
   pfStatus?: string | null;
-  appliedAmount?: string | number | null;
-  sanctionedAmount?: string | number | null;
+
+  depositDate?: string | null;
+
   disbursed: boolean;
-  disbursedAmount?: string | number | null;
+  disbursedDate?: string | null;
+
   createdAt?: string;
   updatedAt?: string;
 };
