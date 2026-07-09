@@ -4,10 +4,7 @@ import db from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
 import { getAuthorizedUser } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
-import {
-  getCurrentIstDate,
-  getTargetPeriodStart,
-} from "@/lib/performance-period";
+import { getCurrentIstDate } from "@/lib/performance-period";
 import {
   buildCounsellorPerformanceReport,
   PerformanceAccessError,
@@ -22,27 +19,29 @@ import type {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type UpdateMonthlyTargetBody = {
+type UpdateIntakeTargetBody = {
   counsellorId?: string;
-  year?: number;
-  month?: number;
+  intakeId?: string;
   target?: number;
 };
 
 const COUNSELLOR_ROLE_NAMES = ["Counsellor", "Counselor"];
+
 const PERIOD_TYPES = new Set<PerformancePeriodType>([
   "daily",
   "weekly",
   "monthly",
   "custom",
 ]);
+
 const SORT_FIELDS = new Set<PerformanceSortField>([
   "name",
   "target",
   "achieved",
-  "leadsCreated",
+  "applicationsCreated",
   "completionPercentage",
 ]);
+
 const SORT_ORDERS = new Set<SortOrder>(["asc", "desc"]);
 
 function normalizeRoleName(value: string | null | undefined) {
@@ -98,25 +97,21 @@ function parseSortOrder(value: string | null): SortOrder {
 function resolvePerformanceDate(searchParams: URLSearchParams) {
   const explicitDate = searchParams.get("date")?.trim();
 
-  if (explicitDate) {
-    return explicitDate;
-  }
+  return explicitDate || getCurrentIstDate();
+}
 
-  const year = Number(searchParams.get("year"));
-  const month = Number(searchParams.get("month"));
+function createExportFilename(
+  intakeName: string,
+  startDate: string,
+  endDate: string,
+) {
+  const safeIntakeName =
+    intakeName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "no-intake";
 
-  if (
-    Number.isInteger(year) &&
-    year >= 2000 &&
-    year <= 2100 &&
-    Number.isInteger(month) &&
-    month >= 1 &&
-    month <= 12
-  ) {
-    return `${year}-${String(month).padStart(2, "0")}-01`;
-  }
-
-  return getCurrentIstDate();
+  return `counsellor-performance-${safeIntakeName}-${startDate}-to-${endDate}.xlsx`;
 }
 
 export async function GET(req: NextRequest) {
@@ -128,25 +123,15 @@ export async function GET(req: NextRequest) {
     );
 
     const searchParams = req.nextUrl.searchParams;
-
     const period = parsePeriod(searchParams.get("period"));
-
-    const requestedStartDate =
-      searchParams.get("startDate")?.trim() || undefined;
-
-    const requestedEndDate = searchParams.get("endDate")?.trim() || undefined;
-
-    const reportDate =
-      period === "custom" && requestedStartDate
-        ? requestedStartDate
-        : resolvePerformanceDate(searchParams);
 
     const report = await buildCounsellorPerformanceReport(currentUser, {
       period,
-      date: reportDate,
-      startDate: requestedStartDate,
-      endDate: requestedEndDate,
+      date: resolvePerformanceDate(searchParams),
+      startDate: searchParams.get("startDate")?.trim() || undefined,
+      endDate: searchParams.get("endDate")?.trim() || undefined,
       branchId: searchParams.get("branchId")?.trim() || undefined,
+      intakeId: searchParams.get("intakeId")?.trim() || undefined,
       search: searchParams.get("search")?.trim() || undefined,
       sortBy: parseSortField(searchParams.get("sortBy")),
       sortOrder: parseSortOrder(searchParams.get("sortOrder")),
@@ -154,13 +139,11 @@ export async function GET(req: NextRequest) {
 
     if (searchParams.get("format") === "xlsx") {
       const workbook = await createCounsellorPerformanceWorkbook(report);
-
-      const filename =
-        report.period.type === "custom" &&
-        requestedStartDate &&
-        requestedEndDate
-          ? `counsellor-performance-custom-${requestedStartDate}-to-${requestedEndDate}.xlsx`
-          : `counsellor-performance-${report.period.type}-${report.period.date}.xlsx`;
+      const filename = createExportFilename(
+        report.period.intakeName,
+        report.period.startDate,
+        report.period.endDate,
+      );
 
       return new Response(Buffer.from(workbook), {
         status: 200,
@@ -202,24 +185,22 @@ export async function PUT(req: NextRequest) {
 
     const body = (await req
       .json()
-      .catch(() => null)) as UpdateMonthlyTargetBody | null;
+      .catch(() => null)) as UpdateIntakeTargetBody | null;
 
     const counsellorId =
       typeof body?.counsellorId === "string" ? body.counsellorId.trim() : "";
-    const year = Number(body?.year);
-    const month = Number(body?.month);
+
+    const intakeId =
+      typeof body?.intakeId === "string" ? body.intakeId.trim() : "";
+
     const target = Number(body?.target);
 
     if (!counsellorId) {
       throw new Error("Counsellor ID is required");
     }
 
-    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
-      throw new Error("Invalid year");
-    }
-
-    if (!Number.isInteger(month) || month < 1 || month > 12) {
-      throw new Error("Invalid month");
+    if (!intakeId) {
+      throw new Error("Intake is required");
     }
 
     if (!Number.isInteger(target) || target < 0) {
@@ -232,14 +213,27 @@ export async function PUT(req: NextRequest) {
     const assignedBranchIds = getAssignedBranchIds(currentUser.branches);
 
     if (isCounsellor && counsellorId !== currentUser.id) {
-      return forbidden("You can only access your own target");
+      return forbidden("You can only update your own target");
     }
 
     if (isBranchManager && assignedBranchIds.length === 0) {
       return forbidden("No branches are assigned to your account");
     }
 
-    const periodStart = getTargetPeriodStart(year, month);
+    const intake = await db.intake.findFirst({
+      where: {
+        id: intakeId,
+        status: true,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!intake) {
+      throw new Error("Invalid or inactive intake selected");
+    }
 
     const counsellorWhere: Prisma.UserWhereInput = {
       id: counsellorId,
@@ -276,11 +270,11 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const monthlyTarget = await db.counsellorMonthlyTarget.upsert({
+    const intakeTarget = await db.counsellorIntakeTarget.upsert({
       where: {
-        counsellorId_periodStart: {
+        counsellorId_intakeId: {
           counsellorId: counsellor.id,
-          periodStart,
+          intakeId: intake.id,
         },
       },
       update: {
@@ -288,13 +282,13 @@ export async function PUT(req: NextRequest) {
       },
       create: {
         counsellorId: counsellor.id,
-        periodStart,
+        intakeId: intake.id,
         target,
       },
       select: {
         id: true,
         counsellorId: true,
-        periodStart: true,
+        intakeId: true,
         target: true,
         createdAt: true,
         updatedAt: true,
@@ -302,8 +296,9 @@ export async function PUT(req: NextRequest) {
     });
 
     return ok({
-      ...monthlyTarget,
+      ...intakeTarget,
       counsellorName: counsellor.name,
+      intakeName: intake.name,
     });
   } catch (error) {
     return handleError(error);

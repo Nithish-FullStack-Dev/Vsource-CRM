@@ -51,7 +51,10 @@ model User {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  monthlyTargets CounsellorMonthlyTarget[] @relation("CounsellorMonthlyTargets")
+  intakeTargets CounsellorIntakeTarget[] @relation("CounsellorIntakeTargets")
+
+  loanApplicationsCounseled LoanApplication[] @relation("LoanApplicationCounselor")
+  loanApplicationsFintech   LoanApplication[] @relation("LoanApplicationFintech")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -113,21 +116,23 @@ model RoleModulePermission {
   @@id([roleId, moduleId])
 }
 
-model CounsellorMonthlyTarget {
+model CounsellorIntakeTarget {
   id String @id @default(uuid())
 
   counsellorId String
-  counsellor   User   @relation("CounsellorMonthlyTargets", fields: [counsellorId], references: [id], onDelete: Cascade)
+  counsellor   User   @relation("CounsellorIntakeTargets", fields: [counsellorId], references: [id], onDelete: Cascade)
 
-  periodStart DateTime @db.Date
+  intakeId String
+  intake   Intake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
 
   target Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([counsellorId, periodStart])
-  @@index([periodStart])
+  @@unique([counsellorId, intakeId])
+  @@index([counsellorId])
+  @@index([intakeId])
 }
 
 enum LeadStatus {
@@ -764,6 +769,8 @@ model Branch {
   mbbsLeads MbbsLead[]
   students  Student[]
 
+  loanApplications LoanApplication[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -837,6 +844,8 @@ model Intake {
 
   courses             UniversityCourse[]
   studentApplications StudentApplication[]
+
+  counsellorTargets CounsellorIntakeTarget[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1020,4 +1029,195 @@ model UniversityScholarship {
 
   @@index([universityId])
   @@index([courseId])
+}
+
+// loan-application
+model LoanApplication {
+  id                       String                @id @default(uuid())
+  applicationId            String                @unique
+  fullName                 String
+  mobile                   String
+  altMobile                String?
+  email                    String
+  dob                      DateTime?
+  gender                   String?
+  maritalStatus            String?
+  aadhaar                  String?
+  pan                      String?
+  passport                 String?
+  passportExpireDate       DateTime?
+  currentAddress           String?               @db.Text
+  permanentAddress         String?               @db.Text
+  city                     String?
+  state                    String?
+  pin                      String?
+  enquiryDate              DateTime?
+  leadSource               String?
+  branchId                 String
+  branch                   Branch                @relation(fields: [branchId], references: [id])
+  counselorId              String?
+  counselor                User?                 @relation("LoanApplicationCounselor", fields: [counselorId], references: [id], onDelete: SetNull)
+  fintechAssigneeId        String?
+  fintechAssignee          User?                 @relation("LoanApplicationFintech", fields: [fintechAssigneeId], references: [id], onDelete: SetNull)
+  priority                 String?
+  nextFollowUp             DateTime?
+  remarks                  String?               @db.Text
+  applicantCategory        String
+  loanCategory             String
+  loanStatus               String                @default("New Enquiry")
+  qualification            String?
+  graduationStatus         String?
+  percentage               String?
+  yearOfPassing            String?
+  currentInstitution       String?
+  workExperience           String?
+  company                  String?
+  designation              String?
+  employmentType           String?
+  employeeId               String?
+  totalExperience          String?
+  currentCompanyExperience String?
+  monthlySalary            Decimal?              @db.Decimal(12, 2)
+  annualIncome             Decimal?              @db.Decimal(12, 2)
+  existingEmi              Decimal?              @db.Decimal(12, 2)
+  employerAddress          String?               @db.Text
+  businessName             String?
+  businessType             String?
+  registrationType         String?
+  registrationNumber       String?
+  yearsInBusiness          String?
+  annualTurnover           Decimal?              @db.Decimal(12, 2)
+  businessAddress          String?               @db.Text
+  studyDestination         String?
+  country                  String?
+  university               String?
+  courseName               String?
+  courseLevel              String?
+  courseDuration           String?
+  intake                   String?
+  admissionStatus          String?
+  offerLetterReceived      String?
+  tuitionFee               Decimal?              @db.Decimal(12, 2)
+  livingExpenses           Decimal?              @db.Decimal(12, 2)
+  otherExpenses            Decimal?              @db.Decimal(12, 2)
+  totalCourseCost          Decimal?              @db.Decimal(12, 2)
+  ownContribution          Decimal?              @db.Decimal(12, 2)
+  requiredLoanAmount       Decimal?              @db.Decimal(12, 2)
+  loanPreference           String?
+  collateralAvailable      String?
+  loanPurpose              String?
+  preferredTenure          Int?
+  cibilScore               Int?
+  propertyType             String?
+  propertyLocation         String?
+  propertyValue            Decimal?              @db.Decimal(12, 2)
+  downPayment              Decimal?              @db.Decimal(12, 2)
+  sanctionedAmount         Decimal?              @db.Decimal(12, 2)
+  disbursedAmount          Decimal?              @db.Decimal(12, 2)
+  depositAmount            Decimal?              @db.Decimal(12, 2)
+  depositDate              DateTime?
+  depositReference         String?
+  depositBank              String?
+  depositRemarks           String?               @db.Text
+  bankApplications         LoanBankApplication[]
+  coApplicants             LoanCoApplicant[]
+  followUps                LoanFollowUp[]
+  activities               LoanActivity[]
+  documents                LoanDocument[]
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  @@index([branchId])
+  @@index([counselorId])
+  @@index([fintechAssigneeId])
+  @@index([loanStatus])
+  @@index([loanCategory])
+}
+
+model LoanBankApplication {
+  id               String          @id @default(uuid())
+  applicationId    String
+  application      LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  bank             String
+  branch           String?
+  applicationNo    String?
+  loginDate        DateTime?
+  appliedAmount    Decimal?        @db.Decimal(12, 2)
+  sanctionedAmount Decimal?        @db.Decimal(12, 2)
+  sanctionDate     DateTime?
+  disbursedAmount  Decimal?        @db.Decimal(12, 2)
+  disbursementDate DateTime?
+  roi              Decimal?        @db.Decimal(5, 2)
+  tenure           Int?
+  status           String?
+  remarks          String?         @db.Text
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([applicationId])
+  @@index([bank])
+}
+
+model LoanCoApplicant {
+  id            String          @id @default(uuid())
+  applicationId String
+  application   LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  name          String
+  relationship  String?
+  mobile        String?
+  email         String?
+  occupation    String?
+  income        Decimal?        @db.Decimal(12, 2)
+  cibilScore    Int?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([applicationId])
+}
+
+model LoanFollowUp {
+  id            String          @id @default(uuid())
+  applicationId String
+  application   LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type          String?
+  note          String          @db.Text
+  followUpDate  DateTime?
+  nextFollowUp  DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([applicationId])
+  @@index([nextFollowUp])
+}
+
+model LoanActivity {
+  id            String          @id @default(uuid())
+  applicationId String
+  application   LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type          String?
+  title         String
+  description   String?         @db.Text
+  createdAt     DateTime        @default(now())
+
+  @@index([applicationId])
+}
+
+model LoanDocument {
+  id               String          @id @default(uuid())
+  applicationId    String
+  application      LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  documentCode     String
+  documentType     String
+  originalFileName String
+  storedFileName   String
+  fileUrl          String
+  mimeType         String
+  fileSize         Int
+  remarks          String?         @db.Text
+  uploadedAt       DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([applicationId])
+  @@index([applicationId, documentCode])
 }

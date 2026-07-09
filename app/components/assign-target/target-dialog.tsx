@@ -18,6 +18,7 @@ import type { TargetDialogCounsellor } from "@/types/counsellor-performance";
 type TargetDialogProps = {
   counsellor: TargetDialogCounsellor | null;
   periodLabel: string;
+  intakeName: string;
   isSaving: boolean;
   onClose: () => void;
   onSave: (target: number) => void;
@@ -26,6 +27,7 @@ type TargetDialogProps = {
 export function TargetDialog({
   counsellor,
   periodLabel,
+  intakeName,
   isSaving,
   onClose,
   onSave,
@@ -75,20 +77,21 @@ export function TargetDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Set Monthly Target</DialogTitle>
+          <DialogTitle>Set Intake Target</DialogTitle>
 
           <DialogDescription>
-            Set the target for <strong>{counsellor?.name}</strong> for{" "}
+            Set target for <strong>{counsellor?.name}</strong> in{" "}
+            <strong>{intakeName}</strong>. Performance is calculated for{" "}
             {periodLabel}.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2 py-3">
-          <Label htmlFor="monthly-target">Student target</Label>
+          <Label htmlFor="intake-target">Student target</Label>
 
           <Input
             ref={inputRef}
-            id="monthly-target"
+            id="intake-target"
             type="number"
             min={0}
             step={1}
@@ -113,7 +116,7 @@ export function TargetDialog({
           />
 
           <p className="text-xs text-muted-foreground">
-            Enter zero when no target is assigned for this month.
+            This target is saved intake-wise, not monthly.
           </p>
         </div>
 

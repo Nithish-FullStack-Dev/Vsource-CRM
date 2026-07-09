@@ -5,7 +5,7 @@ import type {
   CounsellorPerformance,
   PerformanceQueryParams,
   PerformanceResponse,
-  UpdateMonthlyTargetPayload,
+  UpdateIntakeTargetPayload,
 } from "@/types/counsellor-performance";
 
 export const API_URL = "/users/counsellors/performance";
@@ -34,6 +34,7 @@ function buildRequestParams(params: PerformanceQueryParams) {
       params.branchId && params.branchId !== "all"
         ? params.branchId
         : undefined,
+    intakeId: params.intakeId || undefined,
     search: params.search?.trim() || undefined,
     sortBy: params.sortBy,
     sortOrder: params.sortOrder,
@@ -69,6 +70,7 @@ export async function exportCounsellorPerformance(
     const disposition = response.headers["content-disposition"] as
       | string
       | undefined;
+
     const filenameMatch = disposition?.match(/filename="?([^";]+)"?/i);
 
     return {
@@ -84,6 +86,7 @@ export async function exportCounsellorPerformance(
       error.response.data.type.includes("application/json")
     ) {
       const text = await error.response.data.text();
+
       let payload: {
         message?: string;
         error?: string | { message?: string };
@@ -125,7 +128,7 @@ export function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export async function updateMonthlyTarget(payload: UpdateMonthlyTargetPayload) {
+export async function updateIntakeTarget(payload: UpdateIntakeTargetPayload) {
   await api.put(API_URL, payload);
 
   return payload;

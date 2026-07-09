@@ -1,6 +1,6 @@
 "use client";
 
-import { ListPlus, Target, UserRoundCheck, Users } from "lucide-react";
+import { ClipboardList, ListPlus, Target, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PerformanceSummary as PerformanceSummaryType } from "@/types/counsellor-performance";
@@ -8,12 +8,14 @@ import type { PerformanceSummary as PerformanceSummaryType } from "@/types/couns
 type PerformanceSummaryProps = {
   summary: PerformanceSummaryType;
   periodLabel: string;
+  intakeName: string;
   isLoading: boolean;
 };
 
 export function PerformanceSummary({
   summary,
   periodLabel,
+  intakeName,
   isLoading,
 }: PerformanceSummaryProps) {
   const items = [
@@ -24,21 +26,21 @@ export function PerformanceSummary({
       icon: Users,
     },
     {
-      title: "Assigned Target",
-      description: "Assigned target for the selected reporting period",
+      title: "Intake Target",
+      description: `Assigned target for ${intakeName}`,
       value: summary.totalTarget,
       icon: Target,
     },
     {
       title: "Total Achieved",
       value: summary.totalAchieved,
-      description: `Achievements during ${periodLabel}`,
-      icon: UserRoundCheck,
+      description: `Applications achieved during ${periodLabel}`,
+      icon: ClipboardList,
     },
     {
-      title: "Total Leads Added",
-      value: summary.totalLeadsCreated,
-      description: `Leads added during ${periodLabel}`,
+      title: "Applications Added",
+      value: summary.totalApplicationsCreated,
+      description: `Applications added for ${intakeName}`,
       icon: ListPlus,
     },
   ];

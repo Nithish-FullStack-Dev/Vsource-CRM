@@ -1,13 +1,11 @@
 import type { Prisma } from "@/generated/prisma/client";
 import db from "@/lib/prisma";
-import { getPerformancePeriod } from "@/lib/performance-period";
+import { resolvePerformancePeriodRange } from "@/lib/performance-period";
 import type {
   Branch,
   CounsellorPerformance,
   PerformanceQueryParams,
   PerformanceResponse,
-  PerformanceSortField,
-  SortOrder,
 } from "@/types/counsellor-performance";
 
 const COUNSELLOR_ROLE_NAMES = ["Counsellor", "Counselor"];
@@ -21,6 +19,17 @@ type AuthorizedUser = {
     id?: string | null;
     name?: string | null;
   }> | null;
+};
+
+type CounsellorWithIntakeTarget = {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: Date;
+  branches: Branch[];
+  intakeTargets: {
+    target: number;
+  }[];
 };
 
 export class PerformanceAccessError extends Error {
@@ -37,7 +46,14 @@ function normalizeRoleName(value: string | null | undefined) {
   return value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
 }
 
-function getAssignedBranchIds(branches: AuthorizedUser["branches"]) {
+function getAssignedBranchIds(
+  branches:
+    | Array<{
+        id?: string | null;
+      }>
+    | null
+    | undefined,
+) {
   return Array.from(
     new Set(
       (branches ?? [])
@@ -47,56 +63,113 @@ function getAssignedBranchIds(branches: AuthorizedUser["branches"]) {
   );
 }
 
-function comparePerformance(
-  first: CounsellorPerformance,
-  second: CounsellorPerformance,
-  sortBy: PerformanceSortField,
-  sortOrder: SortOrder,
-) {
-  const direction = sortOrder === "asc" ? 1 : -1;
-
-  if (sortBy === "name") {
-    const result = first.name.localeCompare(second.name);
-
-    return result === 0
-      ? first.id.localeCompare(second.id)
-      : result * direction;
+function calculateCompletionPercentage(target: number, achieved: number) {
+  if (target <= 0) {
+    return achieved > 0 ? 100 : 0;
   }
 
-  const firstValue = first[sortBy];
-  const secondValue = second[sortBy];
-  const result = firstValue - secondValue;
-
-  if (result === 0) {
-    return first.name.localeCompare(second.name);
-  }
-
-  return result * direction;
+  return Math.round((achieved / target) * 100);
 }
 
-async function getAvailableBranches(
-  roleName: string,
-  assignedBranchIds: string[],
-): Promise<Branch[]> {
-  const isRestrictedRole =
-    roleName === "branch manager" ||
-    roleName === "counsellor" ||
-    roleName === "counselor";
+function sortPerformanceRows(
+  rows: CounsellorPerformance[],
+  sortBy: PerformanceQueryParams["sortBy"],
+  sortOrder: PerformanceQueryParams["sortOrder"],
+) {
+  const field = sortBy ?? "completionPercentage";
+  const direction = sortOrder === "asc" ? 1 : -1;
 
-  if (isRestrictedRole && assignedBranchIds.length === 0) {
-    return [];
+  return [...rows].sort((first, second) => {
+    const firstValue = first[field];
+    const secondValue = second[field];
+
+    if (typeof firstValue === "string" && typeof secondValue === "string") {
+      return firstValue.localeCompare(secondValue) * direction;
+    }
+
+    if (typeof firstValue === "number" && typeof secondValue === "number") {
+      return (firstValue - secondValue) * direction;
+    }
+
+    return 0;
+  });
+}
+
+function createEmptyReport(
+  params: PerformanceQueryParams,
+  periodRange: ReturnType<typeof resolvePerformancePeriodRange>,
+  availableBranches: Branch[],
+  availableIntakes: {
+    id: string;
+    name: string;
+  }[],
+  intakeName = "No active intake",
+): PerformanceResponse {
+  return {
+    period: {
+      type: params.period,
+      label: periodRange.label,
+      date: params.date,
+      startDate: periodRange.startDate,
+      endDate: periodRange.endDate,
+      intakeId: "",
+      intakeName,
+    },
+    summary: {
+      totalCounsellors: 0,
+      totalTarget: 0,
+      totalAchieved: 0,
+      totalApplicationsCreated: 0,
+      completionPercentage: 0,
+    },
+    counsellors: [],
+    availableBranches,
+    availableIntakes,
+  };
+}
+
+export async function buildCounsellorPerformanceReport(
+  currentUser: AuthorizedUser,
+  params: PerformanceQueryParams,
+): Promise<PerformanceResponse> {
+  const roleName = normalizeRoleName(currentUser.role?.name);
+  const isCounsellor = roleName === "counsellor" || roleName === "counselor";
+  const isBranchManager = roleName === "branch manager";
+  const assignedBranchIds = getAssignedBranchIds(currentUser.branches);
+
+  if (isBranchManager && assignedBranchIds.length === 0) {
+    throw new PerformanceAccessError(
+      "No branches are assigned to your account",
+    );
   }
 
-  return db.branch.findMany({
+  const periodRange = resolvePerformancePeriodRange({
+    period: params.period,
+    date: params.date,
+    startDate: params.startDate,
+    endDate: params.endDate,
+  });
+
+  const availableBranches = await db.branch.findMany({
+    where: isBranchManager
+      ? {
+          id: {
+            in: assignedBranchIds,
+          },
+        }
+      : undefined,
+    select: {
+      id: true,
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  const availableIntakes = await db.intake.findMany({
     where: {
       status: true,
-      ...(isRestrictedRole
-        ? {
-            id: {
-              in: assignedBranchIds,
-            },
-          }
-        : {}),
     },
     select: {
       id: true,
@@ -106,34 +179,30 @@ async function getAvailableBranches(
       name: "asc",
     },
   });
-}
 
-export async function buildCounsellorPerformanceReport(
-  currentUser: AuthorizedUser,
-  params: PerformanceQueryParams,
-): Promise<PerformanceResponse> {
-  const period = getPerformancePeriod(
-    params.period,
-    params.date,
-    params.startDate,
-    params.endDate,
-  );
-  const roleName = normalizeRoleName(currentUser.role?.name);
-  const isCounsellor = roleName === "counsellor" || roleName === "counselor";
-  const isBranchManager = roleName === "branch manager";
-  const assignedBranchIds = getAssignedBranchIds(currentUser.branches);
-  const requestedBranchId = params.branchId?.trim() || undefined;
-  const search = params.search?.trim() || undefined;
-  const sortBy = params.sortBy ?? "completionPercentage";
-  const sortOrder = params.sortOrder ?? "desc";
-  const availableBranches = await getAvailableBranches(
-    roleName,
-    assignedBranchIds,
-  );
+  if (availableIntakes.length === 0) {
+    return createEmptyReport(
+      params,
+      periodRange,
+      availableBranches,
+      availableIntakes,
+    );
+  }
+
+  const requestedIntakeId = params.intakeId?.trim();
+
+  const selectedIntake =
+    availableIntakes.find((intake) => intake.id === requestedIntakeId) ??
+    availableIntakes[0];
+
+  const requestedBranchId =
+    params.branchId && params.branchId !== "all"
+      ? params.branchId.trim()
+      : undefined;
 
   if (
+    isBranchManager &&
     requestedBranchId &&
-    (isCounsellor || isBranchManager) &&
     !assignedBranchIds.includes(requestedBranchId)
   ) {
     throw new PerformanceAccessError(
@@ -141,77 +210,77 @@ export async function buildCounsellorPerformanceReport(
     );
   }
 
-  let effectiveBranchIds: string[] | undefined;
-
-  if (isBranchManager) {
-    effectiveBranchIds = requestedBranchId
-      ? [requestedBranchId]
-      : assignedBranchIds;
-  } else if (requestedBranchId) {
-    effectiveBranchIds = [requestedBranchId];
-  }
-
-  const counsellorWhere: Prisma.UserWhereInput = {
-    role: {
-      name: {
-        in: COUNSELLOR_ROLE_NAMES,
-        mode: "insensitive",
-      },
-    },
-    ...(isCounsellor
-      ? {
-          id: currentUser.id,
-        }
-      : {}),
-    ...(effectiveBranchIds !== undefined
-      ? {
-          branches: {
-            some: {
-              id: {
-                in: effectiveBranchIds,
-              },
+  const branchRestriction: Prisma.UserWhereInput = isBranchManager
+    ? {
+        branches: {
+          some: {
+            id: {
+              in: assignedBranchIds,
             },
           },
-        }
-      : {}),
-    ...(search
-      ? {
-          OR: [
-            {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
+        },
+      }
+    : {};
+
+  const branchFilter: Prisma.UserWhereInput = requestedBranchId
+    ? {
+        branches: {
+          some: {
+            id: requestedBranchId,
+          },
+        },
+      }
+    : {};
+
+  const searchText = params.search?.trim();
+
+  const searchFilter: Prisma.UserWhereInput = searchText
+    ? {
+        OR: [
+          {
+            name: {
+              contains: searchText,
+              mode: "insensitive",
             },
-            {
-              email: {
-                contains: search,
-                mode: "insensitive",
-              },
+          },
+          {
+            email: {
+              contains: searchText,
+              mode: "insensitive",
             },
-            {
-              branches: {
-                some: {
-                  name: {
-                    contains: search,
-                    mode: "insensitive",
-                  },
+          },
+          {
+            branches: {
+              some: {
+                name: {
+                  contains: searchText,
+                  mode: "insensitive",
                 },
               },
             },
-          ],
-        }
-      : {}),
-  };
+          },
+        ],
+      }
+    : {};
 
-  const counsellors = await db.user.findMany({
-    where: counsellorWhere,
+  const counsellors: CounsellorWithIntakeTarget[] = await db.user.findMany({
+    where: {
+      role: {
+        name: {
+          in: COUNSELLOR_ROLE_NAMES,
+          mode: "insensitive",
+        },
+      },
+      ...(isCounsellor ? { id: currentUser.id } : {}),
+      ...branchRestriction,
+      ...branchFilter,
+      ...searchFilter,
+    },
     select: {
       id: true,
       name: true,
       email: true,
       createdAt: true,
-
       branches: {
         select: {
           id: true,
@@ -221,160 +290,111 @@ export async function buildCounsellorPerformanceReport(
           name: "asc",
         },
       },
-
-      monthlyTargets: {
+      intakeTargets: {
         where: {
-          periodStart: period.targetPeriodStart,
+          intakeId: selectedIntake.id,
         },
         select: {
-          id: true,
           target: true,
-          periodStart: true,
-          updatedAt: true,
         },
-        take: 1,
       },
+    },
+    orderBy: {
+      name: "asc",
     },
   });
 
   const counsellorIds = counsellors.map((counsellor) => counsellor.id);
-
-  const achievementMap = new Map<string, number>();
-  const leadsCreatedMap = new Map<string, number>();
+  const achievedByCounsellor = new Map<string, number>();
 
   if (counsellorIds.length > 0) {
-    const [achievements, createdLeads] = await Promise.all([
-      db.student.groupBy({
-        by: ["counselorId"],
-        where: {
+    const applications = await db.studentApplication.findMany({
+      where: {
+        intakeId: selectedIntake.id,
+        createdAt: {
+          gte: periodRange.start,
+          lt: periodRange.end,
+        },
+        student: {
           counselorId: {
             in: counsellorIds,
           },
-          createdAt: {
-            gte: period.start,
-            lt: period.end,
+        },
+      },
+      select: {
+        id: true,
+        student: {
+          select: {
+            counselorId: true,
           },
-          ...(effectiveBranchIds !== undefined
-            ? {
-                branchId: {
-                  in: effectiveBranchIds,
-                },
-              }
-            : {}),
         },
-        _count: {
-          _all: true,
-        },
-      }),
+      },
+    });
 
-      db.lead.groupBy({
-        by: ["createdById"],
-        where: {
-          createdById: {
-            in: counsellorIds,
-          },
-          createdAt: {
-            gte: period.start,
-            lt: period.end,
-          },
-          ...(effectiveBranchIds !== undefined
-            ? {
-                branchId: {
-                  in: effectiveBranchIds,
-                },
-              }
-            : {}),
-        },
-        _count: {
-          _all: true,
-        },
-      }),
-    ]);
+    for (const application of applications) {
+      const counsellorId = application.student?.counselorId;
 
-    for (const item of achievements) {
-      if (item.counselorId) {
-        achievementMap.set(item.counselorId, item._count?._all ?? 0);
+      if (!counsellorId) {
+        continue;
       }
-    }
 
-    for (const item of createdLeads) {
-      if (item.createdById) {
-        leadsCreatedMap.set(item.createdById, item._count?._all ?? 0);
-      }
+      achievedByCounsellor.set(
+        counsellorId,
+        (achievedByCounsellor.get(counsellorId) ?? 0) + 1,
+      );
     }
   }
 
-  const counsellorData = counsellors
-    .map<CounsellorPerformance>((counsellor) => {
-      const target = counsellor.monthlyTargets[0]?.target ?? 0;
-      const achieved = achievementMap.get(counsellor.id) ?? 0;
-      const leadsCreated = leadsCreatedMap.get(counsellor.id) ?? 0;
-
-      const completionPercentage =
-        target > 0 ? Math.round((achieved / target) * 100) : 0;
-
-      return {
-        id: counsellor.id,
-        name: counsellor.name,
-        email: counsellor.email,
-        branches: counsellor.branches,
-        joinedAt: counsellor.createdAt.toISOString(),
-        target,
-        achieved,
-        leadsCreated,
-        completionPercentage,
-        targetAchieved: target > 0 && achieved >= target,
-      };
-    })
-    .sort((first, second) =>
-      comparePerformance(first, second, sortBy, sortOrder),
+  const rows: CounsellorPerformance[] = counsellors.map((counsellor) => {
+    const intakeTarget = counsellor.intakeTargets.at(0);
+    const target = intakeTarget?.target ?? 0;
+    const achieved = achievedByCounsellor.get(counsellor.id) ?? 0;
+    const completionPercentage = calculateCompletionPercentage(
+      target,
+      achieved,
     );
 
-  const summary = counsellorData.reduce(
-    (result, counsellor) => {
-      result.totalTarget += counsellor.target;
-      result.totalAchieved += counsellor.achieved;
-      result.totalLeadsCreated += counsellor.leadsCreated;
+    return {
+      id: counsellor.id,
+      name: counsellor.name,
+      email: counsellor.email,
+      joinedAt: counsellor.createdAt.toISOString(),
+      branches: counsellor.branches,
+      target,
+      achieved,
+      applicationsCreated: achieved,
+      completionPercentage,
+      targetAchieved: target > 0 && achieved >= target,
+    };
+  });
 
-      return result;
-    },
-    {
-      totalTarget: 0,
-      totalAchieved: 0,
-      totalLeadsCreated: 0,
-    },
+  const sortedRows = sortPerformanceRows(rows, params.sortBy, params.sortOrder);
+  const totalTarget = rows.reduce((sum, row) => sum + row.target, 0);
+  const totalAchieved = rows.reduce((sum, row) => sum + row.achieved, 0);
+  const completionPercentage = calculateCompletionPercentage(
+    totalTarget,
+    totalAchieved,
   );
 
   return {
-    access: {
-      role: currentUser.role?.name ?? "Unknown",
-      selfOnly: isCounsellor,
-      assignedBranchIds:
-        isCounsellor || isBranchManager ? assignedBranchIds : [],
-      selectedBranchIds: effectiveBranchIds ?? [],
-    },
     period: {
-      type: period.type,
-      date: period.date,
-      year: period.year,
-      month: period.month,
-      start: period.start.toISOString(),
-      end: period.end.toISOString(),
-      label: period.label,
-      targetPeriodStart: period.targetPeriodStart.toISOString(),
-      targetPeriodEnd: period.targetPeriodEnd.toISOString(),
+      type: params.period,
+      label: periodRange.label,
+      date: params.date,
+      startDate: periodRange.startDate,
+      endDate: periodRange.endDate,
+      intakeId: selectedIntake.id,
+      intakeName: selectedIntake.name,
     },
     summary: {
-      totalCounsellors: counsellorData.length,
-      totalTarget: summary.totalTarget,
-      totalAchieved: summary.totalAchieved,
-      totalLeadsCreated: summary.totalLeadsCreated,
-      completionPercentage:
-        summary.totalTarget > 0
-          ? Math.round((summary.totalAchieved / summary.totalTarget) * 100)
-          : 0,
+      totalCounsellors: rows.length,
+      totalTarget,
+      totalAchieved,
+      totalApplicationsCreated: totalAchieved,
+      completionPercentage,
     },
+    counsellors: sortedRows,
     availableBranches,
-    counsellors: counsellorData,
+    availableIntakes,
   };
 }
