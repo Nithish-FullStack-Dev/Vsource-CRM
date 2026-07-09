@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Users,
   Target,
@@ -16,12 +16,16 @@ import ToastContainer, {
   Toast,
 } from "@/components/assign-target/ToastNotification";
 import { motion } from "motion/react";
+import { BranchOption, IntakeOption, UserOption } from "@/lib/crmTypes";
 import {
-  BranchOption,
-  IntakeOption,
-  MastersResponse,
-  UserOption,
-} from "@/lib/crmTypes";
+  DateRangeType,
+  DashboardFilters,
+} from "@/services/assign-target/target.service";
+import {
+  useDashboard,
+  useMasters,
+  useUpdateTarget,
+} from "@/hooks/assign-target/useAssignTarget";
 
 function getDateValue(date: Date) {
   const yyyy = date.getFullYear();
@@ -32,29 +36,30 @@ function getDateValue(date: Date) {
 
 function getCurrentMonthRange() {
   const now = new Date();
+
   return {
     start: getDateValue(new Date(now.getFullYear(), now.getMonth(), 1)),
     end: getDateValue(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
   };
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
 export default function TargetPerformancePage() {
   const currentMonthRange = getCurrentMonthRange();
-  const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [users, setUsers] = useState<UserOption[]>([]);
-  const [intakes, setIntakes] = useState<IntakeOption[]>([]);
-  const [isMastersLoaded, setIsMastersLoaded] = useState<boolean>(false);
+
+  const [isMastersInitialized, setIsMastersInitialized] =
+    useState<boolean>(false);
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<string>("all");
   const [selectedIntake, setSelectedIntake] = useState<string>("all");
-  const [selectedDateRange, setSelectedDateRange] = useState<
-    "today" | "week" | "month" | "custom"
-  >("month");
+  const [selectedDateRange, setSelectedDateRange] =
+    useState<DateRangeType>("month");
   const [startDate, setStartDate] = useState<string>(currentMonthRange.start);
   const [endDate, setEndDate] = useState<string>(currentMonthRange.end);
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isFilterLoading, setIsFilterLoading] = useState<boolean>(false);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState<boolean>(false);
   const [modalBranch, setModalBranch] = useState<string>("");
@@ -63,6 +68,15 @@ export default function TargetPerformancePage() {
   const [modalTarget, setModalTarget] = useState<string>("");
   const [isModalSaving, setIsModalSaving] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const mastersQuery = useMasters();
+  const updateTargetMutation = useUpdateTarget();
+
+  const masters = mastersQuery.data;
+
+  const branches: BranchOption[] = masters?.branches ?? [];
+  const users: UserOption[] = masters?.users ?? [];
+  const intakes: IntakeOption[] = masters?.intakes ?? [];
 
   const addToast = useCallback((type: "success" | "error", message: string) => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
@@ -74,105 +88,84 @@ export default function TargetPerformancePage() {
   }, []);
 
   useEffect(() => {
-    const fetchMasters = async () => {
-      try {
-        setIsLoading(true);
-        const res = await fetch("/api/masters");
-        if (!res.ok) {
-          throw new Error("Failed to load CRM master data");
-        }
-        const json = (await res.json()) as MastersResponse;
-        setBranches(json.branches);
-        setUsers(json.users);
-        setIntakes(json.intakes);
-        setSelectedIntake(json.defaultIntake || "all");
-        setModalBranch(
-          json.defaultBranch === "all"
-            ? (json.branches[0]?.id ?? "")
-            : json.defaultBranch,
-        );
-        setModalUser(
-          json.defaultUser === "all"
-            ? (json.users[0]?.id ?? "")
-            : json.defaultUser,
-        );
-        setModalIntake(
-          json.defaultIntake === "all"
-            ? (json.intakes[0]?.name ?? "")
-            : json.defaultIntake,
-        );
-        setIsMastersLoaded(true);
-      } catch (err: any) {
-        console.error(err);
-        addToast("error", err.message || "Unable to fetch CRM master data.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (!masters || isMastersInitialized) return;
 
-    fetchMasters();
-  }, [addToast]);
+    setSelectedIntake(masters.defaultIntake || "all");
 
-  const fetchPerformanceData = useCallback(
-    async (isInitial = false) => {
-      if (!isMastersLoaded) return;
+    setModalBranch(
+      masters.defaultBranch === "all"
+        ? (masters.branches[0]?.id ?? "")
+        : masters.defaultBranch,
+    );
 
-      if (isInitial) {
-        setIsLoading(true);
-      } else {
-        setIsFilterLoading(true);
-      }
+    setModalUser(
+      masters.defaultUser === "all"
+        ? (masters.users[0]?.id ?? "")
+        : masters.defaultUser,
+    );
 
-      try {
-        const params = new URLSearchParams({
-          branchId: selectedBranch,
-          userId: selectedUser,
-          intake: selectedIntake,
-          dateRangeType: selectedDateRange,
-        });
+    setModalIntake(
+      masters.defaultIntake === "all"
+        ? (masters.intakes[0]?.name ?? "")
+        : masters.defaultIntake,
+    );
 
-        if (selectedDateRange === "custom") {
-          if (startDate) params.append("startDate", startDate);
-          if (endDate) params.append("endDate", endDate);
-        }
-
-        const res = await fetch(`/api/assign-target?${params.toString()}`);
-        if (!res.ok) {
-          throw new Error("Failed to load performance metrics");
-        }
-
-        const json = await res.json();
-        setData(json);
-      } catch (err: any) {
-        console.error(err);
-        addToast(
-          "error",
-          err.message || "Unable to fetch CRM data. Please retry.",
-        );
-      } finally {
-        setIsLoading(false);
-        setIsFilterLoading(false);
-      }
-    },
-    [
-      selectedBranch,
-      selectedUser,
-      selectedIntake,
-      selectedDateRange,
-      startDate,
-      endDate,
-      addToast,
-      isMastersLoaded,
-    ],
-  );
+    setIsMastersInitialized(true);
+  }, [masters, isMastersInitialized]);
 
   useEffect(() => {
-    if (!isMastersLoaded) return;
-    const timer = setTimeout(() => {
-      fetchPerformanceData();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [fetchPerformanceData, isMastersLoaded]);
+    if (!mastersQuery.isError) return;
+
+    addToast(
+      "error",
+      getErrorMessage(mastersQuery.error, "Unable to fetch CRM master data."),
+    );
+  }, [mastersQuery.isError, mastersQuery.error, addToast]);
+
+  const dashboardFilters = useMemo<DashboardFilters>(() => {
+    const filters: DashboardFilters = {
+      branchId: selectedBranch,
+      userId: selectedUser,
+      intake: selectedIntake,
+      dateRangeType: selectedDateRange,
+    };
+
+    if (selectedDateRange === "custom") {
+      if (startDate) filters.startDate = startDate;
+      if (endDate) filters.endDate = endDate;
+    }
+
+    return filters;
+  }, [
+    selectedBranch,
+    selectedUser,
+    selectedIntake,
+    selectedDateRange,
+    startDate,
+    endDate,
+  ]);
+
+  const dashboardQuery = useDashboard(dashboardFilters, isMastersInitialized);
+
+  const data = dashboardQuery.data;
+
+  const isLoading =
+    mastersQuery.isLoading || !isMastersInitialized || dashboardQuery.isLoading;
+
+  const isFilterLoading =
+    dashboardQuery.isFetching && !dashboardQuery.isLoading;
+
+  useEffect(() => {
+    if (!dashboardQuery.isError) return;
+
+    addToast(
+      "error",
+      getErrorMessage(
+        dashboardQuery.error,
+        "Unable to fetch CRM data. Please retry.",
+      ),
+    );
+  }, [dashboardQuery.isError, dashboardQuery.error, addToast]);
 
   const handleUpdateTarget = async (
     branchId: string,
@@ -180,109 +173,30 @@ export default function TargetPerformancePage() {
     targetValue: number,
   ): Promise<boolean> => {
     setSavingUserId(userId);
+
     try {
-      const res = await fetch("/api/targets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          branchId,
-          userId,
-          intake: selectedIntake,
-          target: targetValue,
-        }),
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.error || "Failed to update target value");
-      }
-
-      setData((prevData: any) => {
-        if (!prevData) return prevData;
-
-        const updatedBranches = prevData.branches.map((branch: any) => {
-          if (branch.branchId !== branchId) return branch;
-
-          const userIndex = branch.users.findIndex(
-            (u: any) => u.userId === userId,
-          );
-          if (userIndex === -1) return branch;
-
-          const updatedUsers = [...branch.users];
-          const user = { ...updatedUsers[userIndex] };
-          user.target = targetValue;
-          user.progress =
-            targetValue > 0
-              ? parseFloat(
-                  ((user.visaConversions / targetValue) * 100).toFixed(1),
-                )
-              : 0;
-          updatedUsers[userIndex] = user;
-
-          const totalsTarget = updatedUsers.reduce(
-            (sum: number, u: any) => sum + u.target,
-            0,
-          );
-          const totalsVisa = updatedUsers.reduce(
-            (sum: number, u: any) => sum + u.visaConversions,
-            0,
-          );
-          const totalsProgress =
-            totalsTarget > 0
-              ? parseFloat(((totalsVisa / totalsTarget) * 100).toFixed(1))
-              : 0;
-
-          return {
-            ...branch,
-            users: updatedUsers,
-            totals: {
-              ...branch.totals,
-              target: totalsTarget,
-              progress: totalsProgress,
-            },
-          };
-        });
-
-        const grandTarget = updatedBranches.reduce(
-          (sum: number, b: any) => sum + b.totals.target,
-          0,
-        );
-        const grandVisa = updatedBranches.reduce(
-          (sum: number, b: any) => sum + b.totals.visaConversions,
-          0,
-        );
-        const grandProgress =
-          grandTarget > 0
-            ? parseFloat(((grandVisa / grandTarget) * 100).toFixed(1))
-            : 0;
-
-        return {
-          ...prevData,
-          summary: {
-            ...prevData.summary,
-            target: grandTarget,
-            progress: grandProgress,
-          },
-          branches: updatedBranches,
-          grandTotal: {
-            ...prevData.grandTotal,
-            target: grandTarget,
-            progress: grandProgress,
-          },
-        };
+      await updateTargetMutation.mutateAsync({
+        branchId,
+        userId,
+        intake: selectedIntake,
+        target: targetValue,
       });
 
       addToast(
         "success",
         `Target updated successfully to ${targetValue.toLocaleString()} for the ${selectedIntake} Intake!`,
       );
+
       return true;
-    } catch (err: any) {
-      console.error(err);
+    } catch (error) {
       addToast(
         "error",
-        err.message || "Failed to update target. Please check permission.",
+        getErrorMessage(
+          error,
+          "Failed to update target. Please check permission.",
+        ),
       );
+
       return false;
     } finally {
       setSavingUserId(null);
@@ -291,38 +205,30 @@ export default function TargetPerformancePage() {
 
   const handleModalSave = async () => {
     if (!modalTarget || !modalBranch || !modalUser || !modalIntake) return;
+
     setIsModalSaving(true);
+
     try {
       const targetNum = parseInt(modalTarget, 10) || 0;
-      const res = await fetch("/api/targets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          branchId: modalBranch,
-          userId: modalUser,
-          intake: modalIntake,
-          target: targetNum,
-        }),
-      });
 
-      if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.error || "Failed to assign target");
-      }
+      await updateTargetMutation.mutateAsync({
+        branchId: modalBranch,
+        userId: modalUser,
+        intake: modalIntake,
+        target: targetNum,
+      });
 
       addToast(
         "success",
         `Target of ${targetNum.toLocaleString()} assigned successfully to user in database!`,
       );
+
       setIsAssignModalOpen(false);
       setModalTarget("");
-
-      fetchPerformanceData();
-    } catch (err: any) {
-      console.error(err);
+    } catch (error) {
       addToast(
         "error",
-        err.message || "Could not assign target. Please retry.",
+        getErrorMessage(error, "Could not assign target. Please retry."),
       );
     } finally {
       setIsModalSaving(false);
@@ -365,6 +271,7 @@ export default function TargetPerformancePage() {
             `${user.progress}%`,
           ]);
         });
+
         rows.push([
           `${branch.branchName} TOTAL`,
           "—",
@@ -395,19 +302,24 @@ export default function TargetPerformancePage() {
         ),
       ].join("\n");
 
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([csvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.setAttribute("href", url);
+
       const intakeLabel =
         selectedIntake !== "all"
           ? `_${selectedIntake.replace(/\s+/g, "_")}`
           : "_All_Intakes";
+
+      link.setAttribute("href", url);
       link.setAttribute(
         "download",
         `VSource_CRM_Performance_Report${intakeLabel}.csv`,
       );
       link.style.visibility = "hidden";
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -416,8 +328,7 @@ export default function TargetPerformancePage() {
         "success",
         "Performance metrics report successfully exported to Excel/CSV!",
       );
-    } catch (err: any) {
-      console.error("Export failure:", err);
+    } catch {
       addToast(
         "error",
         "Failed to generate Excel/CSV report. Please try again.",
@@ -428,6 +339,7 @@ export default function TargetPerformancePage() {
   return (
     <main className="min-h-screen transition-colors duration-300 font-sans pb-16 bg-background text-[#09090b]">
       <ToastContainer toasts={toasts} onClose={removeToast} />
+
       <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-2">
           <div>
@@ -439,6 +351,7 @@ export default function TargetPerformancePage() {
               filtered report to Excel.
             </p>
           </div>
+
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleExportReport}
@@ -447,24 +360,29 @@ export default function TargetPerformancePage() {
               <BookOpen size={13} className="text-red-600" />
               <span>Export Report</span>
             </button>
+
             <button
               onClick={() => {
                 if (selectedBranch !== "all") {
                   setModalBranch(selectedBranch);
+
                   const branchUsers = users.filter((u) =>
                     u.branchIds.includes(selectedBranch),
                   );
+
                   if (branchUsers.length > 0) {
                     setModalUser(branchUsers[0].id);
                   }
                 } else if (!modalBranch && branches.length > 0) {
                   setModalBranch(branches[0].id);
                 }
+
                 if (selectedIntake !== "all") {
                   setModalIntake(selectedIntake);
                 } else if (!modalIntake && intakes.length > 0) {
                   setModalIntake(intakes[0].name);
                 }
+
                 setIsAssignModalOpen(true);
               }}
               className="px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all flex items-center gap-2 shadow-sm shadow-red-600/10 active:scale-[0.98] cursor-pointer"
@@ -527,6 +445,7 @@ export default function TargetPerformancePage() {
                   : `For ${selectedIntake} Intake`
               }
             />
+
             <SummaryCard
               id="card-walkins"
               title="Walk-ins"
@@ -534,6 +453,7 @@ export default function TargetPerformancePage() {
               icon={Users}
               subtext="Total walk-in records registered"
             />
+
             <SummaryCard
               id="card-applications"
               title="Applications"
@@ -541,6 +461,7 @@ export default function TargetPerformancePage() {
               icon={BookOpen}
               subtext="Walk-ins converted to application status"
             />
+
             <SummaryCard
               id="card-visa"
               title="Visa Approved"
@@ -559,6 +480,7 @@ export default function TargetPerformancePage() {
               <div className="w-1/4 h-4 bg-gray-300 rounded" />
               <div className="w-1/4 h-4 bg-gray-300 rounded" />
             </div>
+
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex gap-4 justify-between">
                 <div className="w-1/5 h-6 bg-gray-300 rounded" />
@@ -574,6 +496,7 @@ export default function TargetPerformancePage() {
             <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
               <HelpCircle size={18} />
             </div>
+
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
                 No performance records found
@@ -628,6 +551,7 @@ export default function TargetPerformancePage() {
                   Assign Global Target
                 </h3>
               </div>
+
               <button
                 onClick={() => {
                   setIsAssignModalOpen(false);
@@ -644,14 +568,17 @@ export default function TargetPerformancePage() {
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Select Branch
                 </label>
+
                 <select
                   value={modalBranch}
                   onChange={(e) => {
                     const nextBranch = e.target.value;
                     setModalBranch(nextBranch);
+
                     const branchUsers = users.filter((u) =>
                       u.branchIds.includes(nextBranch),
                     );
+
                     if (branchUsers.length > 0) {
                       setModalUser(branchUsers[0].id);
                     }
@@ -670,6 +597,7 @@ export default function TargetPerformancePage() {
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Select Counsellor / Advisor
                 </label>
+
                 <select
                   value={modalUser}
                   onChange={(e) => setModalUser(e.target.value)}
@@ -689,6 +617,7 @@ export default function TargetPerformancePage() {
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Select Intake
                 </label>
+
                 <select
                   value={modalIntake}
                   onChange={(e) => setModalIntake(e.target.value)}
@@ -706,12 +635,14 @@ export default function TargetPerformancePage() {
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Target Value
                 </label>
+
                 <input
                   type="number"
                   placeholder="e.g. 20"
                   value={modalTarget}
                   onChange={(e) => {
                     const val = e.target.value;
+
                     if (val === "" || /^\d+$/.test(val)) {
                       setModalTarget(val);
                     }
@@ -731,6 +662,7 @@ export default function TargetPerformancePage() {
                 >
                   Cancel
                 </button>
+
                 <button
                   type="button"
                   onClick={handleModalSave}
