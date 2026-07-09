@@ -7,11 +7,11 @@ import {
 import {
   exportCounsellorPerformance,
   getCounsellorPerformance,
-  updateMonthlyTarget,
+  updateIntakeTarget,
 } from "@/services/performance/performance";
 import type {
   PerformanceQueryParams,
-  UpdateMonthlyTargetPayload,
+  UpdateIntakeTargetPayload,
 } from "@/types/counsellor-performance";
 
 export const PERFORMANCE_QUERY_KEY = ["counsellor-performance"] as const;
@@ -27,12 +27,12 @@ export function usePerformance(params: PerformanceQueryParams) {
   });
 }
 
-export function useUpdateMonthlyTarget() {
+export function useUpdateIntakeTarget() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: UpdateMonthlyTargetPayload) =>
-      updateMonthlyTarget(payload),
+    mutationFn: (payload: UpdateIntakeTargetPayload) =>
+      updateIntakeTarget(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: PERFORMANCE_QUERY_KEY,

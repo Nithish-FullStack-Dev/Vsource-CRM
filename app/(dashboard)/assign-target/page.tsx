@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { getCurrentIstDate } from "@/lib/performance-period";
 import {
   useExportPerformance,
   usePerformance,
-  useUpdateMonthlyTarget,
+  useUpdateIntakeTarget,
 } from "@/hooks/assign-target/usePerformance";
 import {
   downloadBlob,
@@ -33,7 +33,7 @@ const DEFAULT_SUMMARY = {
   totalCounsellors: 0,
   totalTarget: 0,
   totalAchieved: 0,
-  totalLeadsCreated: 0,
+  totalApplicationsCreated: 0,
   completionPercentage: 0,
 };
 
@@ -41,7 +41,7 @@ const SORT_FIELDS = new Set<PerformanceSortField>([
   "name",
   "target",
   "achieved",
-  "leadsCreated",
+  "applicationsCreated",
   "completionPercentage",
 ]);
 
@@ -54,7 +54,12 @@ function getSortField(sorting: SortingState): PerformanceSortField {
 export default function CounsellorPerformancePage() {
   const [period, setPeriod] = useState<PerformancePeriodType>("monthly");
   const [date, setDate] = useState(() => getCurrentIstDate());
+  const [customStartDate, setCustomStartDate] = useState(() =>
+    getCurrentIstDate(),
+  );
+  const [customEndDate, setCustomEndDate] = useState(() => getCurrentIstDate());
   const [branchId, setBranchId] = useState("all");
+  const [intakeId, setIntakeId] = useState("");
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<SortingState>([
     {
@@ -65,14 +70,7 @@ export default function CounsellorPerformancePage() {
   const [targetDialogCounsellor, setTargetDialogCounsellor] =
     useState<TargetDialogCounsellor | null>(null);
 
-  const [customStartDate, setCustomStartDate] = useState(() =>
-    getCurrentIstDate(),
-  );
-
-  const [customEndDate, setCustomEndDate] = useState(() => getCurrentIstDate());
-
-  const { canCreate, canUpdate } = useAuth();
-
+  const { canUpdate } = useAuth();
   const debouncedSearch = useDebouncedValue(search);
 
   const queryParams = useMemo<PerformanceQueryParams>(
@@ -82,6 +80,7 @@ export default function CounsellorPerformancePage() {
       startDate: period === "custom" ? customStartDate : undefined,
       endDate: period === "custom" ? customEndDate : undefined,
       branchId,
+      intakeId,
       search: debouncedSearch,
       sortBy: getSortField(sorting),
       sortOrder: sorting[0]?.desc === false ? "asc" : "desc",
@@ -92,18 +91,27 @@ export default function CounsellorPerformancePage() {
       customStartDate,
       date,
       debouncedSearch,
+      intakeId,
       period,
       sorting,
     ],
   );
 
   const performanceQuery = usePerformance(queryParams);
-  const updateTargetMutation = useUpdateMonthlyTarget();
+  const updateTargetMutation = useUpdateIntakeTarget();
   const exportMutation = useExportPerformance();
+
   const performanceData = performanceQuery.data;
   const isInitialLoading = performanceQuery.isPending && !performanceData;
   const isRefreshing = performanceQuery.isFetching && Boolean(performanceData);
   const periodLabel = performanceData?.period.label ?? "selected period";
+  const selectedIntakeName = performanceData?.period.intakeName ?? "intake";
+
+  useEffect(() => {
+    if (!intakeId && performanceData?.period.intakeId) {
+      setIntakeId(performanceData.period.intakeId);
+    }
+  }, [intakeId, performanceData?.period.intakeId]);
 
   const handleCustomStartDateChange = useCallback((value: string) => {
     if (!value) {
@@ -144,19 +152,19 @@ export default function CounsellorPerformancePage() {
   }, [updateTargetMutation.isPending]);
 
   const handleSaveTarget = async (target: number) => {
-    if (!targetDialogCounsellor || !performanceData) {
+    if (!targetDialogCounsellor || !performanceData?.period.intakeId) {
       return;
     }
 
     try {
       await updateTargetMutation.mutateAsync({
         counsellorId: targetDialogCounsellor.id,
-        year: performanceData.period.year,
-        month: performanceData.period.month,
+        intakeId: performanceData.period.intakeId,
         target,
       });
+
       setTargetDialogCounsellor(null);
-      toast.success("Monthly target updated successfully");
+      toast.success("Intake target updated successfully");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -196,13 +204,15 @@ export default function CounsellorPerformancePage() {
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
             Assign Target
           </h1>
+
           {isRefreshing && (
             <Loader2 className="size-4 animate-spin text-muted-foreground" />
           )}
         </div>
+
         <p className="mt-1 text-sm text-muted-foreground">
-          Track daily, weekly and monthly performance and export the filtered
-          report to Excel.
+          Set intake-wise targets and track counsellor performance using daily,
+          weekly, monthly or custom date filters.
         </p>
       </div>
 
@@ -212,6 +222,7 @@ export default function CounsellorPerformancePage() {
             <p className="font-medium text-destructive">
               Unable to load counsellor performance
             </p>
+
             <p className="mt-1 text-sm text-muted-foreground">
               {getErrorMessage(performanceQuery.error)}
             </p>
@@ -222,6 +233,7 @@ export default function CounsellorPerformancePage() {
       <PerformanceSummary
         summary={performanceData?.summary ?? DEFAULT_SUMMARY}
         periodLabel={periodLabel}
+        intakeName={selectedIntakeName}
         isLoading={isInitialLoading}
       />
 
@@ -231,9 +243,10 @@ export default function CounsellorPerformancePage() {
         customStartDate={customStartDate}
         customEndDate={customEndDate}
         branchId={branchId}
-        onClearFilters={handleClearFilters}
+        intakeId={performanceData?.period.intakeId ?? intakeId}
         search={search}
         branches={performanceData?.availableBranches ?? []}
+        intakes={performanceData?.availableIntakes ?? []}
         isRefreshing={performanceQuery.isFetching}
         isExporting={exportMutation.isPending}
         onPeriodChange={setPeriod}
@@ -241,27 +254,29 @@ export default function CounsellorPerformancePage() {
         onCustomStartDateChange={handleCustomStartDateChange}
         onCustomEndDateChange={handleCustomEndDateChange}
         onBranchChange={setBranchId}
+        onIntakeChange={setIntakeId}
         onSearchChange={setSearch}
         onRefresh={() => void performanceQuery.refetch()}
         onExport={() => void handleExport()}
+        onClearFilters={handleClearFilters}
       />
 
       <PerformanceTable
         data={performanceData?.counsellors ?? []}
         periodLabel={periodLabel}
+        intakeName={selectedIntakeName}
         sorting={sorting}
         isLoading={isInitialLoading}
         isError={performanceQuery.isError && !performanceData}
-        canSetTarget={period === "monthly"}
         onSortingChange={setSorting}
         onSetTarget={openTargetDialog}
-        canCreate={canCreate}
         canUpdate={canUpdate}
       />
 
       <TargetDialog
         counsellor={targetDialogCounsellor}
         periodLabel={periodLabel}
+        intakeName={selectedIntakeName}
         isSaving={updateTargetMutation.isPending}
         onClose={closeTargetDialog}
         onSave={(target) => void handleSaveTarget(target)}
