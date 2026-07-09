@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import type {
   Branch,
+  IntakeOption,
   PerformancePeriodType,
 } from "@/types/counsellor-performance";
 
@@ -29,8 +30,10 @@ type PerformanceFiltersProps = {
   customStartDate: string;
   customEndDate: string;
   branchId: string;
+  intakeId: string;
   search: string;
   branches: Branch[];
+  intakes: IntakeOption[];
   isRefreshing: boolean;
   isExporting: boolean;
   onPeriodChange: (value: PerformancePeriodType) => void;
@@ -38,6 +41,7 @@ type PerformanceFiltersProps = {
   onCustomStartDateChange: (value: string) => void;
   onCustomEndDateChange: (value: string) => void;
   onBranchChange: (value: string) => void;
+  onIntakeChange: (value: string) => void;
   onSearchChange: (value: string) => void;
   onRefresh: () => void;
   onExport: () => void;
@@ -50,8 +54,10 @@ export function PerformanceFilters({
   customStartDate,
   customEndDate,
   branchId,
+  intakeId,
   search,
   branches,
+  intakes,
   isRefreshing,
   isExporting,
   onPeriodChange,
@@ -59,6 +65,7 @@ export function PerformanceFilters({
   onCustomStartDateChange,
   onCustomEndDateChange,
   onBranchChange,
+  onIntakeChange,
   onSearchChange,
   onRefresh,
   onExport,
@@ -74,7 +81,8 @@ export function PerformanceFilters({
           <div>
             <CardTitle className="text-base">Report Filters</CardTitle>
             <CardDescription>
-              Filters, sorting and Excel export are processed by the backend.
+              Select intake, date range and branch to track counsellor
+              performance.
             </CardDescription>
           </div>
 
@@ -112,9 +120,27 @@ export function PerformanceFilters({
       <CardContent>
         <div
           className={`grid gap-4 md:grid-cols-2 ${
-            isCustom ? "xl:grid-cols-5" : "xl:grid-cols-4"
+            isCustom ? "xl:grid-cols-6" : "xl:grid-cols-5"
           }`}
         >
+          <div className="space-y-2">
+            <Label htmlFor="performance-intake">Intake</Label>
+
+            <Select value={intakeId} onValueChange={onIntakeChange}>
+              <SelectTrigger id="performance-intake">
+                <SelectValue placeholder="Select intake" />
+              </SelectTrigger>
+
+              <SelectContent>
+                {intakes.map((intake) => (
+                  <SelectItem key={intake.id} value={intake.id}>
+                    {intake.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="performance-period">Period</Label>
 

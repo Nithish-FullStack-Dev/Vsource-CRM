@@ -109,11 +109,8 @@ const performanceStudentSelect = {
       fintechAssigneeId: true,
       nbfc: true,
       loanStatus: true,
-      pfStatus: true,
-      appliedAmount: true,
-      sanctionedAmount: true,
+      pfStatus: true,  
       disbursed: true,
-      disbursedAmount: true,
       fintechAssignee: {
         select: {
           id: true,
@@ -211,8 +208,7 @@ type BranchAccumulator = {
   droppedStudents: number;
   applications: number;
   visaApproved: number;
-  sanctionedAmount: number;
-  disbursedAmount: number;
+  
 };
 
 type CounselorAccumulator = {
@@ -236,8 +232,7 @@ type CounselorAccumulator = {
   casReceived: number;
   visaApproved: number;
   loanSanctioned: number;
-  sanctionedAmount: number;
-  disbursedAmount: number;
+  
 };
 
 type CounselorDetails = {
@@ -610,7 +605,7 @@ async function getTargetMetrics(
   }
 
   const [targets, achievements, createdLeads] = await Promise.all([
-    db.counsellorMonthlyTarget.findMany({
+    db.counsellorIntakeTarget.findMany({
       where: {
         ...(targetMonthRange && { periodStart: targetMonthRange }),
         counsellor: {
@@ -957,8 +952,6 @@ function mapLeadToRow(
     loanStatus: "",
     nbfc: "",
     fintechAssigneeName: "Not Assigned",
-    sanctionedAmount: 0,
-    disbursedAmount: 0,
   };
 }
 
@@ -1022,8 +1015,6 @@ function mapStudentToRow(
     loanStatus: loanProfile?.loanStatus ?? "",
     nbfc: loanProfile?.nbfc ?? "",
     fintechAssigneeName: loanProfile?.fintechAssignee?.name ?? "Not Assigned",
-    sanctionedAmount: toNumber(loanProfile?.sanctionedAmount),
-    disbursedAmount: toNumber(loanProfile?.disbursedAmount),
   };
 }
 
@@ -1064,10 +1055,10 @@ function mapApplicationToExportRow(
     nbfc: loanProfile?.nbfc ?? "",
     loanStatus: loanProfile?.loanStatus ?? "",
     pfStatus: loanProfile?.pfStatus ?? "",
-    appliedAmount: toNumber(loanProfile?.appliedAmount),
-    sanctionedAmount: toNumber(loanProfile?.sanctionedAmount),
+    
+    
     disbursed: loanProfile?.disbursed ?? false,
-    disbursedAmount: toNumber(loanProfile?.disbursedAmount),
+    
   };
 }
 
@@ -1285,8 +1276,6 @@ function buildBranchPerformance(
       droppedStudents: 0,
       applications: 0,
       visaApproved: 0,
-      sanctionedAmount: 0,
-      disbursedAmount: 0,
     };
 
     map.set(branchId, current);
@@ -1322,8 +1311,7 @@ function buildBranchPerformance(
       current.visaApproved += 1;
     }
 
-    current.sanctionedAmount += toNumber(student.loanProfile?.sanctionedAmount);
-    current.disbursedAmount += toNumber(student.loanProfile?.disbursedAmount);
+   
   }
 
   for (const application of applications) {
@@ -1366,8 +1354,6 @@ function buildBranchPerformance(
             ? 0
             : Number(((value.students / pipelineRecords) * 100).toFixed(1)),
         visaApproved: value.visaApproved,
-        sanctionedAmount: value.sanctionedAmount,
-        disbursedAmount: value.disbursedAmount,
       };
     })
     .sort(
@@ -1411,8 +1397,6 @@ function buildCounselorPerformance(
       casReceived: 0,
       visaApproved: 0,
       loanSanctioned: 0,
-      sanctionedAmount: 0,
-      disbursedAmount: 0,
     };
 
     if (branchId) {
@@ -1483,9 +1467,6 @@ function buildCounselorPerformance(
     if (isLoanSanctioned(student.loanProfile?.loanStatus ?? "")) {
       current.loanSanctioned += 1;
     }
-
-    current.sanctionedAmount += toNumber(student.loanProfile?.sanctionedAmount);
-    current.disbursedAmount += toNumber(student.loanProfile?.disbursedAmount);
   }
 
   for (const application of applications) {
@@ -1582,8 +1563,6 @@ function buildCounselorPerformance(
         casReceived: value.casReceived,
         visaApproved: value.visaApproved,
         loanSanctioned: value.loanSanctioned,
-        sanctionedAmount: value.sanctionedAmount,
-        disbursedAmount: value.disbursedAmount,
       };
     })
     .sort(
@@ -1643,20 +1622,7 @@ function buildSummary(
     loanSanctionedStudents: students.filter((student) =>
       isLoanSanctioned(student.loanProfile?.loanStatus ?? ""),
     ).length,
-    totalAppliedAmount: students.reduce(
-      (total, student) => total + toNumber(student.loanProfile?.appliedAmount),
-      0,
-    ),
-    totalSanctionedAmount: students.reduce(
-      (total, student) =>
-        total + toNumber(student.loanProfile?.sanctionedAmount),
-      0,
-    ),
-    totalDisbursedAmount: students.reduce(
-      (total, student) =>
-        total + toNumber(student.loanProfile?.disbursedAmount),
-      0,
-    ),
+  
   };
 }
 
@@ -1959,14 +1925,6 @@ function buildStudentWhere(
     where.applications = {
       some: applicationWhere,
     };
-  }
-
-  if (filters.casStatus) {
-    visaLoanWhere.casStatus = filters.casStatus;
-  }
-
-  if (filters.visaStatus) {
-    visaLoanWhere.visaStatus = filters.visaStatus;
   }
 
   if (filters.loanStatus) {

@@ -2,10 +2,13 @@
 
 import { useMemo } from "react";
 import { ArrowUpDown, CheckCircle2, Target } from "lucide-react";
-import {
+import type {
+  CellContext,
   ColumnDef,
   OnChangeFn,
   SortingState,
+} from "@tanstack/react-table";
+import {
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -33,36 +36,34 @@ import {
   formatDate,
   getPerformanceStatus,
 } from "@/services/performance/performance";
-import type { CounsellorPerformance } from "@/types/counsellor-performance";
 import { MODULES } from "@/lib/module-codes";
-import { Branch } from "@/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CounsellorPerformance } from "@/types/counsellor-performance";
 
 type PerformanceTableProps = {
   data: CounsellorPerformance[];
   periodLabel: string;
+  intakeName: string;
   sorting: SortingState;
   isLoading: boolean;
   isError: boolean;
-  canSetTarget: boolean;
   onSortingChange: OnChangeFn<SortingState>;
   onSetTarget: (counsellor: CounsellorPerformance) => void;
-  canCreate: (moduleCode: string) => boolean;
   canUpdate: (moduleCode: string) => boolean;
 };
 
 export function PerformanceTable({
   data,
   periodLabel,
+  intakeName,
   sorting,
   isLoading,
   isError,
-  canSetTarget,
   onSortingChange,
   onSetTarget,
-  canCreate,
   canUpdate,
 }: PerformanceTableProps) {
+  const canSetTarget = canUpdate(MODULES.ASSIGN_TARGET);
+
   const columns = useMemo<ColumnDef<CounsellorPerformance>[]>(
     () => [
       {
@@ -79,6 +80,7 @@ export function PerformanceTable({
         accessorKey: "name",
         header: ({ column }) => (
           <Button
+            type="button"
             variant="ghost"
             className="-ml-3"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
@@ -88,11 +90,13 @@ export function PerformanceTable({
           </Button>
         ),
         cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
-          <div className="min-w-52.5">
+          <div className="min-w-52">
             <p className="font-medium">{row.original.name}</p>
+
             <p className="text-xs text-muted-foreground">
               {row.original.email}
             </p>
+
             <p className="mt-1 text-xs text-muted-foreground">
               Joined {formatDate(row.original.joinedAt)}
             </p>
@@ -113,7 +117,7 @@ export function PerformanceTable({
           }
 
           return (
-            <div className="flex min-w-37.5 flex-wrap gap-1">
+            <div className="flex min-w-36 flex-wrap gap-1">
               {row.original.branches.map((branch) => (
                 <Badge key={branch.id} variant="outline">
                   {branch.name}
@@ -127,11 +131,12 @@ export function PerformanceTable({
         accessorKey: "target",
         header: ({ column }) => (
           <Button
+            type="button"
             variant="ghost"
             className="-ml-3"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Assigned Target
+            Intake Target
             <ArrowUpDown className="ml-2 size-4" />
           </Button>
         ),
@@ -140,25 +145,29 @@ export function PerformanceTable({
         ),
       },
       {
-        accessorKey: "leadsCreated",
+        accessorKey: "applicationsCreated",
         header: ({ column }) => (
           <Button
+            type="button"
             variant="ghost"
             className="-ml-3"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Leads Added
+            Applications Added
             <ArrowUpDown className="ml-2 size-4" />
           </Button>
         ),
         cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
-          <span className="font-medium">{row.original.leadsCreated}</span>
+          <span className="font-medium">
+            {row.original.applicationsCreated}
+          </span>
         ),
       },
       {
         accessorKey: "achieved",
         header: ({ column }) => (
           <Button
+            type="button"
             variant="ghost"
             className="-ml-3"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
@@ -175,6 +184,7 @@ export function PerformanceTable({
         accessorKey: "completionPercentage",
         header: ({ column }) => (
           <Button
+            type="button"
             variant="ghost"
             className="-ml-3"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
@@ -184,15 +194,17 @@ export function PerformanceTable({
           </Button>
         ),
         cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
-          <div className="min-w-47.5 space-y-2">
+          <div className="min-w-48 space-y-2">
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium">
                 {row.original.completionPercentage}%
               </span>
+
               {row.original.targetAchieved && (
                 <CheckCircle2 className="size-4 text-emerald-600" />
               )}
             </div>
+
             <Progress
               value={Math.min(row.original.completionPercentage, 100)}
               className="h-2"
@@ -210,7 +222,7 @@ export function PerformanceTable({
           return <Badge variant={status.variant}>{status.label}</Badge>;
         },
       },
-      ...(canUpdate(MODULES.ASSIGN_TARGET)
+      ...(canSetTarget
         ? [
             {
               id: "actions",
@@ -218,19 +230,20 @@ export function PerformanceTable({
               enableSorting: false,
               cell: ({ row }: CellContext<CounsellorPerformance, unknown>) => (
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => onSetTarget(row.original)}
                 >
-                  <Target className="mr-2 h-4 w-4" />
+                  <Target className="mr-2 size-4" />
                   Set Target
                 </Button>
               ),
-            },
+            } satisfies ColumnDef<CounsellorPerformance>,
           ]
         : []),
     ],
-    [canSetTarget, onSetTarget, canUpdate],
+    [canSetTarget, onSetTarget],
   );
 
   const table = useReactTable({
@@ -244,11 +257,16 @@ export function PerformanceTable({
     manualSorting: true,
   });
 
+  const isNoActiveIntake = intakeName === "No active intake";
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Performance Ranking</CardTitle>
-        <CardDescription>Showing performance for {periodLabel}</CardDescription>
+
+        <CardDescription>
+          Showing {intakeName} performance for {periodLabel}
+        </CardDescription>
       </CardHeader>
 
       <CardContent className="p-0">
@@ -282,10 +300,14 @@ export function PerformanceTable({
                 ))
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-32 text-center">
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-32 text-center"
+                  >
                     <p className="font-medium text-destructive">
                       Performance data could not be loaded
                     </p>
+
                     <p className="mt-1 text-sm text-muted-foreground">
                       Please refresh or try again.
                     </p>
@@ -306,10 +328,20 @@ export function PerformanceTable({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-32 text-center">
-                    <p className="font-medium">No counsellors found</p>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-32 text-center"
+                  >
+                    <p className="font-medium">
+                      {isNoActiveIntake
+                        ? "No active intake found"
+                        : "No data found"}
+                    </p>
+
                     <p className="mt-1 text-sm text-muted-foreground">
-                      No counsellor records match the selected filters.
+                      {isNoActiveIntake
+                        ? "Create or activate an intake to start assigning counsellor targets."
+                        : "No counsellor performance records match the selected filters."}
                     </p>
                   </TableCell>
                 </TableRow>

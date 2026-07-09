@@ -4,7 +4,7 @@ import db from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 
 const loanApplicationInclude = {
-  Branch: {
+  branch: {
     select: {
       id: true,
       name: true,
@@ -12,7 +12,7 @@ const loanApplicationInclude = {
     },
   },
 
-  User_LoanApplication_counselorIdToUser: {
+  counselor: {
     select: {
       id: true,
       name: true,
@@ -20,7 +20,7 @@ const loanApplicationInclude = {
     },
   },
 
-  User_LoanApplication_fintechAssigneeIdToUser: {
+  fintechAssignee: {
     select: {
       id: true,
       name: true,
@@ -28,36 +28,37 @@ const loanApplicationInclude = {
     },
   },
 
-  LoanBankApplication: {
+  bankApplications: {
     orderBy: {
-      createdAt: "desc" as const,
+      createdAt: 'desc',
     },
   },
 
-  LoanCoApplicant: {
+  coApplicants: {
     orderBy: {
-      createdAt: "desc" as const,
+      createdAt: 'desc',
     },
   },
 
-  LoanFollowUp: {
+  followUps: {
     orderBy: {
-      createdAt: "desc" as const,
+      createdAt: 'desc',
     },
   },
 
-  LoanActivity: {
+  activities: {
     orderBy: {
-      createdAt: "desc" as const,
+      createdAt: 'desc',
     },
   },
 
-  LoanDocument: {
+  documents: {
     orderBy: {
-      uploadedAt: "desc" as const,
+      uploadedAt: 'desc',
     },
   },
 } satisfies Prisma.LoanApplicationInclude;
+
 
 
 /**

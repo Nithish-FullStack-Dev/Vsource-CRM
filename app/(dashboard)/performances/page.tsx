@@ -428,16 +428,7 @@ export default function PerformanceReportsPage() {
               icon={CheckCircle2}
             />
 
-            <SummaryCard
-              title="Loan Sanctioned"
-              value={formatIndianCurrency(
-                report.summary.totalSanctionedAmount,
-              )}
-              description={`${report.summary.loanSanctionedStudents.toLocaleString(
-                "en-IN",
-              )} sanctioned students`}
-              icon={Landmark}
-            />
+            
           </>
         )}
       </div>
@@ -577,12 +568,7 @@ export default function PerformanceReportsPage() {
                             <td className="px-4 py-3 text-right">
                               {branch.visaApproved}
                             </td>
-                            <td className="px-4 py-3 text-right">
-                              {formatIndianCurrency(branch.sanctionedAmount)}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {formatIndianCurrency(branch.disbursedAmount)}
-                            </td>
+                            
                           </tr>
                         ))
                       ) : (
@@ -761,12 +747,7 @@ export default function PerformanceReportsPage() {
                               <td className="px-4 py-3 text-right">
                                 {row.loanSanctioned}
                               </td>
-                              <td className="px-4 py-3 text-right">
-                                {formatIndianCurrency(row.sanctionedAmount)}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {formatIndianCurrency(row.disbursedAmount)}
-                              </td>
+                              
                             </tr>
                           );
                         })

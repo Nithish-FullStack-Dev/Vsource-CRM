@@ -102,9 +102,6 @@ export type PerformanceReportSummary = {
   visaApprovedStudents: number;
   casReceivedStudents: number;
   loanSanctionedStudents: number;
-  totalAppliedAmount: number;
-  totalSanctionedAmount: number;
-  totalDisbursedAmount: number;
 };
 
 export type PerformanceReportMonthlyPoint = {
@@ -148,8 +145,6 @@ export type PerformanceReportBranchPoint = {
   applications: number;
   conversionRate: number;
   visaApproved: number;
-  sanctionedAmount: number;
-  disbursedAmount: number;
 };
 
 export type PerformanceReportCounselorPoint = {
@@ -173,8 +168,6 @@ export type PerformanceReportCounselorPoint = {
   casReceived: number;
   visaApproved: number;
   loanSanctioned: number;
-  sanctionedAmount: number;
-  disbursedAmount: number;
 };
 
 export type PerformanceRecordType = "lead" | "student";
@@ -212,8 +205,6 @@ export type PerformanceReportRow = {
   loanStatus: string;
   nbfc: string;
   fintechAssigneeName: string;
-  sanctionedAmount: number;
-  disbursedAmount: number;
 };
 
 export type PerformanceApplicationExportRow = {
@@ -243,10 +234,7 @@ export type PerformanceApplicationExportRow = {
   nbfc: string;
   loanStatus: string;
   pfStatus: string;
-  appliedAmount: number;
-  sanctionedAmount: number;
   disbursed: boolean;
-  disbursedAmount: number;
 };
 
 export type PerformanceReportData = {
