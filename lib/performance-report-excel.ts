@@ -164,9 +164,6 @@ function addSummarySheet(
     ["Visa Approved Students", report.summary.visaApprovedStudents],
     ["CAS Received Students", report.summary.casReceivedStudents],
     ["Loan Sanctioned Students", report.summary.loanSanctionedStudents],
-    ["Total Applied Amount", report.summary.totalAppliedAmount],
-    ["Total Sanctioned Amount", report.summary.totalSanctionedAmount],
-    ["Total Disbursed Amount", report.summary.totalDisbursedAmount],
   ];
 
   const currencyMetrics = new Set([

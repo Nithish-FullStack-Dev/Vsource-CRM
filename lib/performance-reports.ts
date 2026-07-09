@@ -534,7 +534,7 @@ async function getTargetMetrics(
     filters.startDate,
     filters.endDate,
   );
-  const targetMonthRange = getTargetMonthRange(dateRange);
+  
 
   const counselorConditions: Prisma.UserWhereInput[] = [
     {
@@ -605,33 +605,31 @@ async function getTargetMetrics(
   }
 
   const [targets, achievements, createdLeads] = await Promise.all([
-    db.counsellorIntakeTarget.findMany({
-      where: {
-        ...(targetMonthRange && { periodStart: targetMonthRange }),
-        counsellor: {
-          AND: counselorConditions,
-        },
-      },
+   db.counsellorIntakeTarget.findMany({
+  where: {
+    counsellor: {
+      AND: counselorConditions,
+    },
+  },
+  select: {
+    target: true,
+    counsellor: {
       select: {
-        target: true,
-        periodStart: true,
-        counsellor: {
+        id: true,
+        name: true,
+        branches: {
           select: {
             id: true,
             name: true,
-            branches: {
-              select: {
-                id: true,
-                name: true,
-              },
-              orderBy: {
-                name: "asc",
-              },
-            },
+          },
+          orderBy: {
+            name: "asc",
           },
         },
       },
-    }),
+    },
+  },
+}),
     db.student.groupBy({
       by: ["branchId", "counselorId"],
       where: {
@@ -666,7 +664,6 @@ async function getTargetMetrics(
   const counselorAchievements = new Map<string, number>();
   const counselorLeadsCreated = new Map<string, number>();
   const counselorDetails = new Map<string, CounselorDetails>();
-  const targetPeriods = new Set<string>();
   const allowedBranchIds =
     accessScope.kind === "branches" ? new Set(accessScope.branchIds) : null;
   let totalTarget = 0;
@@ -686,7 +683,7 @@ async function getTargetMetrics(
     });
 
     totalTarget += item.target;
-    targetPeriods.add(monthKey(item.periodStart));
+   
     counselorTargets.set(
       counselorId,
       (counselorTargets.get(counselorId) ?? 0) + item.target,
@@ -746,7 +743,7 @@ async function getTargetMetrics(
       (total, item) => total + item._count._all,
       0,
     ),
-    targetMonths: targetPeriods.size,
+    targetMonths: 0,
     branchTargets,
     branchAchievements,
     branchLeadsCreated,

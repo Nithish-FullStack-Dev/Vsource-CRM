@@ -71,7 +71,7 @@ export async function createCounsellorPerformanceWorkbook(
     ["Total Counsellors", report.summary.totalCounsellors],
     ["Total Monthly Target", report.summary.totalTarget],
     ["Total Achieved", report.summary.totalAchieved],
-    ["Total Leads Added", report.summary.totalLeadsCreated],
+    ["Total Leads Added", report.summary.totalApplicationsCreated],
     ["Overall Completion", report.summary.completionPercentage / 100],
   ];
 
@@ -124,12 +124,12 @@ export async function createCounsellorPerformanceWorkbook(
       counsellor.email,
       counsellor.branches.map((branch) => branch.name).join(", ") ||
         "Not assigned",
-      formatJoinedDate(counsellor.joinedAt),
+      formatJoinedDate(counsellor.name),
       report.period.type.toUpperCase(),
       report.period.label,
       counsellor.target,
       counsellor.achieved,
-      counsellor.leadsCreated,
+      counsellor.applicationsCreated,
       counsellor.completionPercentage / 100,
       getStatus(counsellor),
     ]);
