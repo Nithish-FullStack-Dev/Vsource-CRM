@@ -51,7 +51,8 @@ model User {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  intakeTargets CounsellorIntakeTarget[] @relation("CounsellorIntakeTargets")
+  intakeTargets        CounsellorIntakeTarget[] @relation("UserIntakeTargets")
+  createdIntakeTargets CounsellorIntakeTarget[] @relation("UserCreatedIntakeTargets")
 
   loanApplicationsCounseled LoanApplication[] @relation("LoanApplicationCounselor")
   loanApplicationsFintech   LoanApplication[] @relation("LoanApplicationFintech")
@@ -120,19 +121,22 @@ model CounsellorIntakeTarget {
   id String @id @default(uuid())
 
   counsellorId String
-  counsellor   User   @relation("CounsellorIntakeTargets", fields: [counsellorId], references: [id], onDelete: Cascade)
+  counsellor   User   @relation("UserIntakeTargets", fields: [counsellorId], references: [id], onDelete: Cascade)
 
   intakeId String
   intake   Intake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
 
   target Int @default(0)
 
+  createdById String?
+  createdBy   User?   @relation("UserCreatedIntakeTargets", fields: [createdById], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([counsellorId, intakeId])
-  @@index([counsellorId])
   @@index([intakeId])
+  @@index([createdById])
 }
 
 enum LeadStatus {
@@ -277,6 +281,8 @@ model Lead {
   updatedBy User? @relation("LeadUpdatedBy", fields: [updatedById], references: [id])
 
   timelines LeadTimeline[]
+
+  loanApplication LoanApplication?
 
   @@index([branchId])
   @@index([branchId, status])
@@ -632,6 +638,7 @@ model StudentVisaProfile {
   casStatus       CasStatus @default(PENDING)
 
   visaStatus          VisaStatus @default(DECISION_PENDING)
+  visaDecisionDate    DateTime?
   universityStartDate DateTime?
 
   createdAt DateTime @default(now())
@@ -640,6 +647,7 @@ model StudentVisaProfile {
   @@index([depositStatus])
   @@index([casStatus])
   @@index([visaStatus])
+  @@index([visaDecisionDate])
 }
 
 model StudentLoanProfile {
@@ -1033,7 +1041,11 @@ model UniversityScholarship {
 
 // loan-application
 model LoanApplication {
-  id                       String                @id @default(uuid())
+  id String @id @default(uuid())
+
+  leadId String? @unique
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
   applicationId            String                @unique
   fullName                 String
   mobile                   String
