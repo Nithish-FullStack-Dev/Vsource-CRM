@@ -30,6 +30,7 @@ export type LoanStatus = (typeof LOAN_STATUSES)[number];
 
 const educationLoans = ["Study Abroad Loan", "Domestic Education Loan"];
 const bankProcessLoans = [
+  "Education Loan",
   "Study Abroad Loan",
   "Domestic Education Loan",
   "Personal Loan",
@@ -127,9 +128,7 @@ export function getTabsForLoanApplicant(
 
   tabs.push({ key: "financial", label: "Financial" });
 
-  if (loanCategory === "CIBIL Issue / Financial Consultation") {
-    tabs.push({ key: "cibil", label: "CIBIL" });
-  }
+
 
   if (bankProcessLoans.includes(loanCategory || "")) {
     tabs.push(
