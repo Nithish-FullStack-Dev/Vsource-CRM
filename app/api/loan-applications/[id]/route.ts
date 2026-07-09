@@ -8,6 +8,7 @@ import {
   serializeLoanApplication,
   toLoanApplicationData,
 } from '@/lib/loan-application/server';
+
 import { Prisma } from '@/generated/prisma/client';
 
 type Ctx = {
@@ -16,11 +17,8 @@ type Ctx = {
   }>;
 };
 
-/**
- * Prisma include matching the CURRENT Prisma schema relation names.
- */
 const loanApplicationInclude = {
-  Branch: {
+  branch: {
     select: {
       id: true,
       name: true,
@@ -28,7 +26,7 @@ const loanApplicationInclude = {
     },
   },
 
-  User_LoanApplication_counselorIdToUser: {
+  counselor: {
     select: {
       id: true,
       name: true,
@@ -36,7 +34,7 @@ const loanApplicationInclude = {
     },
   },
 
-  User_LoanApplication_fintechAssigneeIdToUser: {
+  fintechAssignee: {
     select: {
       id: true,
       name: true,
@@ -44,40 +42,40 @@ const loanApplicationInclude = {
     },
   },
 
-  LoanBankApplication: {
+  bankApplications: {
     orderBy: {
-      createdAt: 'desc' as const,
+      createdAt: 'desc',
     },
   },
 
-  LoanCoApplicant: {
+  coApplicants: {
     orderBy: {
-      createdAt: 'desc' as const,
+      createdAt: 'desc',
     },
   },
 
-  LoanFollowUp: {
+  followUps: {
     orderBy: {
-      createdAt: 'desc' as const,
+      createdAt: 'desc',
     },
   },
 
-  LoanActivity: {
+  activities: {
     orderBy: {
-      createdAt: 'desc' as const,
+      createdAt: 'desc',
     },
   },
 
-  LoanDocument: {
+  documents: {
     orderBy: {
-      uploadedAt: 'desc' as const,
+      uploadedAt: 'desc',
     },
   },
 } satisfies Prisma.LoanApplicationInclude;
 
 /**
  * GET
- * Get a single loan application.
+ * Get single loan application
  */
 export async function GET(_: NextRequest, ctx: Ctx) {
   try {
@@ -120,7 +118,7 @@ export async function GET(_: NextRequest, ctx: Ctx) {
 
 /**
  * PATCH
- * Update a loan application.
+ * Update loan application
  */
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   try {
@@ -150,26 +148,30 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       );
     }
 
-    await db.loanApplication.update({
-  where: {
-    id,
-  },
-  data: toLoanApplicationData(values),
-});
+    /**
+     * Update application and create activity
+     * in the same transaction.
+     *
+     * IDs and updatedAt are automatically handled
+     * by the current Prisma schema.
+     */
+    await db.$transaction(async (tx) => {
+      await tx.loanApplication.update({
+        where: {
+          id,
+        },
+        data: toLoanApplicationData(values),
+      });
 
-try {
-  await db.loanActivity.create({
-    data: {
-      id: crypto.randomUUID(),
-      applicationId: id,
-      type: 'updated',
-      title: 'Loan application updated',
-      description: 'Loan application details were updated.',
-    },
-  });
-} catch (activityError) {
-  console.error('Loan activity creation failed:', activityError);
-}
+      await tx.loanActivity.create({
+        data: {
+          applicationId: id,
+          type: 'updated',
+          title: 'Loan application updated',
+          description: 'Loan application details were updated.',
+        },
+      });
+    });
 
     const updated = await db.loanApplication.findUnique({
       where: {
@@ -196,17 +198,18 @@ try {
   } catch (error: any) {
     console.error('PATCH loan application error:', error);
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') {
-        return NextResponse.json(
-          {
-            message: 'Loan application not found',
-          },
-          {
-            status: 404,
-          }
-        );
-      }
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      return NextResponse.json(
+        {
+          message: 'Loan application not found',
+        },
+        {
+          status: 404,
+        }
+      );
     }
 
     return NextResponse.json(
@@ -225,7 +228,7 @@ try {
 
 /**
  * DELETE
- * Delete a loan application.
+ * Delete loan application
  */
 export async function DELETE(_: NextRequest, ctx: Ctx) {
   try {
@@ -263,17 +266,18 @@ export async function DELETE(_: NextRequest, ctx: Ctx) {
   } catch (error: any) {
     console.error('DELETE loan application error:', error);
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') {
-        return NextResponse.json(
-          {
-            message: 'Loan application not found',
-          },
-          {
-            status: 404,
-          }
-        );
-      }
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      return NextResponse.json(
+        {
+          message: 'Loan application not found',
+        },
+        {
+          status: 404,
+        }
+      );
     }
 
     return NextResponse.json(
