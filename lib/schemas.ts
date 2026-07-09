@@ -220,7 +220,24 @@ export const LeadTimelineCreateSchema = z.object({
   nextFollowup: optDate,
   createdById: optUuid,
 });
+export const BankCreateSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Bank name is required")
+    .max(150, "Bank name must be less than 150 characters"),
+  status: z.boolean().optional().default(true),
+});
 
+export const BankUpdateSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Bank name is required")
+    .max(150, "Bank name must be less than 150 characters")
+    .optional(),
+  status: z.boolean().optional(),
+});
 // ---------------------------------------------------------------------------
 // MBBS Lead
 // ---------------------------------------------------------------------------

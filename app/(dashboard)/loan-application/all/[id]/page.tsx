@@ -1,6 +1,7 @@
-'use client';
-import { useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+// app\(dashboard)\loan-application\all\[id]\page.tsx
+"use client";
+import { useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CalendarPlus,
@@ -13,39 +14,39 @@ import {
   Upload,
   User,
   Users,
-} from 'lucide-react';
-import { PageTransition } from '@/components/common/PageHeader';
-import { Button } from '@/components/ui/button';
+} from "lucide-react";
+import { PageTransition } from "@/components/common/PageHeader";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   useLoanApplication,
   useUpdateLoanApplication,
-} from '@/hooks/loan-application/useLoanApplications';
-import { getLoanTabs, LOAN_STATUSES } from '@/lib/loan-application/constants';
+} from "@/hooks/loan-application/useLoanApplications";
+import { getLoanTabs, LOAN_STATUSES } from "@/lib/loan-application/constants";
 import {
   loanStatusTone,
   StatusBadge,
-} from '@/components/loan-application/LoanProfileUI';
-import { BasicTab } from './_components/BasicTab';
-import { EducationTab } from './_components/EducationTab';
-import { EmploymentTab } from './_components/EmploymentTab';
-import { BusinessTab } from './_components/BusinessTab';
-import { CoApplicantTab } from './_components/CoApplicantTab';
-import { FinancialTab } from './_components/FinancialTab';
-import { DocumentsTab } from './_components/DocumentsTab';
-import { CibilTab } from './_components/CibilTab';
-import { BanksTab } from './_components/BanksTab';
-import { SanctionTab } from './_components/SanctionTab';
-import { DisbursementTab } from './_components/DisbursementTab';
-import { DepositTab } from './_components/DepositTab';
-import { FollowUpsTab } from './_components/FollowUpsTab';
-import { ActivityTab } from './_components/ActivityTab';
+} from "@/components/loan-application/LoanProfileUI";
+import { BasicTab } from "./_components/BasicTab";
+import { EducationTab } from "./_components/EducationTab";
+import { EmploymentTab } from "./_components/EmploymentTab";
+import { BusinessTab } from "./_components/BusinessTab";
+import { CoApplicantTab } from "./_components/CoApplicantTab";
+import { FinancialTab } from "./_components/FinancialTab";
+import { DocumentsTab } from "./_components/DocumentsTab";
+import { CibilTab } from "./_components/CibilTab";
+import { BanksTab } from "./_components/BanksTab";
+import { SanctionTab } from "./_components/SanctionTab";
+import { DisbursementTab } from "./_components/DisbursementTab";
+import { FollowUpsTab } from "./_components/FollowUpsTab";
+import { ActivityTab } from "./_components/ActivityTab";
+import { RemarksTab } from "./_components/RemarksTab";
 const icons: Record<string, React.ElementType> = {
   basic: User,
   documents: FolderOpen,
@@ -63,22 +64,22 @@ const icons: Record<string, React.ElementType> = {
   activity: FileText,
 };
 const initials = (name?: string) =>
-  (name || 'Applicant')
-    .split(' ')
+  (name || "Applicant")
+    .split(" ")
     .map((x) => x[0])
     .slice(0, 2)
-    .join('')
+    .join("")
     .toUpperCase();
 export default function LoanApplicationProfilePage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const [tab, setTab] = useState('basic');
+  const [tab, setTab] = useState("basic");
   const { data: a, isLoading, isError, error } = useLoanApplication(id);
   const update = useUpdateLoanApplication(id);
   const tabs = useMemo(
     () => (a ? getLoanTabs(a.applicantCategory, a.loanCategory) : []),
-    [a]
+    [a],
   );
   if (isLoading)
     return (
@@ -96,12 +97,12 @@ export default function LoanApplicationProfilePage() {
           <p className="mt-2 text-sm text-rose-600">
             {error instanceof Error
               ? error.message
-              : 'Please refresh the page and try again.'}
+              : "Please refresh the page and try again."}
           </p>
           <Button
             variant="outline"
             className="mt-5"
-            onClick={() => router.push('/loan-application/all')}
+            onClick={() => router.push("/loan-application/all")}
           >
             Back to Loan Applications
           </Button>
@@ -123,9 +124,8 @@ export default function LoanApplicationProfilePage() {
       banks: <BanksTab applicant={a} />,
       sanction: <SanctionTab applicant={a} />,
       disbursement: <DisbursementTab applicant={a} />,
-      deposit: <DepositTab applicant={a} />,
-      followups: <FollowUpsTab applicant={a} />,
-      activity: <ActivityTab applicant={a} />,
+      deposit: <CoApplicantTab applicant={a} />,
+      remarks: <RemarksTab applicant={a} />,
     })[tab] ?? null;
   return (
     <PageTransition>
@@ -134,7 +134,7 @@ export default function LoanApplicationProfilePage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/loan-application/all')}
+                onClick={() => router.push("/loan-application/all")}
                 className="inline-flex items-center gap-1.5 text-xs font-black text-red-600 hover:underline"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
@@ -192,22 +192,6 @@ export default function LoanApplicationProfilePage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setTab('followups')}
-              >
-                <CalendarPlus className="h-4 w-4" />
-                Follow-Up
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setTab('documents')}
-              >
-                <Upload className="h-4 w-4" />
-                Upload
-              </Button>
             </div>
           </div>
           <div className="space-y-6">
@@ -221,7 +205,7 @@ export default function LoanApplicationProfilePage() {
                       key={item.key}
                       type="button"
                       onClick={() => setTab(item.key)}
-                      className={`flex items-center gap-2 rounded-xl border px-5 py-3 text-xs font-bold transition-all ${selected ? 'border-red-600 bg-red-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:text-red-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300'}`}
+                      className={`flex items-center gap-2 rounded-xl border px-5 py-3 text-xs font-bold transition-all ${selected ? "border-red-600 bg-red-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:text-red-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"}`}
                     >
                       <Icon className="h-4 w-4" />
                       {item.label}

@@ -57,7 +57,12 @@ const categories = [
     label: "Lead University",
     endpoint: "/lead-universities",
   },
-];
+  {
+    key: "banks",
+    label: "Bank",
+    endpoint: "/banks",
+  },
+] as const;
 
 export default function MasterSettings() {
   const [selected, setSelected] = useState<(typeof categories)[number]["key"]>(
@@ -172,7 +177,7 @@ export default function MasterSettings() {
       <div className="space-y-6">
         <PageHeader
           title="Master Settings"
-          description="Manage Countries, Intakes, Lead Sources, Lead Degrees and Lead Universities"
+          description="Manage Countries, Intakes, Lead Sources, Lead Degrees, Lead Universities and Banks"
         />
 
         <Card className="border-none shadow-sm">

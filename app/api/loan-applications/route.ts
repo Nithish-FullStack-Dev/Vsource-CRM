@@ -1,3 +1,5 @@
+// app/api/loan-applications/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 
 import db from "@/lib/prisma";
@@ -30,53 +32,203 @@ const loanApplicationInclude = {
 
   bankApplications: {
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   },
 
   coApplicants: {
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   },
 
   followUps: {
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   },
 
   activities: {
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   },
 
   documents: {
     orderBy: {
-      uploadedAt: 'desc',
+      uploadedAt: "desc",
     },
   },
 } satisfies Prisma.LoanApplicationInclude;
 
+async function syncLoanRequiredLeads() {
+  const leads = await db.lead.findMany({
+    where: {
+      loanRequirement: true,
+    },
 
+    select: {
+      id: true,
+      leadNumber: true,
+      studentName: true,
+      mobileNumber: true,
+      emailId: true,
+      passport: true,
+      passportExpireDate: true,
+      place: true,
+      source: true,
+      branchId: true,
+      graduationStatus: true,
+      workExperience: true,
+      preferredCountry: true,
+      preferredIntake: true,
+      preferredCourse: true,
+      nextFollowup: true,
+      remarks: true,
+      createdAt: true,
 
-/**
- * GET ALL LOAN APPLICATIONS
- */
+      counselors: {
+        where: {
+          isPrimary: true,
+        },
+
+        select: {
+          counselorId: true,
+        },
+
+        take: 1,
+      },
+    },
+  });
+
+  if (leads.length === 0) {
+    return;
+  }
+
+  await db.$transaction(
+    leads.map((lead) => {
+      const counselorId = lead.counselors[0]?.counselorId ?? null;
+
+      return db.loanApplication.upsert({
+        where: {
+          leadId: lead.id,
+        },
+
+        /**
+         * Existing Loan Application
+         *
+         * Keep the application synchronized with
+         * the Master Walk-In lead.
+         */
+        update: {
+          fullName: lead.studentName?.trim() || "Unknown Applicant",
+
+          mobile: lead.mobileNumber?.trim() || "",
+
+          email: lead.emailId?.trim() || "",
+
+          passport: lead.passport,
+
+          passportExpireDate: lead.passportExpireDate,
+
+          currentAddress: lead.place,
+
+          leadSource: lead.source,
+
+          branchId: lead.branchId,
+
+          counselorId,
+
+          nextFollowUp: lead.nextFollowup,
+
+          graduationStatus: lead.graduationStatus,
+
+          workExperience: lead.workExperience,
+
+          studyDestination: lead.preferredCountry,
+
+          country: lead.preferredCountry,
+
+          courseName: lead.preferredCourse,
+
+          intake: lead.preferredIntake,
+        },
+
+        /**
+         * New Loan Application
+         */
+        create: {
+          applicationId: `LOAN-${lead.leadNumber}`,
+
+          leadId: lead.id,
+
+          fullName: lead.studentName?.trim() || "Unknown Applicant",
+
+          mobile: lead.mobileNumber?.trim() || "",
+
+          email: lead.emailId?.trim() || "",
+
+          passport: lead.passport,
+
+          passportExpireDate: lead.passportExpireDate,
+
+          currentAddress: lead.place,
+
+          enquiryDate: lead.createdAt,
+
+          leadSource: lead.source,
+
+          branchId: lead.branchId,
+
+          counselorId,
+
+          nextFollowUp: lead.nextFollowup,
+
+          remarks: lead.remarks,
+
+          /**
+           * IMPORTANT
+           *
+           * These values now work with the fixed
+           * constants.ts getLoanTabs().
+           */
+          applicantCategory: "Student",
+
+          loanCategory: "Education Loan",
+
+          loanStatus: "New Enquiry",
+
+          graduationStatus: lead.graduationStatus,
+
+          workExperience: lead.workExperience,
+
+          studyDestination: lead.preferredCountry,
+
+          country: lead.preferredCountry,
+
+          courseName: lead.preferredCourse,
+
+          intake: lead.preferredIntake,
+        },
+      });
+    }),
+  );
+}
 export async function GET(request: NextRequest) {
   try {
+    await syncLoanRequiredLeads();
+
     const searchParams = request.nextUrl.searchParams;
 
     const q = searchParams.get("q")?.trim();
-    const applicantCategory =
-      searchParams.get("applicantCategory")?.trim();
-    const loanCategory =
-      searchParams.get("loanCategory")?.trim();
-    const loanStatus =
-      searchParams.get("loanStatus")?.trim();
-    const fintechAssigneeId =
-      searchParams.get("fintechAssigneeId")?.trim();
+
+    const applicantCategory = searchParams.get("applicantCategory")?.trim();
+
+    const loanCategory = searchParams.get("loanCategory")?.trim();
+
+    const loanStatus = searchParams.get("loanStatus")?.trim();
+
+    const fintechAssigneeId = searchParams.get("fintechAssigneeId")?.trim();
 
     const where: Prisma.LoanApplicationWhereInput = {};
 
@@ -143,51 +295,41 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        message: "Failed to load loan applications",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to load loan applications",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }
 
-
-/**
- * CREATE LOAN APPLICATION
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    console.log("LOAN APPLICATION BODY:", body);
-
-    const id = crypto.randomUUID();
-
-    const applicationId = `LOAN-${Date.now()}`;
-
-    const createData: Prisma.LoanApplicationUncheckedCreateInput = {
-      id,
-
-      applicationId,
-
-      fullName: body.fullName,
-      mobile: body.mobile,
-      email: body.email,
-
-      branchId: body.branchId,
-
-      applicantCategory: body.applicantCategory,
-      loanCategory: body.loanCategory,
-
-      updatedAt: new Date(),
-    };
-
     const created = await db.loanApplication.create({
-      data: createData,
-    });
+      data: {
+        applicationId: `LOAN-${Date.now()}`,
 
-    console.log("LOAN APPLICATION CREATED:", created.id);
+        fullName: body.fullName,
+
+        mobile: body.mobile,
+
+        email: body.email,
+
+        branchId: body.branchId,
+
+        applicantCategory: body.applicantCategory,
+
+        loanCategory: body.loanCategory,
+      },
+
+      include: loanApplicationInclude,
+    });
 
     return NextResponse.json(
       {
@@ -196,15 +338,12 @@ export async function POST(request: NextRequest) {
       },
       {
         status: 201,
-      }
+      },
     );
   } catch (error) {
     console.error("POST LOAN APPLICATION ERROR:", error);
 
-    if (
-      error instanceof
-      Prisma.PrismaClientKnownRequestError
-    ) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
       return NextResponse.json(
         {
           message: error.message,
@@ -213,7 +352,7 @@ export async function POST(request: NextRequest) {
         },
         {
           status: 500,
-        }
+        },
       );
     }
 
@@ -226,7 +365,7 @@ export async function POST(request: NextRequest) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

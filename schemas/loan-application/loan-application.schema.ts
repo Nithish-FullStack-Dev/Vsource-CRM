@@ -1,29 +1,22 @@
-import { z } from 'zod';
+// schemas\loan-application\loan-application.schema.ts
+import { z } from "zod";
 
 import {
   isBusinessCategory,
   isEducationLoan,
   isSalariedCategory,
-} from '@/lib/loan-application/constants';
+} from "@/lib/loan-application/constants";
 
 /**
  * Convert empty form values to undefined.
  */
 const empty = (v: unknown) =>
-  v === '' ||
-  v === null ||
-  v === undefined ||
-  Number.isNaN(v)
-    ? undefined
-    : v;
+  v === "" || v === null || v === undefined || Number.isNaN(v) ? undefined : v;
 
 /**
  * Reusable optional schemas.
  */
-export const optionalString = z.preprocess(
-  empty,
-  z.string().trim().optional()
-);
+export const optionalString = z.preprocess(empty, z.string().trim().optional());
 
 export const optionalDate = optionalString;
 
@@ -31,18 +24,10 @@ export const optionalNumber = z.preprocess((v) => {
   const x = empty(v);
 
   return x === undefined ? undefined : Number(x);
-},
-z
-  .number()
-  .finite('Enter a valid number')
-  .nonnegative('Cannot be negative')
-  .optional());
+}, z.number().finite("Enter a valid number").nonnegative("Cannot be negative").optional());
 
 const optionalPattern = (r: RegExp, m: string) =>
-  z.preprocess(
-    empty,
-    z.string().regex(r, m).optional()
-  );
+  z.preprocess(empty, z.string().regex(r, m).optional());
 
 /**
  * ============================================================
@@ -59,28 +44,22 @@ export const loanApplicationBaseSchema = z.object({
   /**
    * BASIC INFORMATION
    */
-  fullName: z
-    .string()
-    .trim()
-    .min(2, 'Full name is required'),
+  fullName: z.string().trim().min(2, "Full name is required"),
 
   mobile: z
     .string()
-    .regex(
-      /^[0-9]{10}$/,
-      'Enter a valid 10-digit mobile number'
-    ),
+    .regex(/^[0-9]{10}$/, "Enter a valid 10-digit mobile number"),
 
   altMobile: optionalPattern(
     /^[0-9]{10}$/,
-    'Enter a valid 10-digit alternate mobile number'
+    "Enter a valid 10-digit alternate mobile number",
   ),
 
   email: z
     .string()
     .trim()
-    .min(1, 'Email is required')
-    .email('Invalid email address'),
+    .min(1, "Email is required")
+    .email("Invalid email address"),
 
   dob: optionalDate,
 
@@ -88,15 +67,9 @@ export const loanApplicationBaseSchema = z.object({
 
   maritalStatus: optionalString,
 
-  aadhaar: optionalPattern(
-    /^[0-9]{12}$/,
-    'Aadhaar must be 12 digits'
-  ),
+  aadhaar: optionalPattern(/^[0-9]{12}$/, "Aadhaar must be 12 digits"),
 
-  pan: optionalPattern(
-    /^[A-Z]{5}[0-9]{4}[A-Z]$/,
-    'Enter a valid PAN number'
-  ),
+  pan: optionalPattern(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Enter a valid PAN number"),
 
   passport: optionalString,
 
@@ -113,10 +86,7 @@ export const loanApplicationBaseSchema = z.object({
 
   state: optionalString,
 
-  pin: optionalPattern(
-    /^[0-9]{6}$/,
-    'PIN code must be 6 digits'
-  ),
+  pin: optionalPattern(/^[0-9]{6}$/, "PIN code must be 6 digits"),
 
   /**
    * ENQUIRY INFORMATION
@@ -125,9 +95,7 @@ export const loanApplicationBaseSchema = z.object({
 
   leadSource: optionalString,
 
-  branchId: z
-    .string()
-    .min(1, 'Branch is required'),
+  branchId: z.string().min(1, "Branch is required"),
 
   counselorId: optionalString,
 
@@ -142,13 +110,9 @@ export const loanApplicationBaseSchema = z.object({
   /**
    * APPLICATION / LOAN CATEGORY
    */
-  applicantCategory: z
-    .string()
-    .min(1, 'Applicant category is required'),
+  applicantCategory: z.string().min(1, "Applicant category is required"),
 
-  loanCategory: z
-    .string()
-    .min(1, 'Loan category is required'),
+  loanCategory: z.string().min(1, "Loan category is required"),
 
   loanStatus: optionalString,
 
@@ -161,10 +125,7 @@ export const loanApplicationBaseSchema = z.object({
 
   percentage: optionalString,
 
-  yearOfPassing: optionalPattern(
-    /^[0-9]{4}$/,
-    'Enter a valid 4-digit year'
-  ),
+  yearOfPassing: optionalPattern(/^[0-9]{4}$/, "Enter a valid 4-digit year"),
 
   currentInstitution: optionalString,
 
@@ -264,13 +225,7 @@ export const loanApplicationBaseSchema = z.object({
     const x = empty(v);
 
     return x === undefined ? undefined : Number(x);
-  },
-  z
-    .number()
-    .int('Enter a valid CIBIL score')
-    .min(300, 'CIBIL must be at least 300')
-    .max(900, 'CIBIL cannot exceed 900')
-    .optional()),
+  }, z.number().int("Enter a valid CIBIL score").min(300, "CIBIL must be at least 300").max(900, "CIBIL cannot exceed 900").optional()),
 
   /**
    * PROPERTY INFORMATION
@@ -311,39 +266,28 @@ export const loanApplicationBaseSchema = z.object({
  *
  * Conditional validations are applied here.
  */
-export const loanApplicationFormSchema =
-  loanApplicationBaseSchema.superRefine((d, ctx) => {
+export const loanApplicationFormSchema = loanApplicationBaseSchema.superRefine(
+  (d, ctx) => {
     const blank = (v: unknown) =>
-      v === undefined ||
-      v === null ||
-      (typeof v === 'string' && !v.trim());
+      v === undefined || v === null || (typeof v === "string" && !v.trim());
 
-    const add = (
-      p: keyof typeof d,
-      m: string
-    ) =>
+    const add = (p: keyof typeof d, m: string) =>
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: [p],
         message: m,
       });
 
-    const need = (
-      p: keyof typeof d,
-      m: string
-    ) => {
+    const need = (p: keyof typeof d, m: string) => {
       if (blank(d[p])) {
         add(p, m);
       }
     };
 
-    const needAmt = (
-      p: keyof typeof d,
-      m: string
-    ) => {
+    const needAmt = (p: keyof typeof d, m: string) => {
       const v = d[p];
 
-      if (typeof v !== 'number' || v <= 0) {
+      if (typeof v !== "number" || v <= 0) {
         add(p, m);
       }
     };
@@ -351,201 +295,100 @@ export const loanApplicationFormSchema =
     /**
      * STUDENT VALIDATION
      */
-    if (d.applicantCategory === 'Student') {
-      need(
-        'qualification',
-        'Highest qualification is required'
-      );
+    if (d.applicantCategory === "Student") {
+      need("qualification", "Highest qualification is required");
 
-      need(
-        'graduationStatus',
-        'Graduation status is required'
-      );
+      need("graduationStatus", "Graduation status is required");
     }
 
     /**
      * SALARIED APPLICANT VALIDATION
      */
     if (isSalariedCategory(d.applicantCategory)) {
-      need(
-        'company',
-        'Company name is required'
-      );
+      need("company", "Company name is required");
 
-      need(
-        'designation',
-        'Designation is required'
-      );
+      need("designation", "Designation is required");
 
-      needAmt(
-        'monthlySalary',
-        'Monthly salary is required'
-      );
+      needAmt("monthlySalary", "Monthly salary is required");
     }
 
     /**
      * BUSINESS APPLICANT VALIDATION
      */
     if (isBusinessCategory(d.applicantCategory)) {
-      need(
-        'businessName',
-        'Business name is required'
-      );
+      need("businessName", "Business name is required");
 
-      need(
-        'businessType',
-        'Business type is required'
-      );
+      need("businessType", "Business type is required");
 
-      needAmt(
-        'annualTurnover',
-        'Annual turnover is required'
-      );
+      needAmt("annualTurnover", "Annual turnover is required");
     }
 
     /**
      * EDUCATION LOAN VALIDATION
      */
     if (isEducationLoan(d.loanCategory)) {
-      need(
-        'studyDestination',
-        'Study destination is required'
-      );
+      need("studyDestination", "Study destination is required");
 
-      need(
-        'country',
-        'Country is required'
-      );
+      need("country", "Country is required");
 
-      need(
-        'university',
-        'University / college name is required'
-      );
+      need("university", "University / college name is required");
 
-      need(
-        'courseName',
-        'Course name is required'
-      );
+      need("courseName", "Course name is required");
 
-      need(
-        'intake',
-        'Intake is required'
-      );
+      need("intake", "Intake is required");
 
-      needAmt(
-        'requiredLoanAmount',
-        'Required loan amount is required'
-      );
+      needAmt("requiredLoanAmount", "Required loan amount is required");
     }
 
     /**
      * PERSONAL LOAN VALIDATION
      */
-    if (d.loanCategory === 'Personal Loan') {
-      need(
-        'loanPurpose',
-        'Loan purpose is required'
-      );
+    if (d.loanCategory === "Personal Loan") {
+      need("loanPurpose", "Loan purpose is required");
 
-      needAmt(
-        'requiredLoanAmount',
-        'Required loan amount is required'
-      );
+      needAmt("requiredLoanAmount", "Required loan amount is required");
 
-      needAmt(
-        'monthlySalary',
-        'Monthly income is required'
-      );
+      needAmt("monthlySalary", "Monthly income is required");
     }
 
     /**
      * HOME LOAN / LAP VALIDATION
      */
     if (
-      d.loanCategory === 'Home Loan' ||
-      d.loanCategory === 'Loan Against Property'
+      d.loanCategory === "Home Loan" ||
+      d.loanCategory === "Loan Against Property"
     ) {
-      need(
-        'propertyType',
-        'Property type is required'
-      );
+      need("propertyType", "Property type is required");
 
-      need(
-        'propertyLocation',
-        'Property location is required'
-      );
+      need("propertyLocation", "Property location is required");
 
-      needAmt(
-        'propertyValue',
-        'Property value is required'
-      );
+      needAmt("propertyValue", "Property value is required");
 
-      needAmt(
-        'requiredLoanAmount',
-        'Required loan amount is required'
-      );
+      needAmt("requiredLoanAmount", "Required loan amount is required");
     }
 
     /**
      * BUSINESS LOAN VALIDATION
      */
-    if (d.loanCategory === 'Business Loan') {
-      need(
-        'businessName',
-        'Business name is required'
-      );
+    if (d.loanCategory === "Business Loan") {
+      need("businessName", "Business name is required");
 
-      need(
-        'loanPurpose',
-        'Loan purpose is required'
-      );
+      need("loanPurpose", "Loan purpose is required");
 
-      needAmt(
-        'requiredLoanAmount',
-        'Required loan amount is required'
-      );
+      needAmt("requiredLoanAmount", "Required loan amount is required");
     }
 
     /**
      * CIBIL CONSULTATION VALIDATION
      */
-    if (
-      d.loanCategory ===
-      'CIBIL Issue / Financial Consultation'
-    ) {
-      need(
-        'loanPurpose',
-        'CIBIL concern type is required'
-      );
 
-      if (typeof d.cibilScore !== 'number') {
-        add(
-          'cibilScore',
-          'Current CIBIL score is required'
-        );
-      }
-
-      need(
-        'remarks',
-        'Issue description is required'
-      );
-    }
 
     /**
      * OTHER LOAN VALIDATION
      */
-    if (d.loanCategory === 'Other') {
-      need(
-        'loanPurpose',
-        'Loan purpose is required'
-      );
-
-      needAmt(
-        'requiredLoanAmount',
-        'Required loan amount is required'
-      );
-    }
-  });
+  
+  },
+);
 
 /**
  * ============================================================
@@ -556,17 +399,14 @@ export type LoanApplicationFormValues = z.input<
   typeof loanApplicationFormSchema
 >;
 
-export type LoanApplicationPayload = z.output<
-  typeof loanApplicationFormSchema
->;
+export type LoanApplicationPayload = z.output<typeof loanApplicationFormSchema>;
 
 /**
  * ============================================================
  * CREATE SCHEMA
  * ============================================================
  */
-export const createLoanApplicationSchema =
-  loanApplicationFormSchema;
+export const createLoanApplicationSchema = loanApplicationFormSchema;
 
 /**
  * ============================================================
@@ -581,8 +421,7 @@ export const createLoanApplicationSchema =
  *
  * loanApplicationFormSchema.partial()
  */
-export const updateLoanApplicationSchema =
-  loanApplicationBaseSchema.partial();
+export const updateLoanApplicationSchema = loanApplicationBaseSchema.partial();
 
 /**
  * ============================================================
@@ -590,10 +429,7 @@ export const updateLoanApplicationSchema =
  * ============================================================
  */
 export const bankApplicationSchema = z.object({
-  bank: z
-    .string()
-    .trim()
-    .min(1, 'Bank / NBFC name is required'),
+  bank: z.string().trim().min(1, "Bank / NBFC name is required"),
 
   branch: optionalString,
 
@@ -621,38 +457,108 @@ export const bankApplicationSchema = z.object({
 });
 
 /**
+/**
  * ============================================================
  * CO-APPLICANT SCHEMA
  * ============================================================
  */
+
 export const coApplicantSchema = z.object({
-  name: z
+  /**
+   * PERSONAL INFORMATION
+   */
+  name: z.string().trim().min(2, "Co-applicant name is required"),
+
+  relationship: z.string().trim().min(1, "Relationship is required"),
+
+  dob: optionalDate,
+
+  gender: optionalString,
+
+  /**
+   * CONTACT INFORMATION
+   */
+  mobile: z
     .string()
     .trim()
-    .min(1, 'Co-applicant name is required'),
+    .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number"),
 
-  relationship: optionalString,
-
-  mobile: optionalPattern(
-    /^[0-9]{10}$/,
-    'Enter a valid 10-digit mobile number'
+  altMobile: optionalPattern(
+    /^[6-9]\d{9}$/,
+    "Enter a valid 10-digit alternate mobile number",
   ),
 
   email: z.preprocess(
     empty,
+    z.string().trim().email("Enter a valid email address").optional(),
+  ),
+
+  /**
+   * IDENTITY INFORMATION
+   */
+  pan: z.preprocess(
+    (value) => {
+      const normalized = empty(value);
+
+      return typeof normalized === "string"
+        ? normalized.trim().toUpperCase()
+        : normalized;
+    },
     z
       .string()
-      .email('Invalid email address')
-      .optional()
+      .regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Enter a valid PAN number")
+      .optional(),
   ),
+
+  aadhaar: optionalPattern(
+    /^[0-9]{12}$/,
+    "Enter a valid 12-digit Aadhaar number",
+  ),
+
+  /**
+   * ADDRESS INFORMATION
+   */
+  address: optionalString,
+
+  city: optionalString,
+
+  state: optionalString,
+
+  pin: optionalPattern(/^[0-9]{6}$/, "Enter a valid 6-digit PIN code"),
+
+  /**
+   * EMPLOYMENT INFORMATION
+   */
+  employmentType: optionalString,
 
   occupation: optionalString,
 
-  income: optionalNumber,
+  employerName: optionalString,
 
-  cibilScore: optionalNumber,
+  designation: optionalString,
+
+  /**
+   * FINANCIAL INFORMATION
+   */
+  monthlyIncome: optionalNumber,
+
+  annualIncome: optionalNumber,
+
+  existingEmi: optionalNumber,
+
+  /**
+   * CREDIT INFORMATION
+   */
+  cibilScore: z.preprocess((value) => {
+    const normalized = empty(value);
+
+    return normalized === undefined ? undefined : Number(normalized);
+  }, z.number().int("Enter a valid CIBIL score").min(300, "CIBIL score must be at least 300").max(900, "CIBIL score cannot exceed 900").optional()),
 });
 
+export type CoApplicantFormValues = z.input<typeof coApplicantSchema>;
+
+export type CoApplicantPayload = z.output<typeof coApplicantSchema>;
 /**
  * ============================================================
  * FOLLOW-UP SCHEMA
@@ -661,10 +567,7 @@ export const coApplicantSchema = z.object({
 export const followUpSchema = z.object({
   type: optionalString,
 
-  note: z
-    .string()
-    .trim()
-    .min(1, 'Follow-up note is required'),
+  note: z.string().trim().min(1, "Follow-up note is required"),
 
   followUpDate: optionalDate,
 
@@ -679,10 +582,7 @@ export const followUpSchema = z.object({
 export const activitySchema = z.object({
   type: optionalString,
 
-  title: z
-    .string()
-    .trim()
-    .min(1, 'Title is required'),
+  title: z.string().trim().min(1, "Title is required"),
 
   description: optionalString,
 });

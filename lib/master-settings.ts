@@ -21,6 +21,11 @@ export interface LeadSource {
   name: string;
   status: boolean;
 }
+export interface Bank {
+  id: string;
+  name: string;
+  status: boolean;
+}
 export const updateMaster = async (
   endpoint: string,
   id: string,
@@ -37,6 +42,13 @@ export const updateMaster = async (
   );
 
   return data?.data;
+};
+export const getBanks = async (): Promise<Bank[]> => {
+  const { data } = await axios.get(`${API_URL}/banks?status=true`, {
+    withCredentials: true,
+  });
+
+  return data?.data || [];
 };
 export const getCountries = async () => {
   try {
@@ -121,6 +133,13 @@ export const useLeadSources = () => {
   return useQuery({
     queryKey: ["lead-sources"],
     queryFn: getLeadSources,
+    staleTime: 0,
+  });
+};
+export const useBanks = () => {
+  return useQuery<Bank[]>({
+    queryKey: ["banks"],
+    queryFn: getBanks,
     staleTime: 0,
   });
 };
