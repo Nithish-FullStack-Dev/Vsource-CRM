@@ -76,6 +76,24 @@ const items = [
     icon: GraduationCap,
   },
   {
+    moduleCode: "LOAN_APPLICATION",
+    to: "/loan-application",
+    label: "Loan Application",
+    icon: Banknote,
+    children: [
+      {
+        to: "/loan-application/add",
+        label: "Add Application",
+        requiredPermission: "create",
+      },
+      {
+        to: "/loan-application/all",
+        label: "All Applications",
+        requiredPermission: "read",
+      },
+    ],
+  },
+  {
     moduleCode: "APPLICATIONS",
     to: "/master-tracker",
     label: "Daily Tracker - Masters",
