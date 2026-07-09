@@ -11,6 +11,7 @@ import {
   GraduationCap,
   BarChart3,
   TargetIcon,
+  Banknote,
 } from "lucide-react";
 
 export const navigationItems = [
@@ -37,6 +38,12 @@ export const navigationItems = [
     to: "/student-profiles",
     label: "Visa Applications",
     icon: GraduationCap,
+  },
+  {
+    moduleCode: "LOAN_APPLICATION",
+    to: "/loan-application",
+    label: "Loan Application",
+    icon: Banknote,
   },
   {
     moduleCode: "APPLICATIONS",
