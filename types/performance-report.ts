@@ -62,12 +62,25 @@ export type ReportOption = {
 
 export type CounselorReportOption = ReportOption & {
   branchIds: string[];
+  roleName: string;
 };
 
 export type UniversityReportOption = ReportOption & {
   countryId: string;
 };
-
+export type PerformanceReportAccess =
+  | {
+      kind: "all";
+    }
+  | {
+      kind: "branches";
+      branchIds: string[];
+    }
+  | {
+      kind: "user";
+      userId: string;
+      userName: string;
+    };
 export type PerformanceReportAccessKind = "all" | "branches" | "user";
 
 export type PerformanceReportFilterOptions = {
