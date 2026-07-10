@@ -38,23 +38,44 @@ type StudentVisaProfileSectionProps = {
 type FormState = {
   depositDeadlineDate: string;
   depositStatus: "" | "PENDING" | "PAID";
+
   ihsPaidStatus: "" | "PENDING" | "PAID" | "PAID_PARTIALLY";
+
   visaPaidStatus: string;
+
   casDeadlineDate: string;
+
   casStatus: "" | "PENDING" | "APPLIED" | "RECEIVED";
+
   visaStatus: "" | "DECISION_PENDING" | "APPROVED" | "REJECTED";
+
+  visaDecisionDate: string;
+
   universityStartDate: string;
+
+  universityEndDate: string;
+
+  interviewStatus: "" | "PASSED" | "FAILED" | "NO_INTERVIEW";
 };
 
 const initialFormState: FormState = {
   depositDeadlineDate: "",
   depositStatus: "",
+
   ihsPaidStatus: "",
   visaPaidStatus: "",
+
   casDeadlineDate: "",
   casStatus: "",
+
   visaStatus: "",
+
+  visaDecisionDate: "",
+
   universityStartDate: "",
+  universityEndDate: "",
+
+  interviewStatus: "",
 };
 
 const getDateTimeLocalValue = (value?: string | null) => {
@@ -110,12 +131,22 @@ const createFormState = (profile?: StudentVisaProfile | null): FormState => {
   return {
     depositDeadlineDate: getDateTimeLocalValue(profile.depositDeadlineDate),
     depositStatus: profile.depositStatus ?? "",
+
     ihsPaidStatus: profile.ihsPaidStatus ?? "",
     visaPaidStatus: profile.visaPaidStatus ?? "",
+
     casDeadlineDate: getDateTimeLocalValue(profile.casDeadlineDate),
     casStatus: profile.casStatus ?? "",
+
     visaStatus: profile.visaStatus ?? "",
+
+    visaDecisionDate: getDateTimeLocalValue(profile.visaDecisionDate),
+
     universityStartDate: getDateTimeLocalValue(profile.universityStartDate),
+
+    universityEndDate: getDateTimeLocalValue(profile.universityEndDate),
+
+    interviewStatus: profile.interviewStatus ?? "",
   };
 };
 
@@ -204,12 +235,22 @@ export function StudentVisaProfileSection({
     const payload: StudentVisaProfilePayload = {
       depositDeadlineDate: getNullableDateTime(form.depositDeadlineDate),
       depositStatus: form.depositStatus || null,
+
       ihsPaidStatus: form.ihsPaidStatus || null,
       visaPaidStatus: form.visaPaidStatus || null,
+
       casDeadlineDate: getNullableDateTime(form.casDeadlineDate),
       casStatus: form.casStatus || null,
+
       visaStatus: form.visaStatus || null,
+
+      visaDecisionDate: getNullableDateTime(form.visaDecisionDate),
+
       universityStartDate: getNullableDateTime(form.universityStartDate),
+
+      universityEndDate: getNullableDateTime(form.universityEndDate),
+
+      interviewStatus: form.interviewStatus || null,
     };
 
     try {
@@ -383,18 +424,32 @@ export function StudentVisaProfileSection({
               />
 
               <DetailItem
-                label="IHS Paid Status"
+                label="IHS & Visa Paid Status"
                 value={formatStatus(profile.ihsPaidStatus)}
                 icon={CreditCard}
                 isDarkMode={isDarkMode}
               />
 
               <DetailItem
+                label="Visa Status"
+                value={formatStatus(profile.visaStatus)}
+                icon={ShieldCheck}
+                isDarkMode={isDarkMode}
+              />
+
+              <DetailItem
+                label="Visa Decision Date"
+                value={formatDateTime(profile.visaDecisionDate)}
+                icon={CalendarDays}
+                isDarkMode={isDarkMode}
+              />
+
+              {/* <DetailItem
                 label="Visa Fee Paid Status"
                 value={formatStatus(profile.visaPaidStatus)}
                 icon={CreditCard}
                 isDarkMode={isDarkMode}
-              />
+              /> */}
 
               <DetailItem
                 label="CAS Deadline"
@@ -411,15 +466,22 @@ export function StudentVisaProfileSection({
               />
 
               <DetailItem
-                label="Visa Status"
-                value={formatStatus(profile.visaStatus)}
-                icon={ShieldCheck}
+                label="Interview Status"
+                value={formatStatus(profile.interviewStatus)}
+                icon={CheckCircle2}
                 isDarkMode={isDarkMode}
               />
 
               <DetailItem
                 label="University Start Date"
                 value={formatDateTime(profile.universityStartDate)}
+                icon={CalendarDays}
+                isDarkMode={isDarkMode}
+              />
+
+              <DetailItem
+                label="University Last Enrollment Date"
+                value={formatDateTime(profile.universityEndDate)}
                 icon={CalendarDays}
                 isDarkMode={isDarkMode}
               />
@@ -439,7 +501,7 @@ export function StudentVisaProfileSection({
           setDialogOpen(true);
         }}
       >
-        <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto p-0">
+        <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto p-0">
           <DialogHeader className="sticky top-0 z-20 border-b bg-background px-6 py-4">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -520,7 +582,44 @@ export function StudentVisaProfileSection({
 
                 <div>
                   <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    IHS Paid Status
+                    Visa Status
+                  </label>
+
+                  <select
+                    value={form.visaStatus}
+                    onChange={(event) =>
+                      updateField(
+                        "visaStatus",
+                        event.target.value as FormState["visaStatus"],
+                      )
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="">Select Visa Status</option>
+                    <option value="DECISION_PENDING">Decision Pending</option>
+                    <option value="APPROVED">Approved</option>
+                    <option value="REJECTED">Rejected</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    Visa Decision Date & Time
+                  </label>
+
+                  <input
+                    type="datetime-local"
+                    value={form.visaDecisionDate}
+                    onChange={(e) =>
+                      updateField("visaDecisionDate", e.target.value)
+                    }
+                    className={inputClassName}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    IHS & Visa Paid Status
                   </label>
 
                   <select
@@ -600,23 +699,23 @@ export function StudentVisaProfileSection({
 
                 <div>
                   <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
-                    Visa Status
+                    Interview Status
                   </label>
 
                   <select
-                    value={form.visaStatus}
-                    onChange={(event) =>
+                    value={form.interviewStatus}
+                    onChange={(e) =>
                       updateField(
-                        "visaStatus",
-                        event.target.value as FormState["visaStatus"],
+                        "interviewStatus",
+                        e.target.value as FormState["interviewStatus"],
                       )
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select Visa Status</option>
-                    <option value="DECISION_PENDING">Decision Pending</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="REJECTED">Rejected</option>
+                    <option value="">Select Interview Status</option>
+                    <option value="NO_INTERVIEW">No Interview</option>
+                    <option value="PASSED">Passed</option>
+                    <option value="FAILED">Failed</option>
                   </select>
                 </div>
 
@@ -630,6 +729,21 @@ export function StudentVisaProfileSection({
                     value={form.universityStartDate}
                     onChange={(event) =>
                       updateField("universityStartDate", event.target.value)
+                    }
+                    className={inputClassName}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
+                    University End Date & Time
+                  </label>
+
+                  <input
+                    type="datetime-local"
+                    value={form.universityEndDate}
+                    onChange={(e) =>
+                      updateField("universityEndDate", e.target.value)
                     }
                     className={inputClassName}
                   />

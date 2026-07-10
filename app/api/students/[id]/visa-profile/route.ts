@@ -6,6 +6,7 @@ import {
   DepositStatus,
   IhsPaidStatus,
   VisaStatus,
+  InterviewStatus,
 } from "@/generated/prisma/enums";
 
 const parseNullableDate = (value: unknown) => {
@@ -45,6 +46,10 @@ async function saveVisaProfile(
         visaStatus: body.visaStatus as VisaStatus | undefined,
 
         universityStartDate: parseNullableDate(body.universityStartDate),
+
+        universityEndDate: parseNullableDate(body.universityEndDate),
+
+        interviewStatus: body.interviewStatus as InterviewStatus | undefined,
       },
 
       update: {
@@ -52,7 +57,6 @@ async function saveVisaProfile(
         depositStatus: body.depositStatus as DepositStatus | undefined,
 
         ihsPaidStatus: body.ihsPaidStatus as IhsPaidStatus | undefined,
-
         visaPaidStatus: body.visaPaidStatus ?? null,
 
         casDeadlineDate: parseNullableDate(body.casDeadlineDate),
@@ -60,7 +64,12 @@ async function saveVisaProfile(
 
         visaStatus: body.visaStatus as VisaStatus | undefined,
 
+        visaDecisionDate: parseNullableDate(body.visaDecisionDate),
+
         universityStartDate: parseNullableDate(body.universityStartDate),
+        universityEndDate: parseNullableDate(body.universityEndDate),
+
+        interviewStatus: body.interviewStatus as InterviewStatus | undefined,
       },
     });
 
