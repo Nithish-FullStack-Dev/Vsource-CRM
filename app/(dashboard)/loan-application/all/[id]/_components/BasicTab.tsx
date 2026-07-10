@@ -1020,6 +1020,12 @@ function AddressCard({
     </div>
   );
 }
+interface RelationOption {
+  id: string;
+  name: string;
+}
+
+type RelationValue = RelationOption | string | null | undefined;
 
 function getDefaultValues(
   applicant: LoanApplication,
@@ -1052,11 +1058,11 @@ function getDefaultValues(
 
     leadSource: applicant.leadSource ?? "",
 
-    branchId: applicant.branchId ?? "",
+    branchId: getBranchId(applicant),
 
-    counselorId: applicant.counselor?.id ?? "",
+    counselorId: getCounselorId(applicant),
 
-    fintechAssigneeId: applicant.fintechAssigneeId ?? "",
+    fintechAssigneeId: getFintechAssigneeId(applicant),
 
     priority: applicant.priority ?? "",
 
@@ -1126,24 +1132,52 @@ function extractArray<T>(payload: unknown): T[] {
   return [];
 }
 
+function getRelationId(value: RelationValue): string {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.id;
+}
+
+function getRelationName(value: RelationValue): string | null {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.name;
+}
+
+function getBranchId(applicant: LoanApplication): string {
+  if (applicant.branchId) {
+    return applicant.branchId;
+  }
+
+  return getRelationId(applicant.branch as RelationValue);
+}
+
+function getCounselorId(applicant: LoanApplication): string {
+  return getRelationId(applicant.counselor as RelationValue);
+}
+
+function getFintechAssigneeId(applicant: LoanApplication): string {
+  return getRelationId(applicant.fintechAssignee as RelationValue);
+}
+
 function getBranchName(applicant: LoanApplication): string | null {
   if (applicant.branchName) {
     return applicant.branchName;
   }
 
-  if (
-    applicant.branch &&
-    typeof applicant.branch === "object" &&
-    "name" in applicant.branch
-  ) {
-    return String(applicant.branch.name);
-  }
-
-  if (typeof applicant.branch === "string") {
-    return applicant.branch;
-  }
-
-  return null;
+  return getRelationName(applicant.branch as RelationValue);
 }
 
 function getFintechAssigneeName(applicant: LoanApplication): string | null {
@@ -1151,17 +1185,5 @@ function getFintechAssigneeName(applicant: LoanApplication): string | null {
     return applicant.fintechAssigneeName;
   }
 
-  if (
-    applicant.fintechAssignee &&
-    typeof applicant.fintechAssignee === "object" &&
-    "name" in applicant.fintechAssignee
-  ) {
-    return String(applicant.fintechAssignee.name);
-  }
-
-  if (typeof applicant.fintechAssignee === "string") {
-    return applicant.fintechAssignee;
-  }
-
-  return null;
+  return getRelationName(applicant.fintechAssignee as RelationValue);
 }
