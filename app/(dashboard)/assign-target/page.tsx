@@ -15,7 +15,7 @@ import PerformanceTable from "@/components/assign-target/PerformanceTable";
 import ToastContainer, {
   Toast,
 } from "@/components/assign-target/ToastNotification";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { BranchOption, IntakeOption, UserOption } from "@/lib/crmTypes";
 import {
   DateRangeType,
