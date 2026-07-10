@@ -162,7 +162,7 @@ async function syncLoanRequiredLeads() {
         },
 
         create: {
-          applicationId: `LOAN-${lead.leadNumber}`,
+          applicationId: `${lead.leadNumber}`,
 
           leadId: lead.id,
 
@@ -309,47 +309,83 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
 export async function POST(request: NextRequest) {
   try {
     const body: unknown = await request.json();
 
-    /*
-     * Validate incoming request.
-     */
     const values = updateLoanApplicationSchema.parse(body);
 
-    /*
-     * Convert validated form values into Prisma data.
-     */
     const applicationData = toLoanApplicationData(values);
 
-    /*
-     * Required create fields must be explicitly present because
-     * toLoanApplicationData() is also used by PATCH and therefore
-     * likely returns Prisma.LoanApplicationUpdateInput.
-     */
-    const createData: Prisma.LoanApplicationUncheckedCreateInput = {
-      ...applicationData,
-
-      applicationId: `LOAN-${Date.now()}`,
-
-      fullName: values.fullName ?? "",
-
-      mobile: values.mobile ?? "",
-
-      email: values.email ?? "",
-
-      branchId: values.branchId ?? "",
-
-      applicantCategory: values.applicantCategory ?? "",
-
-      loanCategory: values.loanCategory ?? "",
-
-      loanStatus: values.loanStatus ?? "New Enquiry",
-    };
-
     const created = await db.$transaction(async (tx) => {
+      /*
+       * Find the latest manually created loan application.
+       *
+       * Master Lead application IDs are ignored because
+       * they do not start with "LN".
+       */
+      const latestLoanApplication = await tx.loanApplication.findFirst({
+        where: {
+          applicationId: {
+            startsWith: "LN",
+          },
+        },
+        select: {
+          applicationId: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      /*
+       * Extract numeric value.
+       *
+       * Example:
+       * LN0001  -> 1
+       * LN9999  -> 9999
+       * LN10000 -> 10000
+       */
+      const latestNumber = latestLoanApplication?.applicationId
+        ? Number.parseInt(
+            latestLoanApplication.applicationId.replace(/^LN/, ""),
+            10,
+          ) || 0
+        : 0;
+
+      const nextNumber = latestNumber + 1;
+
+      /*
+       * padStart(4, "0") gives:
+       *
+       * 1     -> LN0001
+       * 99    -> LN0099
+       * 9999  -> LN9999
+       * 10000 -> LN10000
+       * 10001 -> LN10001
+       */
+      const nextApplicationId = `LN${String(nextNumber).padStart(4, "0")}`;
+
+      const createData: Prisma.LoanApplicationUncheckedCreateInput = {
+        ...applicationData,
+
+        applicationId: nextApplicationId,
+
+        fullName: values.fullName ?? "",
+
+        mobile: values.mobile ?? "",
+
+        email: values.email ?? "",
+
+        branchId: values.branchId ?? "",
+
+        applicantCategory: values.applicantCategory ?? "",
+
+        loanCategory: values.loanCategory ?? "",
+
+        loanStatus: values.loanStatus ?? "New Enquiry",
+      };
+
       const loanApplication = await tx.loanApplication.create({
         data: createData,
 
