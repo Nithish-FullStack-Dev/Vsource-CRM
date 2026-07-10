@@ -1741,9 +1741,7 @@ export default function AddLoanApplicationPage() {
                   placeholder={
                     !selectedBranchId
                       ? "Select Branch First"
-                      : fintechLoading
-                        ? "Loading Fintech Users..."
-                        : "Assign Fintech"
+                      : "Select Fintech User"
                   }
                   options={fintechUsers.map((fintechUser) => ({
                     value: fintechUser.id,
