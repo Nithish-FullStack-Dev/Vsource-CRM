@@ -1,8 +1,9 @@
 // app\(dashboard)\loan-application\all\page.tsx
-'use client';
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
+"use client";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -10,49 +11,64 @@ import {
   Filter,
   Loader2,
   Search,
-} from 'lucide-react';
-import { PageHeader, PageTransition } from '@/components/common/PageHeader';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+  Trash2,
+} from "lucide-react";
+import { PageHeader, PageTransition } from "@/components/common/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   APPLICANT_CATEGORIES,
   LOAN_CATEGORIES,
   LOAN_STATUSES,
-} from '@/lib/loan-application/constants';
-import { useLoanApplications } from '@/hooks/loan-application/useLoanApplications';
+} from "@/lib/loan-application/constants";
+import { useLoanApplications } from "@/hooks/loan-application/useLoanApplications";
 import {
   formatINR,
   loanStatusTone,
   StatusBadge,
-} from '@/components/loan-application/LoanProfileUI';
-import type { LoanApplication } from '@/types/loan-application';
-const ALL = '__all__';
+} from "@/components/loan-application/LoanProfileUI";
+
+import axios from "axios";
+import { toast } from "sonner";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { LoanApplication } from "@/types/loan-application";
+const ALL = "__all__";
 const unique = (items: string[]) =>
   [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b));
-const assignee = (a: LoanApplication) => a.fintechAssigneeName || '';
-const bank = (a: LoanApplication) => a.bankApplications?.[0]?.bank || '';
+const assignee = (a: LoanApplication) => a.fintechAssigneeName || "";
+const bank = (a: LoanApplication) => a.bankApplications?.[0]?.bank || "";
 function downloadCsv(rows: LoanApplication[]) {
   const headers = [
-    'Application ID',
-    'Applicant',
-    'Email',
-    'Mobile',
-    'Category',
-    'Loan Type',
-    'Assignee',
-    'Bank / NBFC',
-    'Applied Amount',
-    'Sanctioned Amount',
-    'Disbursed Amount',
-    'Status',
-    'Next Follow Up',
+    "Application ID",
+    "Applicant",
+    "Email",
+    "Mobile",
+    "Category",
+    "Loan Type",
+    "Assignee",
+    "Bank / NBFC",
+    "Applied Amount",
+    "Sanctioned Amount",
+    "Disbursed Amount",
+    "Status",
+    "Next Follow Up",
   ];
   const csvRows = rows.map((a) =>
     [
@@ -64,27 +80,27 @@ function downloadCsv(rows: LoanApplication[]) {
       a.loanCategory,
       assignee(a),
       bank(a),
-      a.requiredLoanAmount || '',
-      a.sanctionedAmount || '',
-      a.disbursedAmount || '',
-      a.loanStatus || '',
-      a.nextFollowUp || '',
+      a.requiredLoanAmount || "",
+      a.sanctionedAmount || "",
+      a.disbursedAmount || "",
+      a.loanStatus || "",
+      a.nextFollowUp || "",
     ]
-      .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
-      .join(',')
+      .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+      .join(","),
   );
-  const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], {
-    type: 'text/csv;charset=utf-8;',
+  const blob = new Blob([[headers.join(","), ...csvRows].join("\n")], {
+    type: "text/csv;charset=utf-8;",
   });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
   link.download = `loan-applications-${new Date().toISOString().slice(0, 10)}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
 export default function LoanApplicationsPage() {
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState("");
   const [cat, setCat] = useState(ALL);
   const [loan, setLoan] = useState(ALL);
   const [status, setStatus] = useState(ALL);
@@ -92,22 +108,28 @@ export default function LoanApplicationsPage() {
   const [b, setB] = useState(ALL);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const { data: rows = [], isLoading } = useLoanApplications();
+  const { data: rows = [], isLoading, refetch } = useLoanApplications();
   const users = useMemo(() => unique(rows.map(assignee)), [rows]);
+  const [deleteApplication, setDeleteApplication] =
+    useState<LoanApplication | null>(null);
+
+  const [isDeleting, setIsDeleting] = useState(false);
   const banks = useMemo(
     () =>
       unique(
-        rows.flatMap((a) => (a.bankApplications ?? []).map((x) => x.bank || ''))
+        rows.flatMap((a) =>
+          (a.bankApplications ?? []).map((x) => x.bank || ""),
+        ),
       ),
-    [rows]
+    [rows],
   );
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return rows.filter((a) => {
       if (
         s &&
-        ![a.fullName, a.applicationId, a.mobile, a.email || ''].some((v) =>
-          v.toLowerCase().includes(s)
+        ![a.fullName, a.applicationId, a.mobile, a.email || ""].some((v) =>
+          v.toLowerCase().includes(s),
         )
       )
         return false;
@@ -120,17 +142,52 @@ export default function LoanApplicationsPage() {
       return true;
     });
   }, [rows, q, cat, loan, status, user, b]);
+  const handleDeleteApplication = async () => {
+    if (!deleteApplication || isDeleting) return;
+
+    try {
+      setIsDeleting(true);
+
+      const response = await axios.delete(
+        `/api/loan-applications/${deleteApplication.id}`,
+      );
+
+      toast.success(
+        response.data?.message || "Loan application deleted successfully",
+      );
+
+      setDeleteApplication(null);
+
+      await refetch();
+
+      if (paged.length === 1 && page > 1) {
+        setPage((currentPage) => Math.max(1, currentPage - 1));
+      }
+    } catch (error) {
+      console.error("Delete loan application error:", error);
+
+      if (axios.isAxiosError(error)) {
+        toast.error(
+          error.response?.data?.message || "Failed to delete loan application",
+        );
+      } else {
+        toast.error("Failed to delete loan application");
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   const totals = useMemo(
     () => ({
       total: rows.length,
-      newEnq: rows.filter((a) => a.loanStatus === 'New Enquiry').length,
-      docs: rows.filter((a) => a.loanStatus === 'Documents Pending').length,
-      review: rows.filter((a) => a.loanStatus === 'Under Review').length,
-      sanctioned: rows.filter((a) => a.loanStatus === 'Sanctioned').length,
-      disbursed: rows.filter((a) => a.loanStatus === 'Disbursed').length,
-      rejected: rows.filter((a) => a.loanStatus === 'Rejected').length,
+      newEnq: rows.filter((a) => a.loanStatus === "New Enquiry").length,
+      docs: rows.filter((a) => a.loanStatus === "Documents Pending").length,
+      review: rows.filter((a) => a.loanStatus === "Under Review").length,
+      sanctioned: rows.filter((a) => a.loanStatus === "Sanctioned").length,
+      disbursed: rows.filter((a) => a.loanStatus === "Disbursed").length,
+      rejected: rows.filter((a) => a.loanStatus === "Rejected").length,
     }),
-    [rows]
+    [rows],
   );
   const pc = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -139,7 +196,7 @@ export default function LoanApplicationsPage() {
     setPage(1);
   };
   const clear = () => {
-    setQ('');
+    setQ("");
     setCat(ALL);
     setLoan(ALL);
     setStatus(ALL);
@@ -156,13 +213,13 @@ export default function LoanApplicationsPage() {
         />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
           {[
-            ['Total', totals.total],
-            ['New Enquiries', totals.newEnq],
-            ['Docs Pending', totals.docs],
-            ['Under Review', totals.review],
-            ['Sanctioned', totals.sanctioned],
-            ['Disbursed', totals.disbursed],
-            ['Rejected', totals.rejected],
+            ["Total", totals.total],
+            ["New Enquiries", totals.newEnq],
+            ["Docs Pending", totals.docs],
+            ["Under Review", totals.review],
+            ["Sanctioned", totals.sanctioned],
+            ["Disbursed", totals.disbursed],
+            ["Rejected", totals.rejected],
           ].map(([l, v]) => (
             <div key={l} className="rounded-2xl border bg-card p-4 shadow-sm">
               <div className="text-xs text-muted-foreground">{l}</div>
@@ -219,39 +276,30 @@ export default function LoanApplicationsPage() {
             <Button variant="outline" size="sm" onClick={clear}>
               <Filter className="h-4 w-4" />
               Clear
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => downloadCsv(filtered)}
-              disabled={!filtered.length}
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
+            </Button>   
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                   {[
-                    'Application ID',
-                    'Applicant',
-                    'Category',
-                    'Loan Type',
-                    'Mobile',
-                    'Assignee',
-                    'Bank / NBFC',
-                    'Applied',
-                    'Sanctioned',
-                    'Disbursed',
-                    'Status',
-                    'Next FU',
-                    'Actions',
+                    "Application ID",
+                    "Applicant",
+                    "Category",
+                    "Loan Type",
+                    "Mobile",
+                    "Assignee",
+                    "Bank / NBFC",
+                    "Applied",
+                    "Sanctioned",
+                    "Disbursed",
+                    "Status",
+                    "Next FU",
+                    "Actions",
                   ].map((h, i) => (
                     <th
                       key={h}
-                      className={`px-4 py-3 font-medium ${(i >= 7 && i <= 9) || i === 12 ? 'text-right' : 'text-left'}`}
+                      className={`px-4 py-3 font-medium ${(i >= 7 && i <= 9) || i === 12 ? "text-right" : "text-left"}`}
                     >
                       {h}
                     </th>
@@ -283,23 +331,23 @@ export default function LoanApplicationsPage() {
                           {a.fullName}
                         </Link>
                         <div className="text-xs text-muted-foreground">
-                          {a.email || '—'}
+                          {a.email || "—"}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {a.applicantCategory || '—'}
+                        {a.applicantCategory || "—"}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {a.loanCategory || '—'}
+                        {a.loanCategory || "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         {a.mobile}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {assignee(a) || '—'}
+                        {assignee(a) || "—"}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {bank(a) || '—'}
+                        {bank(a) || "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         {formatINR(a.requiredLoanAmount)}
@@ -312,26 +360,39 @@ export default function LoanApplicationsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge
-                          status={a.loanStatus || 'New Enquiry'}
+                          status={a.loanStatus || "New Enquiry"}
                           className={loanStatusTone(
-                            a.loanStatus || 'New Enquiry'
+                            a.loanStatus || "New Enquiry",
                           )}
                         />
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {a.nextFollowUp || '—'}
+                        {a.nextFollowUp || "—"}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Link href={`/loan-application/all/${a.id}`}>
+                        <div className="flex items-center justify-end gap-2">
+                          <Link href={`/loan-application/all/${a.id}`}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-1"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              View
+                            </Button>
+                          </Link>
+
                           <Button
+                            type="button"
                             variant="outline"
-                            size="sm"
-                            className="h-8 gap-1"
+                            size="icon"
+                            className="h-8 w-8 text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`Delete ${a.fullName}`}
+                            onClick={() => setDeleteApplication(a)}
                           >
-                            <Eye className="h-3.5 w-3.5" />
-                            View
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
-                        </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -350,14 +411,14 @@ export default function LoanApplicationsPage() {
           </div>
           <div className="flex flex-col gap-3 border-t p-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <div>
-              Showing{' '}
+              Showing{" "}
               <span className="font-medium text-foreground">
                 {paged.length}
-              </span>{' '}
-              of{' '}
+              </span>{" "}
+              of{" "}
               <span className="font-medium text-foreground">
                 {filtered.length}
-              </span>{' '}
+              </span>{" "}
               results
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -407,6 +468,73 @@ export default function LoanApplicationsPage() {
           </div>
         </div>
       </div>
+      <AlertDialog
+        open={Boolean(deleteApplication)}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setDeleteApplication(null);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-md rounded-2xl">
+          <AlertDialogHeader>
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+
+            <AlertDialogTitle className="text-xl">
+              Delete loan application?
+            </AlertDialogTitle>
+
+            <AlertDialogDescription className="space-y-3 text-sm leading-6">
+              <span className="block">
+                This action will permanently delete the loan application and
+                cannot be undone.
+              </span>
+
+              {deleteApplication && (
+                <span className="block rounded-xl border bg-muted/40 p-3">
+                  <span className="block font-medium text-foreground">
+                    {deleteApplication.fullName}
+                  </span>
+
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Application ID: {deleteApplication.applicationId}
+                  </span>
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel disabled={isDeleting} className="rounded-xl">
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              type="button"
+              disabled={isDeleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteApplication();
+              }}
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Application
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageTransition>
   );
 }

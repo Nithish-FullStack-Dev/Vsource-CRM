@@ -2,7 +2,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { LoanApplicationListFilters } from "@/types/loan-application";
-import type { LoanApplicationFormValues } from "@/schemas/loan-application/loan-application.schema";
+
+import type {
+  LoanApplicationFormValues,
+  UpdateLoanApplicationValues,
+} from "@/schemas/loan-application/loan-application.schema";
 import {
   createLoanApplication,
   deleteLoanApplication,
@@ -39,17 +43,26 @@ export function useCreateLoanApplication() {
 }
 export function useUpdateLoanApplication(id: string) {
   const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: (p: Partial<LoanApplicationFormValues>) =>
-      updateLoanApplication(id, p),
+    mutationFn: (payload: UpdateLoanApplicationValues) =>
+      updateLoanApplication(id, payload),
+
     onSuccess: async () => {
       await qc.invalidateQueries({
         queryKey: LOAN_APPLICATION_KEYS.detail(id),
       });
-      await qc.invalidateQueries({ queryKey: LOAN_APPLICATION_KEYS.all });
+
+      await qc.invalidateQueries({
+        queryKey: LOAN_APPLICATION_KEYS.all,
+      });
+
       toast.success("Loan application updated successfully");
     },
-    onError: (e) => toast.error(msg(e, "Failed to update loan application")),
+
+    onError: (error) => {
+      toast.error(msg(error, "Failed to update loan application"));
+    },
   });
 }
 export function useDeleteLoanApplication() {

@@ -215,14 +215,6 @@ export default function LoanApplicationProfilePage() {
               </div>
             </div>
             <div className="min-h-125 rounded-3xl border border-slate-100 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
-              <div className="mb-6 border-b border-inherit pb-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Loan Application Module
-                </p>
-                <h3 className="mt-1 text-base font-black text-slate-900 dark:text-white">
-                  {tabs.find((x) => x.key === tab)?.label}
-                </h3>
-              </div>
               {render()}
             </div>
           </div>

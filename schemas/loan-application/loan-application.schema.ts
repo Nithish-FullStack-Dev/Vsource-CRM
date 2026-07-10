@@ -382,11 +382,9 @@ export const loanApplicationFormSchema = loanApplicationBaseSchema.superRefine(
      * CIBIL CONSULTATION VALIDATION
      */
 
-
     /**
      * OTHER LOAN VALIDATION
      */
-  
   },
 );
 
@@ -422,7 +420,9 @@ export const createLoanApplicationSchema = loanApplicationFormSchema;
  * loanApplicationFormSchema.partial()
  */
 export const updateLoanApplicationSchema = loanApplicationBaseSchema.partial();
-
+export type UpdateLoanApplicationValues = z.input<
+  typeof updateLoanApplicationSchema
+>;
 /**
  * ============================================================
  * BANK APPLICATION SCHEMA

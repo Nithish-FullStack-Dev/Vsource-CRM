@@ -10,6 +10,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 import {
   Controller,
@@ -1036,6 +1037,8 @@ function Field({
 /* -------------------------------------------------------------------------- */
 
 export default function AddLoanApplicationPage() {
+  const router = useRouter();
+
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -1540,17 +1543,15 @@ export default function AddLoanApplicationPage() {
         toast.error(
           data?.message || data?.error || "Failed to create loan enquiry",
         );
-
         return;
       }
 
       toast.success("Loan enquiry created successfully");
 
-      handleReset();
+      router.push("/loan-application/all");
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error("Please correct the validation errors");
-
         return;
       }
 
