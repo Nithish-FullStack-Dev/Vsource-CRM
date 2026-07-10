@@ -1,4 +1,3 @@
-// app\(dashboard)\loan-application\all\page.tsx
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -54,6 +53,7 @@ const unique = (items: string[]) =>
   [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 const assignee = (a: LoanApplication) => a.fintechAssigneeName || "";
 const bank = (a: LoanApplication) => a.bankApplications?.[0]?.bank || "";
+
 function downloadCsv(rows: LoanApplication[]) {
   const headers = [
     "Application ID",
@@ -99,6 +99,7 @@ function downloadCsv(rows: LoanApplication[]) {
   link.click();
   URL.revokeObjectURL(url);
 }
+
 export default function LoanApplicationsPage() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState(ALL);
@@ -142,22 +143,19 @@ export default function LoanApplicationsPage() {
       return true;
     });
   }, [rows, q, cat, loan, status, user, b]);
+
   const handleDeleteApplication = async () => {
     if (!deleteApplication || isDeleting) return;
 
     try {
       setIsDeleting(true);
-
       const response = await axios.delete(
         `/api/loan-applications/${deleteApplication.id}`,
       );
-
       toast.success(
         response.data?.message || "Loan application deleted successfully",
       );
-
       setDeleteApplication(null);
-
       await refetch();
 
       if (paged.length === 1 && page > 1) {
@@ -165,7 +163,6 @@ export default function LoanApplicationsPage() {
       }
     } catch (error) {
       console.error("Delete loan application error:", error);
-
       if (axios.isAxiosError(error)) {
         toast.error(
           error.response?.data?.message || "Failed to delete loan application",
@@ -177,6 +174,7 @@ export default function LoanApplicationsPage() {
       setIsDeleting(false);
     }
   };
+
   const totals = useMemo(
     () => ({
       total: rows.length,
@@ -189,12 +187,15 @@ export default function LoanApplicationsPage() {
     }),
     [rows],
   );
+
   const pc = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
+
   const upd = (fn: (v: string) => void) => (v: string) => {
     fn(v);
     setPage(1);
   };
+
   const clear = () => {
     setQ("");
     setCat(ALL);
@@ -204,6 +205,7 @@ export default function LoanApplicationsPage() {
     setB(ALL);
     setPage(1);
   };
+
   return (
     <PageTransition>
       <div className="mx-auto max-w-[1600px] space-y-6 pb-12">
@@ -229,6 +231,7 @@ export default function LoanApplicationsPage() {
             </div>
           ))}
         </div>
+
         <div className="rounded-2xl border bg-card shadow-sm">
           <div className="flex flex-wrap items-center gap-2 border-b p-4">
             <div className="flex h-9 min-w-[240px] flex-1 items-center gap-2 rounded-md border bg-background px-3">
@@ -274,12 +277,15 @@ export default function LoanApplicationsPage() {
               options={banks}
             />
             <Button variant="outline" size="sm" onClick={clear}>
-              <Filter className="h-4 w-4" />
+              <Filter className="h-4 w-4 mr-2" />
               Clear
-            </Button>   
+            </Button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+
+          {/* TABLE WRAPPER - Added styling for horizontal scrolling */}
+          <div className="w-full overflow-x-auto pb-4">
+            {/* Added min-w-[1400px] to force proper one-line alignment */}
+            <table className="w-full min-w-[1400px] text-sm">
               <thead>
                 <tr className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                   {[
@@ -299,7 +305,8 @@ export default function LoanApplicationsPage() {
                   ].map((h, i) => (
                     <th
                       key={h}
-                      className={`px-4 py-3 font-medium ${(i >= 7 && i <= 9) || i === 12 ? "text-right" : "text-left"}`}
+                      // Added whitespace-nowrap to prevent headers from stacking
+                      className={`whitespace-nowrap px-4 py-3 font-medium ${(i >= 7 && i <= 9) || i === 12 ? "text-right" : "text-left"}`}
                     >
                       {h}
                     </th>
@@ -323,30 +330,31 @@ export default function LoanApplicationsPage() {
                       <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">
                         {a.applicationId}
                       </td>
-                      <td className="px-4 py-3">
+                      {/* Using min-w-[180px] to give the applicant cell some breathing room */}
+                      <td className="px-4 py-3 min-w-[180px] whitespace-nowrap">
                         <Link
                           href={`/loan-application/all/${a.id}`}
-                          className="font-medium text-foreground hover:text-primary"
+                          className="font-medium text-foreground hover:text-primary block"
                         >
                           {a.fullName}
                         </Link>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground truncate max-w-[180px]">
                           {a.email || "—"}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {a.applicantCategory || "—"}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {a.loanCategory || "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         {a.mobile}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {assignee(a) || "—"}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {bank(a) || "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -358,7 +366,7 @@ export default function LoanApplicationsPage() {
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         {formatINR(a.disbursedAmount)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="whitespace-nowrap px-4 py-3">
                         <StatusBadge
                           status={a.loanStatus || "New Enquiry"}
                           className={loanStatusTone(
@@ -366,10 +374,10 @@ export default function LoanApplicationsPage() {
                           )}
                         />
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
                         {a.nextFollowUp || "—"}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Link href={`/loan-application/all/${a.id}`}>
                             <Button
@@ -409,6 +417,7 @@ export default function LoanApplicationsPage() {
               </tbody>
             </table>
           </div>
+
           <div className="flex flex-col gap-3 border-t p-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <div>
               Showing{" "}
