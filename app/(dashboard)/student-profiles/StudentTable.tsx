@@ -287,7 +287,7 @@ export function StudentTable({
               <th
                 className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
               >
-                VSTU EMAIL
+                VISA EMAIL
               </th>
               <th
                 className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}

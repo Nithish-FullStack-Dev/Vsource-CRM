@@ -85,6 +85,11 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  optionalCibil,
+  optionalInteger,
+  optionalPositiveNumber,
+} from "@/schemas/loan-application/loan-application.schema";
 /* -------------------------------------------------------------------------- */
 /*                                   CONSTANTS                                */
 /* -------------------------------------------------------------------------- */
@@ -188,9 +193,13 @@ const OFFER_LETTER_OPTIONS = [
   "UCOL",
 ] as const;
 
-const LOAN_PREFERENCE_OPTIONS = ["Secured", "Unsecured", "Either"] as const;
+export const LOAN_PREFERENCE_OPTIONS = [
+  "Secured",
+  "Unsecured",
+  "Either",
+] as const;
 
-const YES_NO_OPTIONS = ["Yes", "No"] as const;
+export const YES_NO_OPTIONS = ["Yes", "No"] as const;
 
 /* -------------------------------------------------------------------------- */
 /*                                     TYPES                                  */
@@ -272,73 +281,6 @@ const optionalNumber = z.preprocess(
     })
     .finite("Enter a valid number")
     .nonnegative("Negative values are not allowed")
-    .optional(),
-);
-
-const optionalPositiveNumber = z.preprocess(
-  (value) => {
-    if (
-      value === "" ||
-      value === null ||
-      value === undefined ||
-      Number.isNaN(value)
-    ) {
-      return undefined;
-    }
-
-    return Number(value);
-  },
-  z
-    .number({
-      error: "Enter a valid number",
-    })
-    .finite("Enter a valid number")
-    .positive("Value must be greater than 0")
-    .optional(),
-);
-
-const optionalInteger = z.preprocess(
-  (value) => {
-    if (
-      value === "" ||
-      value === null ||
-      value === undefined ||
-      Number.isNaN(value)
-    ) {
-      return undefined;
-    }
-
-    return Number(value);
-  },
-  z
-    .number({
-      error: "Enter a valid number",
-    })
-    .int("Only whole numbers are allowed")
-    .nonnegative("Negative values are not allowed")
-    .optional(),
-);
-
-const optionalCibil = z.preprocess(
-  (value) => {
-    if (
-      value === "" ||
-      value === null ||
-      value === undefined ||
-      Number.isNaN(value)
-    ) {
-      return undefined;
-    }
-
-    return Number(value);
-  },
-  z
-    .number({
-      error: "Enter a valid CIBIL score",
-    })
-    .int("CIBIL score must be a whole number")
-    .min(300, "CIBIL score must be at least 300")
-    .max(900, "CIBIL score cannot exceed 900")
     .optional(),
 );
 
@@ -1741,7 +1683,9 @@ export default function AddLoanApplicationPage() {
                   placeholder={
                     !selectedBranchId
                       ? "Select Branch First"
-                      : "Select Fintech User"
+                      : fintechLoading
+                        ? "Loading Fintech Users..."
+                        : "Assign Fintech"
                   }
                   options={fintechUsers.map((fintechUser) => ({
                     value: fintechUser.id,

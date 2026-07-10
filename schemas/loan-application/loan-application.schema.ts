@@ -586,3 +586,246 @@ export const activitySchema = z.object({
 
   description: optionalString,
 });
+
+export const optionalPositiveNumber = z.preprocess(
+  (value) => {
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      Number.isNaN(value)
+    ) {
+      return undefined;
+    }
+
+    return Number(value);
+  },
+  z
+    .number({
+      error: "Enter a valid number",
+    })
+    .finite("Enter a valid number")
+    .positive("Value must be greater than 0")
+    .optional(),
+);
+
+export const optionalInteger = z.preprocess(
+  (value) => {
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      Number.isNaN(value)
+    ) {
+      return undefined;
+    }
+
+    return Number(value);
+  },
+  z
+    .number({
+      error: "Enter a valid number",
+    })
+    .int("Only whole numbers are allowed")
+    .nonnegative("Negative values are not allowed")
+    .optional(),
+);
+
+export const optionalCibil = z.preprocess(
+  (value) => {
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      Number.isNaN(value)
+    ) {
+      return undefined;
+    }
+
+    return Number(value);
+  },
+  z
+    .number({
+      error: "Enter a valid CIBIL score",
+    })
+    .int("CIBIL score must be a whole number")
+    .min(300, "CIBIL score must be at least 300")
+    .max(900, "CIBIL score cannot exceed 900")
+    .optional(),
+);
+
+export const createFinancialEditSchema = (loanCategory?: string | null) =>
+  z
+    .object({
+      tuitionFee: optionalNumber,
+      livingExpenses: optionalNumber,
+      otherExpenses: optionalNumber,
+      totalCourseCost: optionalNumber,
+      ownContribution: optionalNumber,
+      requiredLoanAmount: optionalPositiveNumber,
+      loanPreference: optionalString,
+      collateralAvailable: optionalString,
+      loanPurpose: optionalString,
+      preferredTenure: optionalInteger,
+      cibilScore: optionalCibil,
+      propertyType: optionalString,
+      propertyLocation: optionalString,
+      propertyValue: optionalPositiveNumber,
+      downPayment: optionalNumber,
+    })
+    .superRefine((data, ctx) => {
+      const blank = (value: unknown) =>
+        value === undefined ||
+        value === null ||
+        (typeof value === "string" && value.trim() === "");
+
+      const addIssue = (path: keyof typeof data, message: string) => {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [path],
+          message,
+        });
+      };
+
+      const requireField = (path: keyof typeof data, message: string) => {
+        if (blank(data[path])) {
+          addIssue(path, message);
+        }
+      };
+
+      const requirePositiveAmount = (
+        path: keyof typeof data,
+        message: string,
+      ) => {
+        const value = data[path];
+
+        if (value === undefined || value === null || value === "") {
+          addIssue(path, message);
+          return;
+        }
+
+        const numericValue = typeof value === "number" ? value : Number(value);
+
+        if (!Number.isFinite(numericValue) || numericValue <= 0) {
+          addIssue(path, message);
+        }
+      };
+
+      if (isEducationLoan(loanCategory)) {
+        requirePositiveAmount(
+          "requiredLoanAmount",
+          "Required loan amount must be greater than 0",
+        );
+
+        const totalCourseCost =
+          data.totalCourseCost === undefined
+            ? undefined
+            : Number(data.totalCourseCost);
+
+        const ownContribution =
+          data.ownContribution === undefined
+            ? undefined
+            : Number(data.ownContribution);
+
+        const requiredLoanAmount =
+          data.requiredLoanAmount === undefined
+            ? undefined
+            : Number(data.requiredLoanAmount);
+
+        if (
+          Number.isFinite(totalCourseCost) &&
+          Number.isFinite(ownContribution) &&
+          ownContribution! > totalCourseCost!
+        ) {
+          addIssue(
+            "ownContribution",
+            "Own contribution cannot exceed total course cost",
+          );
+        }
+
+        if (
+          Number.isFinite(totalCourseCost) &&
+          Number.isFinite(requiredLoanAmount) &&
+          requiredLoanAmount! > totalCourseCost!
+        ) {
+          addIssue(
+            "requiredLoanAmount",
+            "Required loan amount cannot exceed total course cost",
+          );
+        }
+      }
+
+      if (loanCategory === "Personal Loan") {
+        requireField("loanPurpose", "Loan purpose is required");
+
+        requirePositiveAmount(
+          "requiredLoanAmount",
+          "Required loan amount must be greater than 0",
+        );
+      }
+
+      if (loanCategory === "Home Loan") {
+        requireField("propertyType", "Property type is required");
+
+        requireField("propertyLocation", "Property location is required");
+
+        requirePositiveAmount(
+          "propertyValue",
+          "Property value must be greater than 0",
+        );
+
+        requirePositiveAmount(
+          "requiredLoanAmount",
+          "Required loan amount must be greater than 0",
+        );
+
+        const propertyValue =
+          data.propertyValue === undefined
+            ? undefined
+            : Number(data.propertyValue);
+
+        const requiredLoanAmount =
+          data.requiredLoanAmount === undefined
+            ? undefined
+            : Number(data.requiredLoanAmount);
+
+        const downPayment =
+          data.downPayment === undefined ? undefined : Number(data.downPayment);
+
+        if (
+          Number.isFinite(propertyValue) &&
+          Number.isFinite(requiredLoanAmount) &&
+          requiredLoanAmount! > propertyValue!
+        ) {
+          addIssue(
+            "requiredLoanAmount",
+            "Required loan amount cannot exceed property value",
+          );
+        }
+
+        if (
+          Number.isFinite(propertyValue) &&
+          Number.isFinite(downPayment) &&
+          downPayment! > propertyValue!
+        ) {
+          addIssue("downPayment", "Down payment cannot exceed property value");
+        }
+      }
+
+      if (loanCategory === "Business Loan") {
+        requireField("loanPurpose", "Loan purpose is required");
+
+        requirePositiveAmount(
+          "requiredLoanAmount",
+          "Required loan amount must be greater than 0",
+        );
+      }
+    });
+
+export type FinancialEditInput = z.input<
+  ReturnType<typeof createFinancialEditSchema>
+>;
+
+export type FinancialEditValues = z.output<
+  ReturnType<typeof createFinancialEditSchema>
+>;
