@@ -452,37 +452,37 @@ export default function PerformanceReportsPage() {
           ) : (
             <>
               <SummaryCard
-                title="Active Leads"
+                title="Active Walk-ins"
                 value={report.summary.totalLeads.toLocaleString("en-IN")}
                 description="Unconverted lead records"
                 icon={BriefcaseBusiness}
               />
               <SummaryCard
-                title="Lost Leads"
+                title="Drop Walk-ins"
                 value={report.summary.lostLeads.toLocaleString("en-IN")}
-                description="Lead status marked as lost"
+                description="Walkin status marked as Dropped or Lost"
                 icon={ArrowRightLeft}
               />
               <SummaryCard
-                title="Converted Students"
+                title="Visa Applications"
                 value={report.summary.totalStudents.toLocaleString("en-IN")}
                 description={`${report.summary.conversionRate}% walk-in conversion`}
                 icon={GraduationCap}
               />
               <SummaryCard
-                title="Dropped Students"
+                title="Dropped Visa Applications"
                 value={report.summary.droppedStudents.toLocaleString("en-IN")}
                 description="Student status marked as dropped"
                 icon={GraduationCap}
               />
               <SummaryCard
-                title="Leads Added"
+                title="Walk-ins Added"
                 value={report.summary.totalLeadsCreated.toLocaleString("en-IN")}
                 description="Created in the selected lifecycle period"
                 icon={BriefcaseBusiness}
               />
               <SummaryCard
-                title="Student Target"
+                title="Application Target"
                 value={report.summary.totalTarget.toLocaleString("en-IN")}
                 description={`${report.summary.targetAssignments.toLocaleString("en-IN")} target assignments`}
                 icon={Landmark}
@@ -500,7 +500,7 @@ export default function PerformanceReportsPage() {
                 icon={FileText}
               />
               <SummaryCard
-                title="Offers"
+                title="Uni Offers"
                 value={report.summary.offerApplications.toLocaleString("en-IN")}
                 description="Applications with an offer status"
                 icon={FileText}

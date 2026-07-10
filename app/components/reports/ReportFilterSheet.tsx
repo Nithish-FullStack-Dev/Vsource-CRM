@@ -121,9 +121,9 @@ function getDateOptions(): Array<{ value: ReportDatePreset; label: string }> {
 }
 
 const recordScopeOptions: ReportOption[] = [
-  { value: "all", label: "Leads and Students" },
-  { value: "leads", label: "Leads Only" },
-  { value: "students", label: "Students Only" },
+  { value: "all", label: "Walk-ins and Applications" },
+  { value: "leads", label: "Walk-ins Only" },
+  { value: "students", label: "Applications Only" },
 ];
 
 export function ReportFilterSheet({
@@ -136,12 +136,14 @@ export function ReportFilterSheet({
   const dateOptions = useMemo(getDateOptions, []);
   const activeCount = countPerformanceReportFilters(value);
   const isUserScoped = options?.access.kind === "user";
-  const userCounselorId = isUserScoped
-    ? (options?.counselors[0]?.value ?? "")
-    : "";
-  const displayCounselorId = isUserScoped
-    ? userCounselorId
-    : draft.counselorId;
+
+const currentUserId = isUserScoped
+  ? (options?.counselors[0]?.value ?? "")
+  : "";
+
+const displayUserId = isUserScoped
+  ? currentUserId
+  : draft.counselorId;
   const isDirty = JSON.stringify(draft) !== JSON.stringify(value);
   const customDateInvalid =
     draft.datePreset === "custom" && !draft.startDate && !draft.endDate;
@@ -150,17 +152,19 @@ export function ReportFilterSheet({
     setDraft(value);
   }, [value]);
 
-  const counselorOptions = useMemo(() => {
-    if (!options) {
-      return [];
-    }
+const userOptions = useMemo(() => {
+  if (!options) {
+    return [];
+  }
 
-    return draft.branchId
-      ? options.counselors.filter((counselor) =>
-          counselor.branchIds.includes(draft.branchId),
-        )
-      : options.counselors;
-  }, [draft.branchId, options]);
+  if (!draft.branchId) {
+    return options.counselors;
+  }
+
+  return options.counselors.filter((user) =>
+    user.branchIds.includes(draft.branchId),
+  );
+}, [draft.branchId, options]);
 
   const universityOptions = useMemo(() => {
     if (!options) {
@@ -238,23 +242,26 @@ export function ReportFilterSheet({
     }));
   };
 
-  const handleBranchChange = (branchId: string) => {
-    setDraft((current) => {
-      const selectedCounselor = options?.counselors.find(
-        (counselor) => counselor.value === current.counselorId,
-      );
-      const counselorIsValid =
-        !branchId ||
-        !selectedCounselor ||
-        selectedCounselor.branchIds.includes(branchId);
+const handleBranchChange = (branchId: string) => {
+  setDraft((current) => {
+    const selectedUser = options?.counselors.find(
+      (user) => user.value === current.counselorId,
+    );
 
-      return {
-        ...current,
-        branchId,
-        counselorId: counselorIsValid ? current.counselorId : "",
-      };
-    });
-  };
+    const selectedUserIsValid =
+      !branchId ||
+      !selectedUser ||
+      selectedUser.branchIds.includes(branchId);
+
+    return {
+      ...current,
+      branchId,
+      counselorId: selectedUserIsValid
+        ? current.counselorId
+        : "",
+    };
+  });
+};
 
   const handleCountryChange = (countryId: string) => {
     setDraft((current) => {
@@ -440,16 +447,16 @@ export function ReportFilterSheet({
                     onChange={handleBranchChange}
                   />
                   <FilterSelect
-                    id="report-counselor"
-                    label={isUserScoped ? "Current User" : "Counselor / Associate"}
-                    value={displayCounselorId}
-                    placeholder={isUserScoped ? "Current User" : "All Counselors"}
-                    options={counselorOptions}
-                    disabled={isLoading || isUserScoped}
-                    onChange={(nextValue) =>
-                      updateFilter("counselorId", nextValue)
-                    }
-                  />
+  id="report-user"
+  label={isUserScoped ? "Current User" : "User"}
+  value={displayUserId}
+  placeholder={isUserScoped ? "Current User" : "All Users"}
+  options={userOptions}
+  disabled={isLoading || isUserScoped}
+  onChange={(nextValue) =>
+    updateFilter("counselorId", nextValue)
+  }
+/>
                   <FilterSelect
                     id="report-lead-status"
                     label="Lead Status"

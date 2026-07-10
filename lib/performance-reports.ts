@@ -1974,15 +1974,34 @@ export async function getPerformanceReportFilterOptions(
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    // db.user.findMany({
+    //   where: counselorWhere,
+    //   select: {
+    //     id: true,
+    //     name: true,
+    //     branches: { select: { id: true } },
+    //   },
+    //   orderBy: { name: "asc" },
+    // }),
     db.user.findMany({
-      where: counselorWhere,
+  select: {
+    id: true,
+    name: true,
+    role: {
+      select: {
+        name: true,
+      },
+    },
+    branches: {
       select: {
         id: true,
-        name: true,
-        branches: { select: { id: true } },
       },
-      orderBy: { name: "asc" },
-    }),
+    },
+  },
+  orderBy: {
+    name: "asc",
+  },
+}),
     db.country.findMany({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
@@ -2035,11 +2054,12 @@ export async function getPerformanceReportFilterOptions(
       value: branch.id,
       label: branch.name,
     })),
-    counselors: counselors.map((counselor) => ({
-      value: counselor.id,
-      label: counselor.name,
-      branchIds: counselor.branches.map((branch) => branch.id),
-    })),
+counselors: counselors.map((user) => ({
+  value: user.id,
+  label: `${user.name} (${user.role.name})`,
+  roleName: user.role.name,
+  branchIds: user.branches.map((branch) => branch.id),
+})),
     countries: countries.map((country) => ({
       value: country.id,
       label: country.name,
