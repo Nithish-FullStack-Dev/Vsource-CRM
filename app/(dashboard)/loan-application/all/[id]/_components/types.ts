@@ -23,6 +23,11 @@ export type CoApplicant = {
   email?: string | null;
   income?: number | null;
   occupation?: string | null;
+  monthlyIncome?: number | null;
+  employmentType?: string | null;
+  companyName?: string | null;
+  annualIncome?: number | null;
+  existingEmi?: number | null;
   
   cibilScore?: number | null;
 };

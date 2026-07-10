@@ -2,7 +2,8 @@
 
 import React, { useEffect } from "react";
 import { Check, AlertCircle, X } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "framer-motion";
+// import { motion, AnimatePresence } from "motion/react";
 
 export interface Toast {
   id: string;

@@ -249,27 +249,7 @@ export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
                       value={coApplicant.cibilScore}
                     />
 
-                    <InfoCard
-                      icon={Landmark}
-                      label="Employer"
-                      value={coApplicant.employerName}
-                    />
-
-                    <InfoCard
-                      icon={CalendarDays}
-                      label="Date of Birth"
-                      value={coApplicant.dob}
-                    />
-
-                    <InfoCard
-                      icon={MapPin}
-                      label="City / State"
-                      value={
-                        [coApplicant.city, coApplicant.state]
-                          .filter(Boolean)
-                          .join(", ") || null
-                      }
-                    />
+                  
                   </InfoGrid>
                 </div>
               </div>
@@ -351,27 +331,6 @@ export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
                   <Input type="date" {...register("dob")} />
                 </FormField>
 
-                <FormField label="Gender" error={errors.gender?.message}>
-                  <Select
-                    value={gender || ""}
-                    onValueChange={(value) =>
-                      setValue("gender", value, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-
-                    <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
               </FormSection>
 
               <FormSection
@@ -477,40 +436,6 @@ export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
                 title="Employment Information"
                 description="Occupation and current employment details."
               >
-                <FormField
-                  label="Employment Type"
-                  error={errors.employmentType?.message}
-                >
-                  <Select
-                    value={employmentType || ""}
-                    onValueChange={(value) =>
-                      setValue("employmentType", value, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select employment type" />
-                    </SelectTrigger>
-
-                    <SelectContent>
-                      <SelectItem value="Salaried">Salaried</SelectItem>
-
-                      <SelectItem value="Self Employed">
-                        Self Employed
-                      </SelectItem>
-
-                      <SelectItem value="Business">Business</SelectItem>
-
-                      <SelectItem value="Professional">Professional</SelectItem>
-
-                      <SelectItem value="Retired">Retired</SelectItem>
-
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
 
                 <FormField
                   label="Occupation"

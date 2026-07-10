@@ -66,7 +66,7 @@ const defaultValues: CoApplicantFormValues = {
   existingEmi: undefined,
   cibilScore: undefined,
 };
-
+const EMPTY_SELECT_VALUE = "__none__";
 export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
   const coApplicants = applicant.coApplicants ?? [];
 
@@ -89,7 +89,13 @@ export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
   const gender = watch("gender");
   const relationship = watch("relationship");
   const employmentType = watch("employmentType");
+function toSelectValue(value: unknown): string {
+  if (typeof value !== "string" || !value) {
+    return EMPTY_SELECT_VALUE;
+  }
 
+  return value;
+}
   const createMutation = useMutation({
     mutationFn: (payload: CoApplicantFormValues) =>
       createLoanCoApplicant(applicant.id, payload),
@@ -189,7 +195,7 @@ export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
 
             <FormField label="Gender">
               <Select
-                value={gender}
+                value={toSelectValue(gender)}
                 onValueChange={(value) => setValue("gender", value)}
               >
                 <SelectTrigger>
@@ -282,7 +288,7 @@ export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
           <FormSection title="Employment Information">
             <FormField label="Employment Type">
               <Select
-                value={employmentType}
+                value={toSelectValue(employmentType)}
                 onValueChange={(value) => setValue("employmentType", value)}
               >
                 <SelectTrigger>
@@ -455,27 +461,7 @@ export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
                   value={coApplicant.cibilScore}
                 />
 
-                <InfoCard
-                  icon={Landmark}
-                  label="Employer"
-                  value={coApplicant.employerName}
-                />
-
-                <InfoCard
-                  icon={CalendarDays}
-                  label="Date of Birth"
-                  value={coApplicant.dob}
-                />
-
-                <InfoCard
-                  icon={MapPin}
-                  label="City / State"
-                  value={
-                    [coApplicant.city, coApplicant.state]
-                      .filter(Boolean)
-                      .join(", ") || null
-                  }
-                />
+              
               </InfoGrid>
             </div>
           ))}
