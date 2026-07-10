@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
@@ -82,7 +82,6 @@ interface LeadSourceOption {
 
 interface MasterDataState {
   branches: BranchOption[];
-  users: UserOption[];
   leadSources: LeadSourceOption[];
 }
 
@@ -175,7 +174,6 @@ export function BasicTab({ applicant }: BasicTabProps) {
             value={getBranchName(applicant)}
           />
 
-
           <InfoCard
             icon={User}
             label="Fintech Assignee"
@@ -240,9 +238,14 @@ function EditBasicInformationDialog({
 
   const [masterData, setMasterData] = useState<MasterDataState>({
     branches: [],
-    users: [],
     leadSources: [],
   });
+
+  const [fintechUsers, setFintechUsers] = useState<UserOption[]>([]);
+  const [isLoadingFintechUsers, setIsLoadingFintechUsers] = useState(false);
+  const [fintechUsersError, setFintechUsersError] = useState<string | null>(
+    null,
+  );
 
   const [isLoadingMasterData, setIsLoadingMasterData] = useState(false);
 
@@ -268,20 +271,6 @@ function EditBasicInformationDialog({
   const leadSource = watch("leadSource");
   const priority = watch("priority");
 
-
-
-  const fintechUsers = useMemo(() => {
-    return masterData.users.filter((user) => {
-      const roleName = getUserRoleName(user).toLowerCase();
-
-      return (
-        roleName.includes("fintech") ||
-        roleName.includes("finance") ||
-        roleName.includes("loan")
-      );
-    });
-  }, [masterData.users]);
-
   useEffect(() => {
     if (!open) {
       return;
@@ -291,36 +280,39 @@ function EditBasicInformationDialog({
 
     void loadMasterData();
   }, [open, applicant, reset]);
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
 
+    if (!branchId || branchId === EMPTY_SELECT_VALUE) {
+      setFintechUsers([]);
+      return;
+    }
+
+    void loadFintechUsers(branchId);
+  }, [open, branchId]);
   async function loadMasterData() {
     try {
       setIsLoadingMasterData(true);
       setMasterDataError(null);
 
-      const [branchesResponse, usersResponse, leadSourcesResponse] =
-        await Promise.all([
-          fetch("/api/branches", {
-            method: "GET",
-            cache: "no-store",
-          }),
+      const [branchesResponse, leadSourcesResponse] = await Promise.all([
+        fetch("/api/branches", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        }),
 
-          fetch("/api/users", {
-            method: "GET",
-            cache: "no-store",
-          }),
-
-          fetch("/api/lead-sources", {
-            method: "GET",
-            cache: "no-store",
-          }),
-        ]);
+        fetch("/api/lead-sources", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        }),
+      ]);
 
       if (!branchesResponse.ok) {
         throw new Error("Failed to load branches");
-      }
-
-      if (!usersResponse.ok) {
-        throw new Error("Failed to load users");
       }
 
       if (!leadSourcesResponse.ok) {
@@ -328,12 +320,10 @@ function EditBasicInformationDialog({
       }
 
       const branchesJson: unknown = await branchesResponse.json();
-      const usersJson: unknown = await usersResponse.json();
       const leadSourcesJson: unknown = await leadSourcesResponse.json();
 
       setMasterData({
         branches: extractArray<BranchOption>(branchesJson),
-        users: extractArray<UserOption>(usersJson),
         leadSources: extractArray<LeadSourceOption>(leadSourcesJson),
       });
     } catch (error) {
@@ -346,7 +336,46 @@ function EditBasicInformationDialog({
       setIsLoadingMasterData(false);
     }
   }
+  async function loadFintechUsers(selectedBranchId: string) {
+    if (!selectedBranchId) {
+      setFintechUsers([]);
+      return;
+    }
 
+    try {
+      setIsLoadingFintechUsers(true);
+      setFintechUsersError(null);
+
+      const params = new URLSearchParams({
+        branchId: selectedBranchId,
+        role: "fintech",
+      });
+
+      const response = await fetch(`/api/users?${params.toString()}`, {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load fintech users");
+      }
+
+      const json: unknown = await response.json();
+
+      setFintechUsers(extractArray<UserOption>(json));
+    } catch (error) {
+      console.error("LOAD FINTECH USERS ERROR:", error);
+
+      setFintechUsers([]);
+
+      setFintechUsersError(
+        error instanceof Error ? error.message : "Failed to load fintech users",
+      );
+    } finally {
+      setIsLoadingFintechUsers(false);
+    }
+  }
   const handleDialogChange = (nextOpen: boolean) => {
     if (update.isPending) {
       return;
@@ -719,12 +748,17 @@ function EditBasicInformationDialog({
               >
                 <Select
                   value={toSelectValue(branchId)}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
                     setValue("branchId", value, {
                       shouldDirty: true,
                       shouldValidate: true,
-                    })
-                  }
+                    });
+
+                    setValue("fintechAssigneeId", undefined, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }}
                   disabled={update.isPending || isLoadingMasterData}
                 >
                   <SelectTrigger>
@@ -750,15 +784,13 @@ function EditBasicInformationDialog({
                 </Select>
               </FormField>
 
-         
-
               <FormField
                 label="Fintech Assignee"
                 error={errors.fintechAssigneeId?.message}
               >
                 <Select
                   value={toSelectValue(fintechAssigneeId)}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
                     setValue(
                       "fintechAssigneeId",
                       normalizeOptionalSelect(value),
@@ -766,16 +798,23 @@ function EditBasicInformationDialog({
                         shouldDirty: true,
                         shouldValidate: true,
                       },
-                    )
+                    );
+                  }}
+                  disabled={
+                    update.isPending ||
+                    isLoadingFintechUsers ||
+                    !branchId ||
+                    branchId === EMPTY_SELECT_VALUE
                   }
-                  disabled={update.isPending || isLoadingMasterData}
                 >
                   <SelectTrigger>
                     <SelectValue
                       placeholder={
-                        isLoadingMasterData
-                          ? "Loading fintech users..."
-                          : "Select fintech assignee"
+                        !branchId || branchId === EMPTY_SELECT_VALUE
+                          ? "Select branch first"
+                          : isLoadingFintechUsers
+                            ? "Loading fintech users..."
+                            : "Select fintech assignee"
                       }
                     />
                   </SelectTrigger>
@@ -785,13 +824,25 @@ function EditBasicInformationDialog({
                       Unassigned
                     </SelectItem>
 
-                    {fintechUsers.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name}
+                    {fintechUsers.length > 0 ? (
+                      fintechUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="__no_fintech_users__" disabled>
+                        No fintech users found
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
+
+                {fintechUsersError && (
+                  <p className="text-xs font-semibold text-red-600">
+                    {fintechUsersError}
+                  </p>
+                )}
               </FormField>
 
               <FormField label="Priority" error={errors.priority?.message}>
@@ -1075,18 +1126,6 @@ function extractArray<T>(payload: unknown): T[] {
   return [];
 }
 
-function getUserRoleName(user: UserOption): string {
-  if (typeof user.role === "string") {
-    return user.role;
-  }
-
-  if (user.role && typeof user.role === "object") {
-    return user.role.name ?? "";
-  }
-
-  return user.roleName ?? "";
-}
-
 function getBranchName(applicant: LoanApplication): string | null {
   if (applicant.branchName) {
     return applicant.branchName;
@@ -1106,8 +1145,6 @@ function getBranchName(applicant: LoanApplication): string | null {
 
   return null;
 }
-
-
 
 function getFintechAssigneeName(applicant: LoanApplication): string | null {
   if (applicant.fintechAssigneeName) {
