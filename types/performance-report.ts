@@ -68,7 +68,12 @@ export type UniversityReportOption = ReportOption & {
   countryId: string;
 };
 
+export type PerformanceReportAccessKind = "all" | "branches" | "user";
+
 export type PerformanceReportFilterOptions = {
+  access: {
+    kind: PerformanceReportAccessKind;
+  };
   branches: ReportOption[];
   counselors: CounselorReportOption[];
   countries: ReportOption[];
@@ -95,13 +100,12 @@ export type PerformanceReportSummary = {
   totalTarget: number;
   totalAchieved: number;
   totalLeadsCreated: number;
-  targetMonths: number;
+  targetAssignments: number;
   targetCompletionPercentage: number;
   conversionRate: number;
   offerApplications: number;
-  visaApprovedStudents: number;
   casReceivedStudents: number;
-  loanSanctionedStudents: number;
+  visaApprovedStudents: number;
 };
 
 export type PerformanceReportMonthlyPoint = {
@@ -131,27 +135,7 @@ export type PerformanceReportSourcePoint = {
   total: number;
 };
 
-export type PerformanceReportBranchPoint = {
-  branchId: string;
-  branch: string;
-  leads: number;
-  lostLeads: number;
-  students: number;
-  droppedStudents: number;
-  leadsCreated: number;
-  target: number;
-  achieved: number;
-  targetCompletionPercentage: number;
-  applications: number;
-  conversionRate: number;
-  visaApproved: number;
-};
-
-export type PerformanceReportCounselorPoint = {
-  branchId: string;
-  branch: string;
-  counselorId: string;
-  counselor: string;
+export type PerformanceReportMetricRow = {
   totalWalkins: number;
   leadsCreated: number;
   leads: number;
@@ -167,7 +151,18 @@ export type PerformanceReportCounselorPoint = {
   conversionRate: number;
   casReceived: number;
   visaApproved: number;
-  loanSanctioned: number;
+};
+
+export type PerformanceReportBranchPoint = PerformanceReportMetricRow & {
+  branchId: string;
+  branch: string;
+};
+
+export type PerformanceReportCounselorPoint = PerformanceReportMetricRow & {
+  branchId: string;
+  branch: string;
+  counselorId: string;
+  counselor: string;
 };
 
 export type PerformanceRecordType = "lead" | "student";

@@ -24,7 +24,7 @@ const performanceLeadSelect = {
   emailId: true,
   source: true,
   branchId: true,
-  isConverted: true,
+  createdById: true,
   convertedAt: true,
   preferredCountry: true,
   preferredIntake: true,
@@ -38,22 +38,24 @@ const performanceLeadSelect = {
       name: true,
     },
   },
+  createdBy: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
   counselors: {
-    orderBy: [{ isPrimary: "desc" }, { assignedAt: "asc" }],
+    orderBy: [{ isPrimary: "desc" }, { assignedAt: "desc" }],
     select: {
       counselorId: true,
       isPrimary: true,
+      assignedAt: true,
       counselor: {
         select: {
           id: true,
           name: true,
         },
       },
-    },
-  },
-  student: {
-    select: {
-      id: true,
     },
   },
 } satisfies Prisma.LeadSelect;
@@ -93,6 +95,27 @@ const performanceStudentSelect = {
       convertedAt: true,
       nextFollowup: true,
       createdAt: true,
+      createdById: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      counselors: {
+        orderBy: [{ isPrimary: "desc" }, { assignedAt: "desc" }],
+        select: {
+          counselorId: true,
+          isPrimary: true,
+          assignedAt: true,
+          counselor: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
   },
   visaProfile: {
@@ -109,7 +132,7 @@ const performanceStudentSelect = {
       fintechAssigneeId: true,
       nbfc: true,
       loanStatus: true,
-      pfStatus: true,  
+      pfStatus: true,
       disbursed: true,
       fintechAssignee: {
         select: {
@@ -185,43 +208,44 @@ type FilterLookup = {
   intakeName: string;
 };
 
-export type PerformanceReportAccessScope =
-  | {
-      kind: "all";
-    }
-  | {
-      kind: "branches";
-      branchIds: string[];
-    }
-  | {
-      kind: "user";
-      userId: string;
-      userName: string;
-    };
-
-type BranchAccumulator = {
-  branchId: string;
-  branch: string;
-  leads: number;
-  lostLeads: number;
-  students: number;
-  droppedStudents: number;
-  applications: number;
-  visaApproved: number;
-  
+type PerformanceOwner = {
+  id: string;
+  name: string;
 };
 
-type CounselorAccumulator = {
-  counselorId: string;
-  counselor: string;
-  branchActivity: Map<
-    string,
-    {
-      branchId: string;
-      branch: string;
-      records: number;
-    }
-  >;
+type LeadOwnershipRecord = {
+  createdById: string | null;
+  createdBy: PerformanceOwner | null;
+  counselors: Array<{
+    counselorId: string;
+    isPrimary: boolean;
+    assignedAt: Date;
+    counselor: PerformanceOwner;
+  }>;
+};
+
+type TargetLeadOwnershipRecord = LeadOwnershipRecord & {
+  branchId: string;
+  student: {
+    counselorId: string | null;
+    counselor: PerformanceOwner | null;
+  } | null;
+};
+
+type TargetStudentOwnershipRecord = {
+  branchId: string;
+  counselorId: string | null;
+  counselor: PerformanceOwner | null;
+  lead: LeadOwnershipRecord;
+};
+
+export type PerformanceReportAccessScope =
+  | { kind: "all" }
+  | { kind: "branches"; branchIds: string[] }
+  | { kind: "user"; userId: string; userName: string };
+
+type MetricAccumulator = {
+  totalWalkins: number;
   leads: number;
   qualifiedLeads: number;
   lostLeads: number;
@@ -231,30 +255,40 @@ type CounselorAccumulator = {
   offers: number;
   casReceived: number;
   visaApproved: number;
-  loanSanctioned: number;
-  
 };
 
-type CounselorDetails = {
-  name: string;
-  branches: Array<{
-    id: string;
-    name: string;
-  }>;
+type BranchAccumulator = MetricAccumulator & {
+  branchId: string;
+  branch: string;
+};
+
+type CounselorAccumulator = MetricAccumulator & {
+  branchId: string;
+  branch: string;
+  counselorId: string;
+  counselor: string;
+};
+
+type PerformancePerson = {
+  branchId: string;
+  branch: string;
+  counselorId: string;
+  counselor: string;
 };
 
 type TargetMetrics = {
   totalTarget: number;
   totalAchieved: number;
   totalLeadsCreated: number;
-  targetMonths: number;
+  targetAssignments: number;
   branchTargets: ReadonlyMap<string, number>;
   branchAchievements: ReadonlyMap<string, number>;
   branchLeadsCreated: ReadonlyMap<string, number>;
   counselorTargets: ReadonlyMap<string, number>;
   counselorAchievements: ReadonlyMap<string, number>;
   counselorLeadsCreated: ReadonlyMap<string, number>;
-  counselorDetails: ReadonlyMap<string, CounselorDetails>;
+  performancePeople: ReadonlyMap<string, PerformancePerson>;
+  targetBranches: ReadonlyMap<string, string>;
 };
 
 const STUDY_ABROAD_LEAD_TYPE = "study_abroad";
@@ -266,82 +300,25 @@ const DROPPED_STUDENT_STATUSES = new Set([
   "dropped",
   "student_dropped",
 ]);
+const FULL_PERFORMANCE_ACCESS: PerformanceReportAccessScope = { kind: "all" };
 
-const FULL_PERFORMANCE_ACCESS: PerformanceReportAccessScope = {
-  kind: "all",
-};
-
-function buildLeadAccessWhere(
-  accessScope: PerformanceReportAccessScope,
-): Prisma.LeadWhereInput | null {
-  if (accessScope.kind === "branches") {
-    return {
-      branchId: {
-        in: accessScope.branchIds,
-      },
-    };
-  }
-
-  if (accessScope.kind === "user") {
-    return {
-      OR: [
-        {
-          createdById: accessScope.userId,
-        },
-        {
-          counselors: {
-            some: {
-              counselorId: accessScope.userId,
-            },
-          },
-        },
-      ],
-    };
-  }
-
-  return null;
+function metricAccumulator(): MetricAccumulator {
+  return {
+    totalWalkins: 0,
+    leads: 0,
+    qualifiedLeads: 0,
+    lostLeads: 0,
+    students: 0,
+    droppedStudents: 0,
+    applications: 0,
+    offers: 0,
+    casReceived: 0,
+    visaApproved: 0,
+  };
 }
 
-function buildStudentAccessWhere(
-  accessScope: PerformanceReportAccessScope,
-): Prisma.StudentWhereInput | null {
-  if (accessScope.kind === "branches") {
-    return {
-      branchId: {
-        in: accessScope.branchIds,
-      },
-    };
-  }
-
-  if (accessScope.kind === "user") {
-    return {
-      OR: [
-        {
-          counselorId: accessScope.userId,
-        },
-        {
-          lead: {
-            is: {
-              OR: [
-                {
-                  createdById: accessScope.userId,
-                },
-                {
-                  counselors: {
-                    some: {
-                      counselorId: accessScope.userId,
-                    },
-                  },
-                },
-              ],
-            },
-          },
-        },
-      ],
-    };
-  }
-
-  return null;
+function counselorMetricKey(branchId: string, counselorId: string): string {
+  return `${branchId}:${counselorId}`;
 }
 
 function clean(value: string | null): string {
@@ -355,11 +332,95 @@ function parsePositiveInteger(
 ): number {
   const parsed = Number(value);
 
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    return fallback;
+  return Number.isInteger(parsed) && parsed > 0
+    ? Math.min(parsed, maximum)
+    : fallback;
+}
+
+function normalizeStatus(value: string | null | undefined): string {
+  return value?.trim().toLowerCase().replace(/[\s-]+/g, "_") ?? "";
+}
+
+function humanizeStatus(value: string): string {
+  return value
+    ? value
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (character) => character.toUpperCase())
+    : "Not Set";
+}
+
+function isLostLead(value: string | null | undefined): boolean {
+  return LOST_LEAD_STATUSES.has(normalizeStatus(value));
+}
+
+function isDroppedStudent(value: string | null | undefined): boolean {
+  return DROPPED_STUDENT_STATUSES.has(normalizeStatus(value));
+}
+
+function isOfferStatus(value: string | null | undefined): boolean {
+  const normalized = normalizeStatus(value);
+
+  return Boolean(normalized) &&
+    !["none", "not_received", "pending", "rejected", "not_applicable"].includes(
+      normalized,
+    );
+}
+
+function isCasReceived(value: string | null | undefined): boolean {
+  return ["received", "cas_received", "issued"].includes(
+    normalizeStatus(value),
+  );
+}
+
+function isVisaApproved(value: string | null | undefined): boolean {
+  return ["approved", "visa_approved"].includes(normalizeStatus(value));
+}
+
+function buildLeadAccessWhere(
+  accessScope: PerformanceReportAccessScope,
+): Prisma.LeadWhereInput | null {
+  if (accessScope.kind === "branches") {
+    return { branchId: { in: accessScope.branchIds } };
   }
 
-  return Math.min(parsed, maximum);
+  if (accessScope.kind === "user") {
+    return {
+      OR: [
+        { createdById: accessScope.userId },
+        { counselors: { some: { counselorId: accessScope.userId } } },
+      ],
+    };
+  }
+
+  return null;
+}
+
+function buildStudentAccessWhere(
+  accessScope: PerformanceReportAccessScope,
+): Prisma.StudentWhereInput | null {
+  if (accessScope.kind === "branches") {
+    return { branchId: { in: accessScope.branchIds } };
+  }
+
+  if (accessScope.kind === "user") {
+    return {
+      OR: [
+        { counselorId: accessScope.userId },
+        {
+          lead: {
+            is: {
+              OR: [
+                { createdById: accessScope.userId },
+                { counselors: { some: { counselorId: accessScope.userId } } },
+              ],
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  return null;
 }
 
 function getIndiaCalendarDate(now: Date): Date {
@@ -369,7 +430,6 @@ function getIndiaCalendarDate(now: Date): Date {
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(now);
-
   const year = Number(parts.find((part) => part.type === "year")?.value);
   const month = Number(parts.find((part) => part.type === "month")?.value);
   const day = Number(parts.find((part) => part.type === "day")?.value);
@@ -388,9 +448,13 @@ function startOfMonth(date: Date): Date {
 }
 
 function startOfQuarter(date: Date): Date {
-  const quarterStartMonth = Math.floor(date.getUTCMonth() / 3) * 3;
-
-  return new Date(Date.UTC(date.getUTCFullYear(), quarterStartMonth, 1));
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      Math.floor(date.getUTCMonth() / 3) * 3,
+      1,
+    ),
+  );
 }
 
 function parseDateOnly(value: string): Date | null {
@@ -399,7 +463,6 @@ function parseDateOnly(value: string): Date | null {
   }
 
   const date = new Date(`${value}T00:00:00.000Z`);
-
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -411,432 +474,152 @@ function getDateRange(
 ): DateRange | null {
   const today = getIndiaCalendarDate(now);
 
-  switch (preset) {
-    case "today":
-      return {
-        gte: today,
-        lt: addDays(today, 1),
-      };
+  if (preset === "today") {
+    return { gte: today, lt: addDays(today, 1) };
+  }
 
-    case "yesterday": {
-      const yesterday = addDays(today, -1);
+  if (preset === "yesterday") {
+    return { gte: addDays(today, -1), lt: today };
+  }
 
-      return {
-        gte: yesterday,
-        lt: today,
-      };
-    }
+  if (preset === "last_7_days") {
+    return { gte: addDays(today, -6), lt: addDays(today, 1) };
+  }
 
-    case "last_7_days":
-      return {
-        gte: addDays(today, -6),
-        lt: addDays(today, 1),
-      };
+  if (preset === "last_30_days") {
+    return { gte: addDays(today, -29), lt: addDays(today, 1) };
+  }
 
-    case "last_30_days":
-      return {
-        gte: addDays(today, -29),
-        lt: addDays(today, 1),
-      };
+  if (preset === "this_month") {
+    return { gte: startOfMonth(today), lt: addDays(today, 1) };
+  }
 
-    case "this_month":
-      return {
-        gte: startOfMonth(today),
-        lt: addDays(today, 1),
-      };
-
-    case "last_month": {
-      const thisMonth = startOfMonth(today);
-      const lastMonth = new Date(
+  if (preset === "last_month") {
+    const thisMonth = startOfMonth(today);
+    return {
+      gte: new Date(
         Date.UTC(thisMonth.getUTCFullYear(), thisMonth.getUTCMonth() - 1, 1),
-      );
+      ),
+      lt: thisMonth,
+    };
+  }
 
-      return {
-        gte: lastMonth,
-        lt: thisMonth,
-      };
-    }
+  if (preset === "this_quarter") {
+    return { gte: startOfQuarter(today), lt: addDays(today, 1) };
+  }
 
-    case "this_quarter":
-      return {
-        gte: startOfQuarter(today),
-        lt: addDays(today, 1),
-      };
-
-    case "last_quarter": {
-      const thisQuarter = startOfQuarter(today);
-      const lastQuarter = new Date(
+  if (preset === "last_quarter") {
+    const thisQuarter = startOfQuarter(today);
+    return {
+      gte: new Date(
         Date.UTC(
           thisQuarter.getUTCFullYear(),
           thisQuarter.getUTCMonth() - 3,
           1,
         ),
-      );
-
-      return {
-        gte: lastQuarter,
-        lt: thisQuarter,
-      };
-    }
-
-    case "this_year":
-      return {
-        gte: new Date(Date.UTC(today.getUTCFullYear(), 0, 1)),
-        lt: addDays(today, 1),
-      };
-
-    case "custom": {
-      const start = parseDateOnly(customStartDate);
-      const end = parseDateOnly(customEndDate);
-
-      if (!start && !end) {
-        return null;
-      }
-
-      return {
-        ...(start && { gte: start }),
-        ...(end && { lt: addDays(end, 1) }),
-      };
-    }
-
-    default:
-      return null;
+      ),
+      lt: thisQuarter,
+    };
   }
-}
 
-function addMonths(date: Date, months: number): Date {
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1),
-  );
-}
-
-function getTargetMonthRange(
-  dateRange: DateRange | null,
-): Prisma.DateTimeFilter | undefined {
-  if (!dateRange) {
-    return undefined;
+  if (preset === "this_year") {
+    return {
+      gte: new Date(Date.UTC(today.getUTCFullYear(), 0, 1)),
+      lt: addDays(today, 1),
+    };
   }
+
+  if (preset !== "custom") {
+    return null;
+  }
+
+  const first = parseDateOnly(customStartDate);
+  const second = parseDateOnly(customEndDate);
+
+  if (!first && !second) {
+    return null;
+  }
+
+  const start = first && second && first > second ? second : first;
+  const end = first && second && first > second ? first : second;
 
   return {
-    ...(dateRange.gte && { gte: startOfMonth(dateRange.gte) }),
-    ...(dateRange.lt && {
-      lt: addMonths(startOfMonth(addDays(dateRange.lt, -1)), 1),
-    }),
+    ...(start && { gte: start }),
+    ...(end && { lt: addDays(end, 1) }),
   };
 }
 
-async function getTargetMetrics(
+function getCurrentAssignmentOwner(
+  lead: LeadOwnershipRecord,
+): PerformanceOwner | null {
+  const assignment =
+    lead.counselors.find((item) => item.isPrimary) ??
+    lead.counselors[0] ??
+    null;
+
+  return assignment
+    ? { id: assignment.counselorId, name: assignment.counselor.name }
+    : null;
+}
+
+function getCurrentLeadOwner(
+  lead: LeadOwnershipRecord,
+): PerformanceOwner | null {
+  return (
+    getCurrentAssignmentOwner(lead) ??
+    (lead.createdById
+      ? {
+          id: lead.createdById,
+          name: lead.createdBy?.name ?? "Not Assigned",
+        }
+      : null)
+  );
+}
+
+function getCurrentStudentOwner(
+  student: PerformanceStudentRecord | TargetStudentOwnershipRecord,
+): PerformanceOwner | null {
+  return (
+    getCurrentAssignmentOwner(student.lead) ??
+    (student.counselorId
+      ? {
+          id: student.counselorId,
+          name: student.counselor?.name ?? "Not Assigned",
+        }
+      : null) ??
+    getCurrentLeadOwner(student.lead)
+  );
+}
+
+function getCurrentTargetLeadOwner(
+  lead: TargetLeadOwnershipRecord,
+): PerformanceOwner | null {
+  return (
+    getCurrentAssignmentOwner(lead) ??
+    (lead.student?.counselorId
+      ? {
+          id: lead.student.counselorId,
+          name: lead.student.counselor?.name ?? "Not Assigned",
+        }
+      : null) ??
+    getCurrentLeadOwner(lead)
+  );
+}
+
+function getOwnerFilterId(
   filters: PerformanceReportFilters,
   accessScope: PerformanceReportAccessScope,
-): Promise<TargetMetrics> {
-  const dateRange = getDateRange(
-    filters.datePreset,
-    filters.startDate,
-    filters.endDate,
-  );
-  
-
-  const counselorConditions: Prisma.UserWhereInput[] = [
-    {
-      role: {
-        is: {
-          name: {
-            in: COUNSELLOR_ROLE_NAMES,
-            mode: "insensitive",
-          },
-        },
-      },
-    },
-  ];
-
-  const achievementConditions: Prisma.StudentWhereInput[] = [];
-  const createdLeadConditions: Prisma.LeadWhereInput[] = [];
-
-  if (filters.counselorId && accessScope.kind !== "user") {
-    counselorConditions.push({ id: filters.counselorId });
-    achievementConditions.push({ counselorId: filters.counselorId });
-    createdLeadConditions.push({ createdById: filters.counselorId });
-  }
-
-  if (filters.branchId) {
-    counselorConditions.push({
-      branches: {
-        some: {
-          id: filters.branchId,
-        },
-      },
-    });
-    achievementConditions.push({ branchId: filters.branchId });
-    createdLeadConditions.push({ branchId: filters.branchId });
-  }
-
-  if (accessScope.kind === "branches") {
-    counselorConditions.push({
-      branches: {
-        some: {
-          id: {
-            in: accessScope.branchIds,
-          },
-        },
-      },
-    });
-    achievementConditions.push({
-      branchId: {
-        in: accessScope.branchIds,
-      },
-    });
-    createdLeadConditions.push({
-      branchId: {
-        in: accessScope.branchIds,
-      },
-    });
-  } else if (accessScope.kind === "user") {
-    counselorConditions.push({ id: accessScope.userId });
-
-    const studentAccessWhere = buildStudentAccessWhere(accessScope);
-
-    if (studentAccessWhere) {
-      achievementConditions.push(studentAccessWhere);
-    }
-
-    // "Leads Added" remains creator-based. Assigned leads are still included
-    // in All Leads / Students / Applications through the report access scope.
-    createdLeadConditions.push({ createdById: accessScope.userId });
-  }
-
-  const [targets, achievements, createdLeads] = await Promise.all([
-   db.counsellorIntakeTarget.findMany({
-  where: {
-    counsellor: {
-      AND: counselorConditions,
-    },
-  },
-  select: {
-    target: true,
-    counsellor: {
-      select: {
-        id: true,
-        name: true,
-        branches: {
-          select: {
-            id: true,
-            name: true,
-          },
-          orderBy: {
-            name: "asc",
-          },
-        },
-      },
-    },
-  },
-}),
-    db.student.groupBy({
-      by: ["branchId", "counselorId"],
-      where: {
-        ...(dateRange && { createdAt: dateRange }),
-        ...(achievementConditions.length > 0 && {
-          AND: achievementConditions,
-        }),
-      },
-      _count: {
-        _all: true,
-      },
-    }),
-    db.lead.groupBy({
-      by: ["branchId", "createdById"],
-      where: {
-        leadType: STUDY_ABROAD_LEAD_TYPE as Prisma.LeadWhereInput["leadType"],
-        ...(dateRange && { createdAt: dateRange }),
-        ...(createdLeadConditions.length > 0 && {
-          AND: createdLeadConditions,
-        }),
-      },
-      _count: {
-        _all: true,
-      },
-    }),
-  ]);
-
-  const branchTargets = new Map<string, number>();
-  const branchAchievements = new Map<string, number>();
-  const branchLeadsCreated = new Map<string, number>();
-  const counselorTargets = new Map<string, number>();
-  const counselorAchievements = new Map<string, number>();
-  const counselorLeadsCreated = new Map<string, number>();
-  const counselorDetails = new Map<string, CounselorDetails>();
-  const allowedBranchIds =
-    accessScope.kind === "branches" ? new Set(accessScope.branchIds) : null;
-  let totalTarget = 0;
-
-  for (const item of targets) {
-    const counselorId = item.counsellor.id;
-    const visibleBranches = item.counsellor.branches.filter((branch) => {
-      if (filters.branchId && branch.id !== filters.branchId) {
-        return false;
-      }
-
-      if (allowedBranchIds && !allowedBranchIds.has(branch.id)) {
-        return false;
-      }
-
-      return true;
-    });
-
-    totalTarget += item.target;
-   
-    counselorTargets.set(
-      counselorId,
-      (counselorTargets.get(counselorId) ?? 0) + item.target,
-    );
-    counselorDetails.set(counselorId, {
-      name: item.counsellor.name,
-      branches: visibleBranches,
-    });
-
-    for (const branch of visibleBranches) {
-      branchTargets.set(
-        branch.id,
-        (branchTargets.get(branch.id) ?? 0) + item.target,
-      );
-    }
-  }
-
-  for (const item of achievements) {
-    branchAchievements.set(
-      item.branchId,
-      (branchAchievements.get(item.branchId) ?? 0) + item._count._all,
-    );
-
-    const performanceCounselorId =
-      accessScope.kind === "user" ? accessScope.userId : item.counselorId;
-
-    if (performanceCounselorId) {
-      counselorAchievements.set(
-        performanceCounselorId,
-        (counselorAchievements.get(performanceCounselorId) ?? 0) +
-          item._count._all,
-      );
-    }
-  }
-
-  for (const item of createdLeads) {
-    branchLeadsCreated.set(
-      item.branchId,
-      (branchLeadsCreated.get(item.branchId) ?? 0) + item._count._all,
-    );
-
-    if (item.createdById) {
-      counselorLeadsCreated.set(
-        item.createdById,
-        (counselorLeadsCreated.get(item.createdById) ?? 0) + item._count._all,
-      );
-    }
-  }
-
-  return {
-    totalTarget,
-    totalAchieved: achievements.reduce(
-      (total, item) => total + item._count._all,
-      0,
-    ),
-    totalLeadsCreated: createdLeads.reduce(
-      (total, item) => total + item._count._all,
-      0,
-    ),
-    targetMonths: 0,
-    branchTargets,
-    branchAchievements,
-    branchLeadsCreated,
-    counselorTargets,
-    counselorAchievements,
-    counselorLeadsCreated,
-    counselorDetails,
-  };
+): string | null {
+  return accessScope.kind === "user"
+    ? accessScope.userId
+    : filters.counselorId || null;
 }
 
-function toNumber(value: unknown): number {
-  if (value === null || value === undefined || value === "") {
-    return 0;
-  }
-
-  const numberValue = Number(value);
-
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
-function normalizeStatus(value: string | null | undefined): string {
-  return (
-    value
-      ?.trim()
-      .toLowerCase()
-      .replace(/[\s-]+/g, "_") ?? ""
-  );
-}
-
-function isLostLead(value: string | null | undefined): boolean {
-  return LOST_LEAD_STATUSES.has(normalizeStatus(value));
-}
-
-function isDroppedStudent(value: string | null | undefined): boolean {
-  return DROPPED_STUDENT_STATUSES.has(normalizeStatus(value));
-}
-
-function humanizeStatus(value: string): string {
-  if (!value) {
-    return "Not Set";
-  }
-
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function isOfferStatus(value: string): boolean {
-  const normalized = normalizeStatus(value);
-
-  if (!normalized) {
-    return false;
-  }
-
-  return ![
-    "none",
-    "not_received",
-    "pending",
-    "rejected",
-    "not_applicable",
-  ].includes(normalized);
-}
-
-function isVisaApproved(value: string): boolean {
-  const normalized = normalizeStatus(value);
-
-  return ["approved", "visa_approved", "granted"].includes(normalized);
-}
-
-function isCasReceived(value: string): boolean {
-  const normalized = normalizeStatus(value);
-
-  return ["received", "cas_received", "issued"].includes(normalized);
-}
-
-function isLoanSanctioned(value: string): boolean {
-  const normalized = normalizeStatus(value);
-
-  return [
-    "sanctioned",
-    "approved",
-    "disbursed",
-    "partially_disbursed",
-    "fully_disbursed",
-  ].includes(normalized);
-}
-
-function getPrimaryLeadCounselor(lead: PerformanceLeadRecord) {
-  return (
-    lead.counselors.find((assignment) => assignment.isPrimary) ??
-    lead.counselors[0] ??
-    null
-  );
+function belongsToOwner(
+  owner: PerformanceOwner | null,
+  ownerId: string | null,
+): boolean {
+  return !ownerId || owner?.id === ownerId;
 }
 
 function getApplicationCountry(application: PerformanceApplicationRecord) {
@@ -844,9 +627,7 @@ function getApplicationCountry(application: PerformanceApplicationRecord) {
 }
 
 function getApplicationUniversity(application: PerformanceApplicationRecord) {
-  return (
-    application.universityName ?? application.university?.name ?? "Not Set"
-  );
+  return application.universityName ?? application.university?.name ?? "Not Set";
 }
 
 function getApplicationCourse(application: PerformanceApplicationRecord) {
@@ -857,64 +638,35 @@ function getApplicationIntake(application: PerformanceApplicationRecord) {
   return application.intakeName ?? application.intake?.name ?? "Not Set";
 }
 
-function sortApplicationsByDate(
-  applications: PerformanceApplicationRecord[],
-): PerformanceApplicationRecord[] {
-  return [...applications].sort((a, b) => {
-    const aDate = (a.applicationDate ?? a.createdAt).getTime();
-    const bDate = (b.applicationDate ?? b.createdAt).getTime();
-
-    return bDate - aDate;
-  });
-}
-
 function groupApplicationsByStudent(
   applications: PerformanceApplicationRecord[],
 ): Map<string, PerformanceApplicationRecord[]> {
-  const map = new Map<string, PerformanceApplicationRecord[]>();
+  const grouped = new Map<string, PerformanceApplicationRecord[]>();
 
   for (const application of applications) {
-    const current = map.get(application.studentId) ?? [];
-    current.push(application);
-    map.set(application.studentId, current);
+    const rows = grouped.get(application.studentId) ?? [];
+    rows.push(application);
+    grouped.set(application.studentId, rows);
   }
 
-  for (const [studentId, studentApplications] of map.entries()) {
-    map.set(studentId, sortApplicationsByDate(studentApplications));
+  for (const [studentId, rows] of grouped) {
+    grouped.set(
+      studentId,
+      rows.sort(
+        (a, b) =>
+          (b.applicationDate ?? b.createdAt).getTime() -
+          (a.applicationDate ?? a.createdAt).getTime(),
+      ),
+    );
   }
 
-  return map;
-}
-
-type PerformanceCounselorOverride = {
-  id: string;
-  name: string;
-};
-
-function getPerformanceCounselorOverride(
-  accessScope: PerformanceReportAccessScope,
-): PerformanceCounselorOverride | null {
-  if (accessScope.kind !== "user") {
-    return null;
-  }
-
-  return {
-    id: accessScope.userId,
-    name: accessScope.userName,
-  };
+  return grouped;
 }
 
 function mapLeadToRow(
   lead: PerformanceLeadRecord,
-  counselorOverride: PerformanceCounselorOverride | null,
 ): PerformanceReportRow {
-  const counselorAssignment = getPrimaryLeadCounselor(lead);
-  const counselorId =
-    counselorOverride?.id ?? counselorAssignment?.counselorId ?? null;
-  const counselorName =
-    counselorOverride?.name ??
-    counselorAssignment?.counselor?.name ??
-    "Not Assigned";
+  const owner = getCurrentLeadOwner(lead);
 
   return {
     recordType: "lead",
@@ -927,8 +679,8 @@ function mapLeadToRow(
     mobileNumber: lead.mobileNumber ?? "",
     branchId: lead.branchId,
     branchName: lead.branch?.name ?? "Not Assigned",
-    counselorId,
-    counselorName,
+    counselorId: owner?.id ?? null,
+    counselorName: owner?.name ?? "Not Assigned",
     source: lead.source ?? "Not Set",
     countryName: lead.preferredCountry ?? "Not Set",
     intakeName: lead.preferredIntake ?? "Not Set",
@@ -954,15 +706,10 @@ function mapLeadToRow(
 
 function mapStudentToRow(
   student: PerformanceStudentRecord,
-  studentApplications: PerformanceApplicationRecord[],
-  counselorOverride: PerformanceCounselorOverride | null,
+  applications: PerformanceApplicationRecord[],
 ): PerformanceReportRow {
-  const latestApplication = studentApplications[0] ?? null;
-  const visaProfile = student.visaProfile;
-  const loanProfile = student.loanProfile;
-  const counselorId = counselorOverride?.id ?? student.counselorId;
-  const counselorName =
-    counselorOverride?.name ?? student.counselor?.name ?? "Not Assigned";
+  const latestApplication = applications[0] ?? null;
+  const owner = getCurrentStudentOwner(student);
 
   return {
     recordType: "student",
@@ -975,8 +722,8 @@ function mapStudentToRow(
     mobileNumber: student.mobileNumber,
     branchId: student.branchId,
     branchName: student.branch?.name ?? "Not Assigned",
-    counselorId,
-    counselorName,
+    counselorId: owner?.id ?? null,
+    counselorName: owner?.name ?? "Not Assigned",
     source: student.lead.source ?? "Not Set",
     countryName: latestApplication
       ? getApplicationCountry(latestApplication)
@@ -991,10 +738,9 @@ function mapStudentToRow(
     currentStage: String(student.currentStage ?? ""),
     createdAt: student.createdAt.toISOString(),
     convertedAt:
-      student.lead.convertedAt?.toISOString() ??
-      student.createdAt.toISOString(),
+      student.lead.convertedAt?.toISOString() ?? student.createdAt.toISOString(),
     nextFollowup: student.lead.nextFollowup?.toISOString() ?? null,
-    applicationsCount: studentApplications.length,
+    applicationsCount: applications.length,
     latestApplicationId: latestApplication?.id ?? null,
     latestUniversityName: latestApplication
       ? getApplicationUniversity(latestApplication)
@@ -1007,23 +753,20 @@ function mapStudentToRow(
     latestOfferStatus: latestApplication
       ? String(latestApplication.offerStatus ?? "")
       : "",
-    casStatus: visaProfile?.casStatus ?? "",
-    visaStatus: visaProfile?.visaStatus ?? "",
-    loanStatus: loanProfile?.loanStatus ?? "",
-    nbfc: loanProfile?.nbfc ?? "",
-    fintechAssigneeName: loanProfile?.fintechAssignee?.name ?? "Not Assigned",
+    casStatus: student.visaProfile?.casStatus ?? "",
+    visaStatus: student.visaProfile?.visaStatus ?? "",
+    loanStatus: student.loanProfile?.loanStatus ?? "",
+    nbfc: student.loanProfile?.nbfc ?? "",
+    fintechAssigneeName:
+      student.loanProfile?.fintechAssignee?.name ?? "Not Assigned",
   };
 }
 
 function mapApplicationToExportRow(
   application: PerformanceApplicationRecord,
   student: PerformanceStudentRecord,
-  counselorOverride: PerformanceCounselorOverride | null,
 ): PerformanceApplicationExportRow {
-  const visaProfile = student.visaProfile;
-  const loanProfile = student.loanProfile;
-  const counselorName =
-    counselorOverride?.name ?? student.counselor?.name ?? "Not Assigned";
+  const owner = getCurrentStudentOwner(student);
 
   return {
     applicationId: application.id,
@@ -1033,7 +776,7 @@ function mapApplicationToExportRow(
     emailId: student.emailId,
     mobileNumber: student.mobileNumber,
     branchName: student.branch?.name ?? "Not Assigned",
-    counselorName,
+    counselorName: owner?.name ?? "Not Assigned",
     source: student.lead.source ?? "Not Set",
     countryName: getApplicationCountry(application),
     universityName: getApplicationUniversity(application),
@@ -1043,19 +786,17 @@ function mapApplicationToExportRow(
     applicationDate: application.applicationDate?.toISOString() ?? null,
     applicationStatus: String(application.status ?? ""),
     offerStatus: String(application.offerStatus ?? ""),
-    depositStatus: visaProfile?.depositStatus ?? "",
-    ihsPaidStatus: visaProfile?.ihsPaidStatus ?? "",
-    visaPaidStatus: visaProfile?.visaPaidStatus ?? "",
-    casStatus: visaProfile?.casStatus ?? "",
-    visaStatus: visaProfile?.visaStatus ?? "",
-    fintechAssigneeName: loanProfile?.fintechAssignee?.name ?? "Not Assigned",
-    nbfc: loanProfile?.nbfc ?? "",
-    loanStatus: loanProfile?.loanStatus ?? "",
-    pfStatus: loanProfile?.pfStatus ?? "",
-    
-    
-    disbursed: loanProfile?.disbursed ?? false,
-    
+    depositStatus: student.visaProfile?.depositStatus ?? "",
+    ihsPaidStatus: student.visaProfile?.ihsPaidStatus ?? "",
+    visaPaidStatus: student.visaProfile?.visaPaidStatus ?? "",
+    casStatus: student.visaProfile?.casStatus ?? "",
+    visaStatus: student.visaProfile?.visaStatus ?? "",
+    fintechAssigneeName:
+      student.loanProfile?.fintechAssignee?.name ?? "Not Assigned",
+    nbfc: student.loanProfile?.nbfc ?? "",
+    loanStatus: student.loanProfile?.loanStatus ?? "",
+    pfStatus: student.loanProfile?.pfStatus ?? "",
+    disbursed: student.loanProfile?.disbursed ?? false,
   };
 }
 
@@ -1080,35 +821,29 @@ function buildMonthlyVolume(
   applications: PerformanceApplicationRecord[],
 ): PerformanceReportMonthlyPoint[] {
   const map = new Map<string, PerformanceReportMonthlyPoint>();
-
   const ensurePoint = (date: Date) => {
     const key = monthKey(date);
-    const current = map.get(key) ?? {
+    const point = map.get(key) ?? {
       key,
       label: monthLabel(date),
       leads: 0,
       students: 0,
       applications: 0,
     };
-
-    map.set(key, current);
-    return current;
+    map.set(key, point);
+    return point;
   };
 
-  for (const lead of leads) {
+  leads.forEach((lead) => {
     ensurePoint(lead.createdAt).leads += 1;
-  }
-
-  for (const student of students) {
-    const conversionDate = student.lead.convertedAt ?? student.createdAt;
-    ensurePoint(conversionDate).students += 1;
-  }
-
-  for (const application of applications) {
-    const applicationDate =
-      application.applicationDate ?? application.createdAt;
-    ensurePoint(applicationDate).applications += 1;
-  }
+  });
+  students.forEach((student) => {
+    ensurePoint(student.lead.convertedAt ?? student.createdAt).students += 1;
+  });
+  applications.forEach((application) => {
+    ensurePoint(application.applicationDate ?? application.createdAt).applications +=
+      1;
+  });
 
   return Array.from(map.values())
     .sort((a, b) => a.key.localeCompare(b.key))
@@ -1120,62 +855,47 @@ function buildCountryDemand(
   students: PerformanceStudentRecord[],
   applicationsByStudent: Map<string, PerformanceApplicationRecord[]>,
 ): PerformanceReportCountryPoint[] {
-  const map = new Map<
-    string,
-    {
-      leads: number;
-      studentIds: Set<string>;
-      applications: number;
-    }
-  >();
-
+  const map = new Map<string, PerformanceReportCountryPoint>();
   const ensureCountry = (country: string) => {
     const key = country || "Not Set";
-    const current = map.get(key) ?? {
+    const point = map.get(key) ?? {
+      country: key,
       leads: 0,
-      studentIds: new Set<string>(),
+      students: 0,
       applications: 0,
     };
-
-    map.set(key, current);
-    return current;
+    map.set(key, point);
+    return point;
   };
 
-  for (const lead of leads) {
+  leads.forEach((lead) => {
     ensureCountry(lead.preferredCountry ?? "Not Set").leads += 1;
-  }
+  });
 
-  for (const student of students) {
-    const studentApplications = applicationsByStudent.get(student.id) ?? [];
-
-    if (studentApplications.length === 0) {
-      ensureCountry(student.lead.preferredCountry ?? "Not Set").studentIds.add(
-        student.id,
-      );
-      continue;
-    }
-
-    for (const application of studentApplications) {
-      const current = ensureCountry(getApplicationCountry(application));
-      current.studentIds.add(student.id);
-      current.applications += 1;
-    }
-  }
-
-  return Array.from(map.entries())
-    .map(([country, value]) => ({
-      country,
-      leads: value.leads,
-      students: value.studentIds.size,
-      applications: value.applications,
-    }))
-    .sort(
-      (a, b) =>
-        b.leads +
-        b.students +
-        b.applications -
-        (a.leads + a.students + a.applications),
+  students.forEach((student) => {
+    const applications = applicationsByStudent.get(student.id) ?? [];
+    const countries = new Set(
+      applications.map(getApplicationCountry).filter((country) => country),
     );
+
+    if (countries.size === 0) {
+      countries.add(student.lead.preferredCountry ?? "Not Set");
+    }
+
+    countries.forEach((country) => {
+      ensureCountry(country).students += 1;
+    });
+
+    applications.forEach((application) => {
+      ensureCountry(getApplicationCountry(application)).applications += 1;
+    });
+  });
+
+  return Array.from(map.values()).sort(
+    (a, b) =>
+      b.leads + b.students + b.applications -
+      (a.leads + a.students + a.applications),
+  );
 }
 
 function buildLeadStatusBreakdown(
@@ -1184,74 +904,58 @@ function buildLeadStatusBreakdown(
 ): PerformanceReportStatusPoint[] {
   const map = new Map<string, number>();
 
-  for (const lead of leads) {
+  leads.forEach((lead) => {
     const status = humanizeStatus(String(lead.status ?? ""));
     map.set(status, (map.get(status) ?? 0) + 1);
-  }
+  });
 
   if (students.length > 0) {
     map.set("Converted", (map.get("Converted") ?? 0) + students.length);
   }
 
-  return Array.from(map.entries())
-    .map(([status, count]) => ({ status, count }))
-    .sort((a, b) => b.count - a.count);
+  return Array.from(map, ([status, count]) => ({ status, count })).sort(
+    (a, b) => b.count - a.count,
+  );
 }
 
 function buildLeadSourceBreakdown(
   leads: PerformanceLeadRecord[],
   students: PerformanceStudentRecord[],
 ): PerformanceReportSourcePoint[] {
-  const map = new Map<
-    string,
-    {
-      leads: number;
-      students: number;
-    }
-  >();
-
+  const map = new Map<string, { leads: number; students: number }>();
   const ensureSource = (source: string) => {
     const key = source || "Not Set";
-    const current = map.get(key) ?? {
-      leads: 0,
-      students: 0,
-    };
-
-    map.set(key, current);
-    return current;
+    const point = map.get(key) ?? { leads: 0, students: 0 };
+    map.set(key, point);
+    return point;
   };
 
-  for (const lead of leads) {
+  leads.forEach((lead) => {
     ensureSource(lead.source ?? "Not Set").leads += 1;
-  }
-
-  for (const student of students) {
+  });
+  students.forEach((student) => {
     ensureSource(student.lead.source ?? "Not Set").students += 1;
-  }
+  });
 
-  return Array.from(map.entries())
-    .map(([source, value]) => ({
-      source,
-      leads: value.leads,
-      students: value.students,
-      total: value.leads + value.students,
-    }))
-    .sort((a, b) => b.total - a.total);
+  return Array.from(map, ([source, value]) => ({
+    source,
+    leads: value.leads,
+    students: value.students,
+    total: value.leads + value.students,
+  })).sort((a, b) => b.total - a.total);
 }
 
-function buildStatusBreakdown(
-  values: string[],
-): PerformanceReportStatusPoint[] {
+function buildStatusBreakdown(values: string[]): PerformanceReportStatusPoint[] {
   const map = new Map<string, number>();
 
-  for (const value of values) {
+  values.forEach((value) => {
     const status = humanizeStatus(value);
     map.set(status, (map.get(status) ?? 0) + 1);
-  }
+  });
 
-  return Array.from(map.entries())
-    .map(([status, count]) => ({ status, count }))
-    .sort((a, b) => b.count - a.count);
+  return Array.from(map, ([status, count]) => ({ status, count })).sort(
+    (a, b) => b.count - a.count,
+  );
 }
 
 function buildBranchPerformance(
@@ -1261,105 +965,74 @@ function buildBranchPerformance(
   targetMetrics: TargetMetrics,
 ): PerformanceReportBranchPoint[] {
   const map = new Map<string, BranchAccumulator>();
-  const studentMap = new Map(students.map((student) => [student.id, student]));
-
+  const studentsById = new Map(students.map((student) => [student.id, student]));
   const ensureBranch = (branchId: string, branch: string) => {
-    const current = map.get(branchId) ?? {
+    const row = map.get(branchId) ?? {
       branchId,
       branch,
-      leads: 0,
-      lostLeads: 0,
-      students: 0,
-      droppedStudents: 0,
-      applications: 0,
-      visaApproved: 0,
+      ...metricAccumulator(),
     };
-
-    map.set(branchId, current);
-    return current;
+    map.set(branchId, row);
+    return row;
   };
 
-  for (const lead of leads) {
-    const current = ensureBranch(
-      lead.branchId,
-      lead.branch?.name ?? "Not Assigned",
-    );
+  targetMetrics.targetBranches.forEach((branch, branchId) => {
+    ensureBranch(branchId, branch);
+  });
 
-    current.leads += 1;
+  leads.forEach((lead) => {
+    const row = ensureBranch(lead.branchId, lead.branch?.name ?? "Not Assigned");
+    row.leads += 1;
+    row.totalWalkins += 1;
+    row.qualifiedLeads += normalizeStatus(String(lead.status)) === "qualified" ? 1 : 0;
+    row.lostLeads += isLostLead(String(lead.status)) ? 1 : 0;
+  });
 
-    if (isLostLead(String(lead.status ?? ""))) {
-      current.lostLeads += 1;
-    }
-  }
-
-  for (const student of students) {
-    const current = ensureBranch(
+  students.forEach((student) => {
+    const row = ensureBranch(
       student.branchId,
       student.branch?.name ?? "Not Assigned",
     );
+    row.students += 1;
+    row.totalWalkins += 1;
+    row.droppedStudents += isDroppedStudent(String(student.status)) ? 1 : 0;
+    row.casReceived += isCasReceived(student.visaProfile?.casStatus) ? 1 : 0;
+    row.visaApproved += isVisaApproved(student.visaProfile?.visaStatus) ? 1 : 0;
+  });
 
-    current.students += 1;
-
-    if (isDroppedStudent(String(student.status ?? ""))) {
-      current.droppedStudents += 1;
-    }
-
-    if (isVisaApproved(student.visaProfile?.visaStatus ?? "")) {
-      current.visaApproved += 1;
-    }
-
-   
-  }
-
-  for (const application of applications) {
-    const student = studentMap.get(application.studentId);
-
+  applications.forEach((application) => {
+    const student = studentsById.get(application.studentId);
     if (!student) {
-      continue;
+      return;
     }
-
-    ensureBranch(
+    const row = ensureBranch(
       student.branchId,
       student.branch?.name ?? "Not Assigned",
-    ).applications += 1;
-  }
+    );
+    row.applications += 1;
+    row.offers += isOfferStatus(String(application.offerStatus)) ? 1 : 0;
+  });
 
   return Array.from(map.values())
-    .map((value) => {
-      const pipelineRecords = value.leads + value.students;
-      const leadsCreated =
-        targetMetrics.branchLeadsCreated.get(value.branchId) ?? 0;
-      const target = targetMetrics.branchTargets.get(value.branchId) ?? 0;
-      const achieved =
-        targetMetrics.branchAchievements.get(value.branchId) ?? 0;
+    .map((row) => {
+      const target = targetMetrics.branchTargets.get(row.branchId) ?? 0;
+      const achieved = targetMetrics.branchAchievements.get(row.branchId) ?? 0;
 
       return {
-        branchId: value.branchId,
-        branch: value.branch,
-        leads: value.leads,
-        lostLeads: value.lostLeads,
-        students: value.students,
-        droppedStudents: value.droppedStudents,
-        leadsCreated,
+        ...row,
+        leadsCreated:
+          targetMetrics.branchLeadsCreated.get(row.branchId) ?? 0,
         target,
         achieved,
         targetCompletionPercentage:
           target > 0 ? Number(((achieved / target) * 100).toFixed(1)) : 0,
-        applications: value.applications,
         conversionRate:
-          pipelineRecords === 0
-            ? 0
-            : Number(((value.students / pipelineRecords) * 100).toFixed(1)),
-        visaApproved: value.visaApproved,
+          row.totalWalkins > 0
+            ? Number(((row.students / row.totalWalkins) * 100).toFixed(1))
+            : 0,
       };
     })
-    .sort(
-      (a, b) =>
-        b.leads +
-        b.students +
-        b.applications -
-        (a.leads + a.students + a.applications),
-    );
+    .sort((a, b) => a.branch.localeCompare(b.branch));
 }
 
 function buildCounselorPerformance(
@@ -1367,205 +1040,110 @@ function buildCounselorPerformance(
   students: PerformanceStudentRecord[],
   applications: PerformanceApplicationRecord[],
   targetMetrics: TargetMetrics,
-  selectedBranchId: string,
   accessScope: PerformanceReportAccessScope,
 ): PerformanceReportCounselorPoint[] {
   const map = new Map<string, CounselorAccumulator>();
-  const studentMap = new Map(students.map((student) => [student.id, student]));
-  const counselorOverride = getPerformanceCounselorOverride(accessScope);
-
+  const studentsById = new Map(students.map((student) => [student.id, student]));
   const ensureCounselor = (
+    branchId: string,
+    branch: string,
     counselorId: string,
     counselor: string,
-    branchId?: string,
-    branch?: string,
   ) => {
-    const current = map.get(counselorId) ?? {
+    const key = counselorMetricKey(branchId, counselorId);
+    const row = map.get(key) ?? {
+      branchId,
+      branch,
       counselorId,
       counselor,
-      branchActivity: new Map(),
-      leads: 0,
-      qualifiedLeads: 0,
-      lostLeads: 0,
-      students: 0,
-      droppedStudents: 0,
-      applications: 0,
-      offers: 0,
-      casReceived: 0,
-      visaApproved: 0,
-      loanSanctioned: 0,
+      ...metricAccumulator(),
     };
-
-    if (branchId) {
-      const activity = current.branchActivity.get(branchId) ?? {
-        branchId,
-        branch: branch || "Not Assigned",
-        records: 0,
-      };
-
-      activity.records += 1;
-      current.branchActivity.set(branchId, activity);
-    }
-
-    map.set(counselorId, current);
-    return current;
+    map.set(key, row);
+    return row;
   };
 
-  for (const lead of leads) {
-    const assignment = getPrimaryLeadCounselor(lead);
-    const counselorId =
-      counselorOverride?.id ?? assignment?.counselorId ?? "unassigned";
-    const counselor =
-      counselorOverride?.name ?? assignment?.counselor?.name ?? "Unassigned";
-    const current = ensureCounselor(
-      counselorId,
-      counselor,
+  targetMetrics.performancePeople.forEach((person) => {
+    ensureCounselor(
+      person.branchId,
+      person.branch,
+      person.counselorId,
+      person.counselor,
+    );
+  });
+
+  leads.forEach((lead) => {
+    const owner = getCurrentLeadOwner(lead);
+    const counselorId = owner?.id ?? "unassigned";
+    const counselor = owner?.name ?? "Unassigned";
+    const row = ensureCounselor(
       lead.branchId,
       lead.branch?.name ?? "Not Assigned",
-    );
-
-    current.leads += 1;
-
-    if (normalizeStatus(String(lead.status ?? "")) === "qualified") {
-      current.qualifiedLeads += 1;
-    }
-
-    if (isLostLead(String(lead.status ?? ""))) {
-      current.lostLeads += 1;
-    }
-  }
-
-  for (const student of students) {
-    const counselorId =
-      counselorOverride?.id ?? student.counselorId ?? "unassigned";
-    const counselor =
-      counselorOverride?.name ?? student.counselor?.name ?? "Unassigned";
-    const current = ensureCounselor(
       counselorId,
       counselor,
+    );
+    row.leads += 1;
+    row.totalWalkins += 1;
+    row.qualifiedLeads += normalizeStatus(String(lead.status)) === "qualified" ? 1 : 0;
+    row.lostLeads += isLostLead(String(lead.status)) ? 1 : 0;
+  });
+
+  students.forEach((student) => {
+    const owner = getCurrentStudentOwner(student);
+    const counselorId = owner?.id ?? "unassigned";
+    const counselor = owner?.name ?? "Unassigned";
+    const row = ensureCounselor(
       student.branchId,
       student.branch?.name ?? "Not Assigned",
+      counselorId,
+      counselor,
     );
+    row.students += 1;
+    row.totalWalkins += 1;
+    row.droppedStudents += isDroppedStudent(String(student.status)) ? 1 : 0;
+    row.casReceived += isCasReceived(student.visaProfile?.casStatus) ? 1 : 0;
+    row.visaApproved += isVisaApproved(student.visaProfile?.visaStatus) ? 1 : 0;
+  });
 
-    current.students += 1;
-
-    if (isDroppedStudent(String(student.status ?? ""))) {
-      current.droppedStudents += 1;
-    }
-
-    if (isCasReceived(student.visaProfile?.casStatus ?? "")) {
-      current.casReceived += 1;
-    }
-
-    if (isVisaApproved(student.visaProfile?.visaStatus ?? "")) {
-      current.visaApproved += 1;
-    }
-
-    if (isLoanSanctioned(student.loanProfile?.loanStatus ?? "")) {
-      current.loanSanctioned += 1;
-    }
-  }
-
-  for (const application of applications) {
-    const student = studentMap.get(application.studentId);
-
+  applications.forEach((application) => {
+    const student = studentsById.get(application.studentId);
     if (!student) {
-      continue;
+      return;
     }
-
-    const counselorId =
-      counselorOverride?.id ?? student.counselorId ?? "unassigned";
-    const counselor =
-      counselorOverride?.name ?? student.counselor?.name ?? "Unassigned";
-    const current = ensureCounselor(counselorId, counselor);
-
-    current.applications += 1;
-
-    if (isOfferStatus(String(application.offerStatus ?? ""))) {
-      current.offers += 1;
-    }
-  }
-
-  for (const [counselorId, details] of targetMetrics.counselorDetails) {
-    const current = ensureCounselor(counselorId, details.name);
-
-    for (const branch of details.branches) {
-      if (selectedBranchId && branch.id !== selectedBranchId) {
-        continue;
-      }
-
-      if (!current.branchActivity.has(branch.id)) {
-        current.branchActivity.set(branch.id, {
-          branchId: branch.id,
-          branch: branch.name,
-          records: 0,
-        });
-      }
-    }
-  }
+    const owner = getCurrentStudentOwner(student);
+    const counselorId = owner?.id ?? "unassigned";
+    const counselor = owner?.name ?? "Unassigned";
+    const row = ensureCounselor(
+      student.branchId,
+      student.branch?.name ?? "Not Assigned",
+      counselorId,
+      counselor,
+    );
+    row.applications += 1;
+    row.offers += isOfferStatus(String(application.offerStatus)) ? 1 : 0;
+  });
 
   return Array.from(map.values())
-    .map((value) => {
-      const details = targetMetrics.counselorDetails.get(value.counselorId);
-      const activityBranches = Array.from(value.branchActivity.values()).sort(
-        (a, b) => b.records - a.records || a.branch.localeCompare(b.branch),
-      );
-      const selectedBranch = selectedBranchId
-        ? activityBranches.find(
-            (branch) => branch.branchId === selectedBranchId,
-          )
-        : undefined;
-      const reportingBranch = selectedBranch ??
-        activityBranches[0] ??
-        details?.branches[0] ?? {
-          id: "unassigned",
-          name: "Not Assigned",
-        };
-      const branchId =
-        "branchId" in reportingBranch
-          ? reportingBranch.branchId
-          : (reportingBranch ?? "Not Assigned");
-      const branch =
-        "branch" in reportingBranch
-          ? reportingBranch.branch
-          : (reportingBranch ?? "Not Assigned");
-      const totalWalkins = value.leads + value.students;
-      const target = targetMetrics.counselorTargets.get(value.counselorId) ?? 0;
-      const achieved =
-        targetMetrics.counselorAchievements.get(value.counselorId) ?? 0;
+    .map((row) => {
+      const key = counselorMetricKey(row.branchId, row.counselorId);
+      const target = targetMetrics.counselorTargets.get(key) ?? 0;
+      const achieved = targetMetrics.counselorAchievements.get(key) ?? 0;
 
       return {
-        branchId,
-        branch,
-        counselorId: value.counselorId,
-        counselor: value.counselor,
-        totalWalkins,
-        leadsCreated:
-          targetMetrics.counselorLeadsCreated.get(value.counselorId) ?? 0,
-        leads: value.leads,
-        qualifiedLeads: value.qualifiedLeads,
-        lostLeads: value.lostLeads,
-        students: value.students,
-        droppedStudents: value.droppedStudents,
+        ...row,
+        leadsCreated: targetMetrics.counselorLeadsCreated.get(key) ?? 0,
         target,
         achieved,
         targetCompletionPercentage:
           target > 0 ? Number(((achieved / target) * 100).toFixed(1)) : 0,
-        applications: value.applications,
-        offers: value.offers,
         conversionRate:
-          totalWalkins > 0
-            ? Number(((value.students / totalWalkins) * 100).toFixed(1))
+          row.totalWalkins > 0
+            ? Number(((row.students / row.totalWalkins) * 100).toFixed(1))
             : 0,
-        casReceived: value.casReceived,
-        visaApproved: value.visaApproved,
-        loanSanctioned: value.loanSanctioned,
       };
     })
     .sort(
       (a, b) =>
         a.branch.localeCompare(b.branch) ||
-        a.branchId.localeCompare(b.branchId) ||
         a.counselor.localeCompare(b.counselor),
     );
 }
@@ -1593,7 +1171,7 @@ function buildSummary(
     totalTarget: targetMetrics.totalTarget,
     totalAchieved: targetMetrics.totalAchieved,
     totalLeadsCreated: targetMetrics.totalLeadsCreated,
-    targetMonths: targetMetrics.targetMonths,
+    targetAssignments: targetMetrics.targetAssignments,
     targetCompletionPercentage:
       targetMetrics.totalTarget > 0
         ? Number(
@@ -1604,32 +1182,19 @@ function buildSummary(
           )
         : 0,
     conversionRate:
-      totalPipelineRecords === 0
-        ? 0
-        : Number(((students.length / totalPipelineRecords) * 100).toFixed(1)),
+      totalPipelineRecords > 0
+        ? Number(((students.length / totalPipelineRecords) * 100).toFixed(1))
+        : 0,
     offerApplications: applications.filter((application) =>
-      isOfferStatus(String(application.offerStatus ?? "")),
-    ).length,
-    visaApprovedStudents: students.filter((student) =>
-      isVisaApproved(student.visaProfile?.visaStatus ?? ""),
+      isOfferStatus(String(application.offerStatus)),
     ).length,
     casReceivedStudents: students.filter((student) =>
-      isCasReceived(student.visaProfile?.casStatus ?? ""),
+      isCasReceived(student.visaProfile?.casStatus),
     ).length,
-    loanSanctionedStudents: students.filter((student) =>
-      isLoanSanctioned(student.loanProfile?.loanStatus ?? ""),
+    visaApprovedStudents: students.filter((student) =>
+      isVisaApproved(student.visaProfile?.visaStatus),
     ).length,
-  
   };
-}
-
-function hasApplicationFilters(filters: PerformanceReportFilters): boolean {
-  return Boolean(
-    filters.countryId ||
-    filters.intakeId ||
-    filters.universityId ||
-    filters.applicationStatus,
-  );
 }
 
 function hasStudentOnlyApplicationFilters(
@@ -1641,42 +1206,41 @@ function hasStudentOnlyApplicationFilters(
 function hasComplianceFilters(filters: PerformanceReportFilters): boolean {
   return Boolean(
     filters.casStatus ||
-    filters.visaStatus ||
-    filters.loanStatus ||
-    filters.nbfc ||
-    filters.fintechAssigneeId,
+      filters.visaStatus ||
+      filters.loanStatus ||
+      filters.nbfc ||
+      filters.fintechAssigneeId,
   );
 }
 
 function shouldIncludeLeads(filters: PerformanceReportFilters): boolean {
-  if (filters.recordScope === "students") {
-    return false;
-  }
-
-  if (filters.leadStatus === CONVERTED_LEAD_STATUS) {
-    return false;
-  }
-
-  if (
+  return !(
+    filters.recordScope === "students" ||
+    filters.leadStatus === CONVERTED_LEAD_STATUS ||
     hasStudentOnlyApplicationFilters(filters) ||
     hasComplianceFilters(filters)
-  ) {
-    return false;
-  }
-
-  return true;
+  );
 }
 
 function shouldIncludeStudents(filters: PerformanceReportFilters): boolean {
-  if (filters.recordScope === "leads") {
-    return false;
-  }
+  return !(
+    filters.recordScope === "leads" ||
+    (filters.leadStatus && filters.leadStatus !== CONVERTED_LEAD_STATUS)
+  );
+}
 
-  if (filters.leadStatus && filters.leadStatus !== CONVERTED_LEAD_STATUS) {
-    return false;
-  }
-
-  return true;
+function buildApplicationWhere(
+  filters: PerformanceReportFilters,
+): Prisma.StudentApplicationWhereInput {
+  return {
+    ...(filters.countryId && { countryId: filters.countryId }),
+    ...(filters.intakeId && { intakeId: filters.intakeId }),
+    ...(filters.universityId && { universityId: filters.universityId }),
+    ...(filters.applicationStatus && {
+      status:
+        filters.applicationStatus as Prisma.StudentApplicationWhereInput["status"],
+    }),
+  };
 }
 
 function buildLeadWhere(
@@ -1688,49 +1252,19 @@ function buildLeadWhere(
   const where: Prisma.LeadWhereInput = {
     leadType: STUDY_ABROAD_LEAD_TYPE as Prisma.LeadWhereInput["leadType"],
     isConverted: false,
-    student: {
-      is: null,
-    },
+    student: { is: null },
   };
 
   if (filters.search) {
     where.OR = [
+      { leadNumber: { contains: filters.search, mode: "insensitive" } },
+      { studentName: { contains: filters.search, mode: "insensitive" } },
+      { emailId: { contains: filters.search, mode: "insensitive" } },
+      { mobileNumber: { contains: filters.search, mode: "insensitive" } },
       {
-        leadNumber: {
-          contains: filters.search,
-          mode: "insensitive",
-        },
+        preferredCountry: { contains: filters.search, mode: "insensitive" },
       },
-      {
-        studentName: {
-          contains: filters.search,
-          mode: "insensitive",
-        },
-      },
-      {
-        emailId: {
-          contains: filters.search,
-          mode: "insensitive",
-        },
-      },
-      {
-        mobileNumber: {
-          contains: filters.search,
-          mode: "insensitive",
-        },
-      },
-      {
-        preferredCountry: {
-          contains: filters.search,
-          mode: "insensitive",
-        },
-      },
-      {
-        preferredCourse: {
-          contains: filters.search,
-          mode: "insensitive",
-        },
-      },
+      { preferredCourse: { contains: filters.search, mode: "insensitive" } },
     ];
   }
 
@@ -1739,11 +1273,12 @@ function buildLeadWhere(
   }
 
   if (filters.counselorId && accessScope.kind !== "user") {
-    where.counselors = {
-      some: {
-        counselorId: filters.counselorId,
-      },
-    };
+    andConditions.push({
+      OR: [
+        { createdById: filters.counselorId },
+        { counselors: { some: { counselorId: filters.counselorId } } },
+      ],
+    });
   }
 
   if (filters.leadStatus) {
@@ -1751,10 +1286,7 @@ function buildLeadWhere(
   }
 
   if (filters.leadSource) {
-    where.source = {
-      equals: filters.leadSource,
-      mode: "insensitive",
-    };
+    where.source = { equals: filters.leadSource, mode: "insensitive" };
   }
 
   if (lookup.countryName) {
@@ -1776,44 +1308,16 @@ function buildLeadWhere(
     filters.startDate,
     filters.endDate,
   );
-
   if (dateRange) {
     where.createdAt = dateRange;
   }
 
   const accessWhere = buildLeadAccessWhere(accessScope);
-
   if (accessWhere) {
     andConditions.push(accessWhere);
   }
-
   if (andConditions.length > 0) {
     where.AND = andConditions;
-  }
-
-  return where;
-}
-
-function buildApplicationWhere(
-  filters: PerformanceReportFilters,
-): Prisma.StudentApplicationWhereInput {
-  const where: Prisma.StudentApplicationWhereInput = {};
-
-  if (filters.countryId) {
-    where.countryId = filters.countryId;
-  }
-
-  if (filters.intakeId) {
-    where.intakeId = filters.intakeId;
-  }
-
-  if (filters.universityId) {
-    where.universityId = filters.universityId;
-  }
-
-  if (filters.applicationStatus) {
-    where.status =
-      filters.applicationStatus as Prisma.StudentApplicationWhereInput["status"];
   }
 
   return where;
@@ -1826,37 +1330,19 @@ function buildStudentWhere(
   const andConditions: Prisma.StudentWhereInput[] = [];
   const where: Prisma.StudentWhereInput = {};
   const leadWhere: Prisma.LeadWhereInput = {};
-  const loanProfileWhere: Prisma.StudentLoanProfileWhereInput = {};
-  const visaLoanWhere: Prisma.StudentVisaProfileWhereInput = {};
   const applicationWhere = buildApplicationWhere(filters);
+  const visaProfileWhere: Prisma.StudentVisaProfileWhereInput = {};
+  const loanProfileWhere: Prisma.StudentLoanProfileWhereInput = {};
 
   if (filters.search) {
     where.OR = [
-      {
-        studentName: {
-          contains: filters.search,
-          mode: "insensitive",
-        },
-      },
-      {
-        emailId: {
-          contains: filters.search,
-          mode: "insensitive",
-        },
-      },
-      {
-        mobileNumber: {
-          contains: filters.search,
-          mode: "insensitive",
-        },
-      },
+      { studentName: { contains: filters.search, mode: "insensitive" } },
+      { emailId: { contains: filters.search, mode: "insensitive" } },
+      { mobileNumber: { contains: filters.search, mode: "insensitive" } },
       {
         lead: {
           is: {
-            leadNumber: {
-              contains: filters.search,
-              mode: "insensitive",
-            },
+            leadNumber: { contains: filters.search, mode: "insensitive" },
           },
         },
       },
@@ -1898,48 +1384,64 @@ function buildStudentWhere(
   }
 
   if (filters.counselorId && accessScope.kind !== "user") {
-    where.counselorId = filters.counselorId;
+    andConditions.push({
+      OR: [
+        { counselorId: filters.counselorId },
+        {
+          lead: {
+            is: {
+              OR: [
+                { createdById: filters.counselorId },
+                {
+                  counselors: {
+                    some: { counselorId: filters.counselorId },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    });
   }
 
   if (filters.leadSource) {
-    leadWhere.source = {
-      equals: filters.leadSource,
-      mode: "insensitive",
-    };
+    leadWhere.source = { equals: filters.leadSource, mode: "insensitive" };
   }
-
   if (filters.leadStatus === CONVERTED_LEAD_STATUS) {
     leadWhere.status = CONVERTED_LEAD_STATUS as Prisma.LeadWhereInput["status"];
   }
-
   if (Object.keys(leadWhere).length > 0) {
-    where.lead = {
-      is: leadWhere,
-    };
+    where.lead = { is: leadWhere };
   }
 
   if (Object.keys(applicationWhere).length > 0) {
-    where.applications = {
-      some: applicationWhere,
-    };
+    where.applications = { some: applicationWhere };
+  }
+
+  if (filters.casStatus) {
+    visaProfileWhere.casStatus =
+      filters.casStatus as Prisma.StudentVisaProfileWhereInput["casStatus"];
+  }
+  if (filters.visaStatus) {
+    visaProfileWhere.visaStatus =
+      filters.visaStatus as Prisma.StudentVisaProfileWhereInput["visaStatus"];
+  }
+  if (Object.keys(visaProfileWhere).length > 0) {
+    where.visaProfile = { is: visaProfileWhere };
   }
 
   if (filters.loanStatus) {
     loanProfileWhere.loanStatus = filters.loanStatus;
   }
-
   if (filters.nbfc) {
     loanProfileWhere.nbfc = filters.nbfc;
   }
-
   if (filters.fintechAssigneeId) {
     loanProfileWhere.fintechAssigneeId = filters.fintechAssigneeId;
   }
-
   if (Object.keys(loanProfileWhere).length > 0) {
-    where.loanProfile = {
-      is: loanProfileWhere,
-    };
+    where.loanProfile = { is: loanProfileWhere };
   }
 
   const dateRange = getDateRange(
@@ -1947,17 +1449,24 @@ function buildStudentWhere(
     filters.startDate,
     filters.endDate,
   );
-
   if (dateRange) {
-    where.createdAt = dateRange;
+    andConditions.push({
+      OR: [
+        { lead: { is: { convertedAt: dateRange } } },
+        {
+          AND: [
+            { lead: { is: { convertedAt: null } } },
+            { createdAt: dateRange },
+          ],
+        },
+      ],
+    });
   }
 
   const accessWhere = buildStudentAccessWhere(accessScope);
-
   if (accessWhere) {
     andConditions.push(accessWhere);
   }
-
   if (andConditions.length > 0) {
     where.AND = andConditions;
   }
@@ -1971,22 +1480,14 @@ async function getFilterLookup(
   const [country, intake] = await Promise.all([
     filters.countryId
       ? db.country.findUnique({
-          where: {
-            id: filters.countryId,
-          },
-          select: {
-            name: true,
-          },
+          where: { id: filters.countryId },
+          select: { name: true },
         })
       : Promise.resolve(null),
     filters.intakeId
       ? db.intake.findUnique({
-          where: {
-            id: filters.intakeId,
-          },
-          select: {
-            name: true,
-          },
+          where: { id: filters.intakeId },
+          select: { name: true },
         })
       : Promise.resolve(null),
   ]);
@@ -1994,6 +1495,264 @@ async function getFilterLookup(
   return {
     countryName: country?.name ?? "",
     intakeName: intake?.name ?? "",
+  };
+}
+
+async function getTargetMetrics(
+  filters: PerformanceReportFilters,
+  lookup: FilterLookup,
+  accessScope: PerformanceReportAccessScope,
+): Promise<TargetMetrics> {
+  const targetConditions: Prisma.CounsellorIntakeTargetWhereInput[] = [];
+  const achievementConditions: Prisma.StudentWhereInput[] = [];
+  const leadConditions: Prisma.LeadWhereInput[] = [];
+  const ownerId = getOwnerFilterId(filters, accessScope);
+  const dateRange = getDateRange(
+    filters.datePreset,
+    filters.startDate,
+    filters.endDate,
+  );
+
+  if (filters.branchId) {
+    targetConditions.push({ branchId: filters.branchId });
+    achievementConditions.push({ branchId: filters.branchId });
+    leadConditions.push({ branchId: filters.branchId });
+  }
+
+  if (ownerId) {
+    targetConditions.push({ counsellorId: ownerId });
+    achievementConditions.push({
+      OR: [
+        { counselorId: ownerId },
+        { lead: { is: { createdById: ownerId } } },
+        {
+          lead: {
+            is: {
+              counselors: { some: { counselorId: ownerId } },
+            },
+          },
+        },
+      ],
+    });
+    leadConditions.push({
+      OR: [
+        { createdById: ownerId },
+        { counselors: { some: { counselorId: ownerId } } },
+        { student: { is: { counselorId: ownerId } } },
+      ],
+    });
+  }
+
+  if (filters.intakeId) {
+    targetConditions.push({ intakeId: filters.intakeId });
+    achievementConditions.push({
+      applications: { some: { intakeId: filters.intakeId } },
+    });
+  }
+
+  if (dateRange) {
+    achievementConditions.push({
+      OR: [
+        { lead: { is: { convertedAt: dateRange } } },
+        {
+          AND: [
+            { lead: { is: { convertedAt: null } } },
+            { createdAt: dateRange },
+          ],
+        },
+      ],
+    });
+    leadConditions.push({ createdAt: dateRange });
+  }
+
+  if (lookup.intakeName) {
+    leadConditions.push({
+      preferredIntake: { contains: lookup.intakeName, mode: "insensitive" },
+    });
+  }
+
+  if (accessScope.kind === "branches") {
+    targetConditions.push({ branchId: { in: accessScope.branchIds } });
+    achievementConditions.push({ branchId: { in: accessScope.branchIds } });
+    leadConditions.push({ branchId: { in: accessScope.branchIds } });
+  }
+
+  const [targets, achievementCandidates, leadCandidates] = await Promise.all([
+    db.counsellorIntakeTarget.findMany({
+      where:
+        targetConditions.length > 0 ? { AND: targetConditions } : undefined,
+      select: {
+        branchId: true,
+        counsellorId: true,
+        target: true,
+        branch: { select: { name: true } },
+        counsellor: { select: { name: true } },
+      },
+    }),
+    shouldIncludeStudents(filters)
+      ? db.student.findMany({
+          where:
+            achievementConditions.length > 0
+              ? { AND: achievementConditions }
+              : undefined,
+          select: {
+            branchId: true,
+            counselorId: true,
+            counselor: { select: { id: true, name: true } },
+            lead: {
+              select: {
+                createdById: true,
+                createdBy: { select: { id: true, name: true } },
+                counselors: {
+                  orderBy: [
+                    { isPrimary: "desc" },
+                    { assignedAt: "desc" },
+                  ],
+                  select: {
+                    counselorId: true,
+                    isPrimary: true,
+                    assignedAt: true,
+                    counselor: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            },
+          },
+        })
+      : Promise.resolve([] as TargetStudentOwnershipRecord[]),
+    db.lead.findMany({
+      where: {
+        leadType: STUDY_ABROAD_LEAD_TYPE as Prisma.LeadWhereInput["leadType"],
+        ...(leadConditions.length > 0 && { AND: leadConditions }),
+      },
+      select: {
+        branchId: true,
+        createdById: true,
+        createdBy: { select: { id: true, name: true } },
+        counselors: {
+          orderBy: [{ isPrimary: "desc" }, { assignedAt: "desc" }],
+          select: {
+            counselorId: true,
+            isPrimary: true,
+            assignedAt: true,
+            counselor: { select: { id: true, name: true } },
+          },
+        },
+        student: {
+          select: {
+            counselorId: true,
+            counselor: { select: { id: true, name: true } },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const achievements = achievementCandidates
+    .map((student) => ({
+      branchId: student.branchId,
+      owner: getCurrentStudentOwner(student),
+    }))
+    .filter((row) => belongsToOwner(row.owner, ownerId));
+  const createdLeads = leadCandidates
+    .map((lead) => ({
+      branchId: lead.branchId,
+      owner: getCurrentTargetLeadOwner(lead),
+    }))
+    .filter((row) => belongsToOwner(row.owner, ownerId));
+  const branchIds = Array.from(
+    new Set([
+      ...targets.map((row) => row.branchId),
+      ...achievements.map((row) => row.branchId),
+      ...createdLeads.map((row) => row.branchId),
+    ]),
+  );
+  const branches = branchIds.length
+    ? await db.branch.findMany({
+        where: { id: { in: branchIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const branchNames = new Map(branches.map((row) => [row.id, row.name]));
+  const branchTargets = new Map<string, number>();
+  const branchAchievements = new Map<string, number>();
+  const branchLeadsCreated = new Map<string, number>();
+  const counselorTargets = new Map<string, number>();
+  const counselorAchievements = new Map<string, number>();
+  const counselorLeadsCreated = new Map<string, number>();
+  const performancePeople = new Map<string, PerformancePerson>();
+  const targetBranches = new Map<string, string>();
+
+  const ensurePerson = (
+    branchId: string,
+    counselorId: string,
+    counselor: string,
+  ) => {
+    const key = counselorMetricKey(branchId, counselorId);
+    performancePeople.set(key, {
+      branchId,
+      branch: branchNames.get(branchId) ?? "Not Assigned",
+      counselorId,
+      counselor,
+    });
+    return key;
+  };
+
+  targets.forEach((row) => {
+    const key = ensurePerson(
+      row.branchId,
+      row.counsellorId,
+      row.counsellor.name,
+    );
+    targetBranches.set(row.branchId, row.branch.name);
+    branchTargets.set(
+      row.branchId,
+      (branchTargets.get(row.branchId) ?? 0) + row.target,
+    );
+    counselorTargets.set(key, (counselorTargets.get(key) ?? 0) + row.target);
+  });
+
+  achievements.forEach((row) => {
+    branchAchievements.set(
+      row.branchId,
+      (branchAchievements.get(row.branchId) ?? 0) + 1,
+    );
+    if (row.owner) {
+      const key = ensurePerson(row.branchId, row.owner.id, row.owner.name);
+      counselorAchievements.set(
+        key,
+        (counselorAchievements.get(key) ?? 0) + 1,
+      );
+    }
+  });
+
+  createdLeads.forEach((row) => {
+    branchLeadsCreated.set(
+      row.branchId,
+      (branchLeadsCreated.get(row.branchId) ?? 0) + 1,
+    );
+    if (row.owner) {
+      const key = ensurePerson(row.branchId, row.owner.id, row.owner.name);
+      counselorLeadsCreated.set(
+        key,
+        (counselorLeadsCreated.get(key) ?? 0) + 1,
+      );
+    }
+  });
+
+  return {
+    totalTarget: targets.reduce((total, row) => total + row.target, 0),
+    totalAchieved: achievements.length,
+    totalLeadsCreated: createdLeads.length,
+    targetAssignments: targets.length,
+    branchTargets,
+    branchAchievements,
+    branchLeadsCreated,
+    counselorTargets,
+    counselorAchievements,
+    counselorLeadsCreated,
+    performancePeople,
+    targetBranches,
   };
 }
 
@@ -2013,26 +1772,15 @@ export function parsePerformanceReportFilters(
     "this_year",
     "custom",
   ];
-
   const allowedScopes: ReportRecordScope[] = ["all", "leads", "students"];
   const requestedPreset = clean(searchParams.get("datePreset"));
   const requestedScope = clean(searchParams.get("recordScope"));
 
-  const datePreset = allowedPresets.includes(
-    requestedPreset as ReportDatePreset,
-  )
-    ? (requestedPreset as ReportDatePreset)
-    : "all";
-
-  const recordScope = allowedScopes.includes(
-    requestedScope as ReportRecordScope,
-  )
-    ? (requestedScope as ReportRecordScope)
-    : "all";
-
   return {
     search: clean(searchParams.get("search")),
-    recordScope,
+    recordScope: allowedScopes.includes(requestedScope as ReportRecordScope)
+      ? (requestedScope as ReportRecordScope)
+      : "all",
     branchId: clean(searchParams.get("branchId")),
     counselorId: clean(searchParams.get("counselorId")),
     leadStatus: clean(searchParams.get("leadStatus")),
@@ -2046,18 +1794,15 @@ export function parsePerformanceReportFilters(
     loanStatus: clean(searchParams.get("loanStatus")),
     nbfc: clean(searchParams.get("nbfc")),
     fintechAssigneeId: clean(searchParams.get("fintechAssigneeId")),
-    datePreset,
+    datePreset: allowedPresets.includes(requestedPreset as ReportDatePreset)
+      ? (requestedPreset as ReportDatePreset)
+      : "all",
     startDate: clean(searchParams.get("startDate")),
     endDate: clean(searchParams.get("endDate")),
   };
 }
 
-export function parsePerformanceReportPagination(
-  searchParams: URLSearchParams,
-): {
-  page: number;
-  limit: number;
-} {
+export function parsePerformanceReportPagination(searchParams: URLSearchParams) {
   return {
     page: parsePositiveInteger(searchParams.get("page"), 1, 100000),
     limit: parsePositiveInteger(searchParams.get("limit"), 20, 100),
@@ -2072,81 +1817,63 @@ export async function getPerformanceReport(
   accessScope: PerformanceReportAccessScope = FULL_PERFORMANCE_ACCESS,
 ): Promise<PerformanceReportData> {
   const lookup = await getFilterLookup(filters);
-  const includeLeads = shouldIncludeLeads(filters);
-  const includeStudents = shouldIncludeStudents(filters);
-
-  const [leads, students, targetMetrics] = await Promise.all([
-    includeLeads
+  const [leadCandidates, studentCandidates, targetMetrics] = await Promise.all([
+    shouldIncludeLeads(filters)
       ? db.lead.findMany({
           where: buildLeadWhere(filters, lookup, accessScope),
           select: performanceLeadSelect,
-          orderBy: {
-            createdAt: "desc",
-          },
+          orderBy: { createdAt: "desc" },
         })
       : Promise.resolve([] as PerformanceLeadRecord[]),
-    includeStudents
+    shouldIncludeStudents(filters)
       ? db.student.findMany({
           where: buildStudentWhere(filters, accessScope),
           select: performanceStudentSelect,
-          orderBy: {
-            createdAt: "desc",
-          },
+          orderBy: { createdAt: "desc" },
         })
       : Promise.resolve([] as PerformanceStudentRecord[]),
-    getTargetMetrics(filters, accessScope),
+    getTargetMetrics(filters, lookup, accessScope),
   ]);
-
+  const ownerId = getOwnerFilterId(filters, accessScope);
+  const leads = leadCandidates.filter((lead) =>
+    belongsToOwner(getCurrentLeadOwner(lead), ownerId),
+  );
+  const students = studentCandidates.filter((student) =>
+    belongsToOwner(getCurrentStudentOwner(student), ownerId),
+  );
   const studentIds = students.map((student) => student.id);
-  const applications =
-    studentIds.length === 0
-      ? []
-      : await db.studentApplication.findMany({
-          where: {
-            ...buildApplicationWhere(filters),
-            studentId: {
-              in: studentIds,
-            },
-          },
-          select: performanceApplicationSelect,
-          orderBy: [
-            {
-              applicationDate: "desc",
-            },
-            {
-              createdAt: "desc",
-            },
-          ],
-        });
-
+  const applications = studentIds.length
+    ? await db.studentApplication.findMany({
+        where: {
+          ...buildApplicationWhere(filters),
+          studentId: { in: studentIds },
+        },
+        select: performanceApplicationSelect,
+        orderBy: [{ applicationDate: "desc" }, { createdAt: "desc" }],
+      })
+    : [];
   const applicationsByStudent = groupApplicationsByStudent(applications);
-  const counselorOverride = getPerformanceCounselorOverride(accessScope);
   const allRows = [
-    ...leads.map((lead) => mapLeadToRow(lead, counselorOverride)),
+    ...leads.map(mapLeadToRow),
     ...students.map((student) =>
       mapStudentToRow(
         student,
         applicationsByStudent.get(student.id) ?? [],
-        counselorOverride,
       ),
     ),
   ].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
-
   const total = allRows.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(page, totalPages);
   const start = (safePage - 1) * limit;
-  const rows = allRows.slice(start, start + limit);
   const studentMap = new Map(students.map((student) => [student.id, student]));
-
   const applicationRows = includeApplicationRows
     ? applications.flatMap((application) => {
         const student = studentMap.get(application.studentId);
-
         return student
-          ? [mapApplicationToExportRow(application, student, counselorOverride)]
+          ? [mapApplicationToExportRow(application, student)]
           : [];
       })
     : undefined;
@@ -2162,7 +1889,7 @@ export async function getPerformanceReport(
       applications.map((application) => String(application.status ?? "")),
     ),
     visaStatusBreakdown: buildStatusBreakdown(
-      students.map((student) => student.visaProfile?.visaStatus ?? ""),
+      students.map((student) => String(student.visaProfile?.visaStatus ?? "")),
     ),
     loanStatusBreakdown: buildStatusBreakdown(
       students.map((student) => student.loanProfile?.loanStatus ?? ""),
@@ -2178,10 +1905,9 @@ export async function getPerformanceReport(
       students,
       applications,
       targetMetrics,
-      filters.branchId,
       accessScope,
     ),
-    rows,
+    rows: allRows.slice(start, start + limit),
     ...(applicationRows && { applicationRows }),
     pagination: {
       page: safePage,
@@ -2192,10 +1918,10 @@ export async function getPerformanceReport(
   };
 }
 
-export async function getPerformanceReportForExport(
+export function getPerformanceReportForExport(
   filters: PerformanceReportFilters,
   accessScope: PerformanceReportAccessScope = FULL_PERFORMANCE_ACCESS,
-): Promise<PerformanceReportData> {
+) {
   return getPerformanceReport(
     filters,
     1,
@@ -2205,7 +1931,31 @@ export async function getPerformanceReportForExport(
   );
 }
 
-export async function getPerformanceReportFilterOptions(): Promise<PerformanceReportFilterOptions> {
+export async function getPerformanceReportFilterOptions(
+  accessScope: PerformanceReportAccessScope = FULL_PERFORMANCE_ACCESS,
+): Promise<PerformanceReportFilterOptions> {
+  const branchWhere: Prisma.BranchWhereInput =
+    accessScope.kind === "branches"
+      ? { id: { in: accessScope.branchIds } }
+      : accessScope.kind === "user"
+        ? { users: { some: { id: accessScope.userId } } }
+        : {};
+  const counselorWhere: Prisma.UserWhereInput =
+    accessScope.kind === "user"
+      ? { id: accessScope.userId }
+      : {
+          role: {
+            is: {
+              name: {
+                in: COUNSELLOR_ROLE_NAMES,
+                mode: "insensitive",
+              },
+            },
+          },
+          ...(accessScope.kind === "branches" && {
+            branches: { some: { id: { in: accessScope.branchIds } } },
+          }),
+        };
   const [
     branches,
     counselors,
@@ -2220,132 +1970,67 @@ export async function getPerformanceReportFilterOptions(): Promise<PerformanceRe
     leadSourcesUsed,
   ] = await Promise.all([
     db.branch.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
+      where: branchWhere,
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
     }),
     db.user.findMany({
-      where: {
-        role: {
-          is: {
-            name: "Counsellor",
-          },
-        },
-      },
+      where: counselorWhere,
       select: {
         id: true,
         name: true,
-        branches: {
-          select: {
-            id: true,
-          },
-        },
+        branches: { select: { id: true } },
       },
-      orderBy: {
-        name: "asc",
-      },
+      orderBy: { name: "asc" },
     }),
     db.country.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
     }),
     db.intake.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
     }),
     db.university.findMany({
-      select: {
-        id: true,
-        name: true,
-        countryId: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
+      select: { id: true, name: true, countryId: true },
+      orderBy: { name: "asc" },
     }),
     db.studentApplication.findMany({
       distinct: ["status"],
-      select: {
-        status: true,
-      },
-      orderBy: {
-        status: "asc",
-      },
+      select: { status: true },
+      orderBy: { status: "asc" },
     }),
     db.studentVisaProfile.findMany({
-      select: {
-        casStatus: true,
-        visaStatus: true,
-        casDeadlineDate: true,
-      },
+      select: { casStatus: true, visaStatus: true },
     }),
     db.studentLoanProfile.findMany({
-      select: {
-        loanStatus: true,
-        nbfc: true,
-        fintechAssigneeId: true,
-      },
+      select: { loanStatus: true, nbfc: true },
     }),
     db.studentLoanProfile.findMany({
-      where: {
-        fintechAssigneeId: {
-          not: null,
-        },
-      },
+      where: { fintechAssigneeId: { not: null } },
       distinct: ["fintechAssigneeId"],
       select: {
-        fintechAssignee: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        fintechAssignee: { select: { id: true, name: true } },
       },
     }),
     db.leadSource.findMany({
-      where: {
-        status: true,
-      },
-      select: {
-        name: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
+      where: { status: true },
+      select: { name: true },
+      orderBy: { name: "asc" },
     }),
     db.lead.findMany({
-      where: {
-        source: {
-          not: null,
-        },
-      },
+      where: { source: { not: null } },
       distinct: ["source"],
-      select: {
-        source: true,
-      },
+      select: { source: true },
     }),
   ]);
-
   const uniqueSorted = (values: Array<string | null | undefined>) =>
     Array.from(
       new Set(values.map((value) => value?.trim()).filter(Boolean) as string[]),
     ).sort((a, b) => a.localeCompare(b));
 
   return {
+    access: { kind: accessScope.kind },
     branches: branches.map((branch) => ({
       value: branch.id,
       label: branch.name,
@@ -2371,17 +2056,10 @@ export async function getPerformanceReportFilterOptions(): Promise<PerformanceRe
     fintechAssignees: fintechProfiles
       .map((profile) => profile.fintechAssignee)
       .filter(
-        (
-          assignee,
-        ): assignee is {
-          id: string;
-          name: string;
-        } => Boolean(assignee),
+        (assignee): assignee is { id: string; name: string } =>
+          Boolean(assignee),
       )
-      .map((assignee) => ({
-        value: assignee.id,
-        label: assignee.name,
-      }))
+      .map((assignee) => ({ value: assignee.id, label: assignee.name }))
       .sort((a, b) => a.label.localeCompare(b.label)),
     leadStatuses: [
       "draft",
@@ -2395,14 +2073,12 @@ export async function getPerformanceReportFilterOptions(): Promise<PerformanceRe
       ...leadSourcesMaster.map((source) => source.name),
       ...leadSourcesUsed.map((lead) => lead.source),
     ]),
-    applicationStatuses: applicationStatuses.map((item) => String(item.status)),
-    casStatuses: uniqueSorted(visaProfiles.map((profile) => profile.casStatus)),
+    applicationStatuses: applicationStatuses.map((row) => String(row.status)),
+    casStatuses: uniqueSorted(visaProfiles.map((row) => String(row.casStatus))),
     visaStatuses: uniqueSorted(
-      visaProfiles.map((profile) => profile.visaStatus),
+      visaProfiles.map((row) => String(row.visaStatus)),
     ),
-    loanStatuses: uniqueSorted(
-      loanProfiles.map((profile) => profile.loanStatus),
-    ),
-    nbfcs: uniqueSorted(loanProfiles.map((profile) => profile.nbfc)),
+    loanStatuses: uniqueSorted(loanProfiles.map((row) => row.loanStatus)),
+    nbfcs: uniqueSorted(loanProfiles.map((row) => row.nbfc)),
   };
 }

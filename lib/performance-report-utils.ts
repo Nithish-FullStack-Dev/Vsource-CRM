@@ -26,14 +26,6 @@ export function humanizeReportStatus(value: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export function formatIndianCurrency(value: number): string {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 export function formatReportDate(value: string | null): string {
   if (!value) {
     return "Not Set";
@@ -41,9 +33,7 @@ export function formatReportDate(value: string | null): string {
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
-    return "Not Set";
-  }
-
-  return date.toLocaleDateString("en-IN");
+  return Number.isNaN(date.getTime())
+    ? "Not Set"
+    : date.toLocaleDateString("en-IN");
 }

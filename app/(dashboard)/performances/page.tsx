@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRightLeft,
@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Loader2,
   TableProperties,
+  Users,
 } from "lucide-react";
 import {
   Bar,
@@ -46,7 +47,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePerformanceReport } from "@/hooks/reports/usePerformanceReport";
 import { usePerformanceReportFilters } from "@/hooks/reports/usePerformanceReportFilters";
 import {
-  formatIndianCurrency,
+  calculatePerformanceTotals,
+  groupCounselorPerformance,
+} from "@/lib/performance-report-calculations";
+import {
   formatReportDate,
   humanizeReportStatus,
 } from "@/lib/performance-report-utils";
@@ -54,11 +58,11 @@ import { exportPerformanceReport } from "@/services/reports/performance-report.s
 import {
   DEFAULT_PERFORMANCE_REPORT_FILTERS,
   type PerformanceReportFilters,
+  type PerformanceReportMetricRow,
   type PerformanceReportRow,
 } from "@/types/performance-report";
 
 const PAGE_SIZE = 20;
-
 const CHART_COLORS = [
   "oklch(0.58 0.22 27)",
   "oklch(0.62 0.15 240)",
@@ -74,6 +78,15 @@ type SummaryCardProps = {
   value: string;
   description: string;
   icon: LucideIcon;
+};
+
+type ReportAccordionProps = {
+  value: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  children: ReactNode;
+  defaultOpen?: boolean;
 };
 
 function SummaryCard({
@@ -114,6 +127,46 @@ function SummarySkeleton() {
   );
 }
 
+function ReportAccordion({
+  value,
+  title,
+  description,
+  icon: Icon,
+  children,
+  defaultOpen,
+}: ReportAccordionProps) {
+  return (
+    <Accordion
+      type="single"
+      collapsible
+      defaultValue={defaultOpen ? value : undefined}
+      className="mb-4"
+    >
+      <AccordionItem
+        value={value}
+        className="overflow-hidden rounded-xl border bg-card shadow-sm"
+      >
+        <AccordionTrigger className="px-4 py-4 text-left hover:no-underline sm:px-6">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="shrink-0 rounded-xl bg-primary/10 p-2.5 text-primary">
+              <Icon className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold">{title}</p>
+              <p className="mt-1 text-xs font-normal leading-5 text-muted-foreground">
+                {description}
+              </p>
+            </div>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pb-4 sm:px-6 sm:pb-6">
+          {children}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
 function ChartEmptyState() {
   return (
     <div className="flex h-72 items-center justify-center text-sm text-muted-foreground">
@@ -125,13 +178,11 @@ function ChartEmptyState() {
 function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
-
   anchor.href = url;
   anchor.download = fileName;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-
   URL.revokeObjectURL(url);
 }
 
@@ -159,22 +210,110 @@ function getLifecycleBadgeClass(status: string) {
   if (["converted", "admitted", "enrolled", "completed"].includes(normalized)) {
     return "border-success/20 bg-success/15 text-success";
   }
-
-  if (
-    ["qualified", "visa_process", "loan_process", "active"].includes(normalized)
-  ) {
+  if (["qualified", "visa_process", "loan_process", "active"].includes(normalized)) {
     return "border-primary/20 bg-primary/10 text-primary";
   }
-
-  if (["lost", "dropped", "rejected"].includes(normalized)) {
+  if (["lost", "drop", "dropped", "rejected"].includes(normalized)) {
     return "border-destructive/20 bg-destructive/10 text-destructive";
   }
-
   if (["contacted", "draft"].includes(normalized)) {
     return "border-warning/20 bg-warning/15 text-warning";
   }
 
   return "border-border bg-muted text-muted-foreground";
+}
+
+function MetricHeaderCells() {
+  return (
+    <>
+      <th className="px-4 py-3 text-right font-medium">Total Walk-ins</th>
+      <th className="px-4 py-3 text-right font-medium">Active Walk-ins</th>
+      <th className="px-4 py-3 text-right font-medium">Drop Walk-ins</th>
+      <th className="px-4 py-3 text-right font-medium">Applications</th>
+      <th className="px-4 py-3 text-right font-medium">Dropped Applications</th>
+      <th className="px-4 py-3 text-right font-medium">Target</th>
+      <th className="px-4 py-3 text-right font-medium">Achieved</th>
+      <th className="px-4 py-3 text-right font-medium">Target %</th>
+      <th className="px-4 py-3 text-right font-medium">Conversion</th>
+      <th className="px-4 py-3 text-right font-medium">CAS Received</th>
+      <th className="px-4 py-3 text-right font-medium">Visa Approved</th>
+    </>
+  );
+}
+
+function MetricCells({ row }: { row: PerformanceReportMetricRow }) {
+  return (
+    <>
+      <td className="px-4 py-3 text-right font-semibold">{row.totalWalkins}</td>
+      <td className="px-4 py-3 text-right">{row.leads}</td>
+      <td className="px-4 py-3 text-right text-destructive">{row.lostLeads}</td>
+      <td className="px-4 py-3 text-right">{row.students}</td>
+      <td className="px-4 py-3 text-right text-destructive">
+        {row.droppedStudents}
+      </td>
+      <td className="px-4 py-3 text-right">{row.target}</td>
+      <td className="px-4 py-3 text-right font-semibold">{row.achieved}</td>
+      <td className="px-4 py-3 text-right font-semibold">
+        {row.targetCompletionPercentage}%
+      </td>
+      <td className="px-4 py-3 text-right font-semibold">
+        {row.conversionRate}%
+      </td>
+      <td className="px-4 py-3 text-right">{row.casReceived}</td>
+      <td className="px-4 py-3 text-right">{row.visaApproved}</td>
+    </>
+  );
+}
+
+function SimpleBreakdownTable({
+  title,
+  label,
+  rows,
+}: {
+  title: string;
+  label: string;
+  rows: Array<{ label: string; count: number }>;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="max-h-80 overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-card">
+              <tr className="border-y bg-secondary/30 text-xs text-muted-foreground">
+                <th className="px-4 py-3 text-left font-medium">{label}</th>
+                <th className="px-4 py-3 text-right font-medium">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length ? (
+                rows.map((row) => (
+                  <tr key={row.label} className="border-b last:border-0">
+                    <td className="px-4 py-3 font-medium">{row.label}</td>
+                    <td className="px-4 py-3 text-right font-semibold">
+                      {row.count}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={2}
+                    className="px-4 py-10 text-center text-muted-foreground"
+                  >
+                    No data found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function PerformanceReportsPage() {
@@ -183,54 +322,40 @@ export default function PerformanceReportsPage() {
   });
   const [page, setPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
-
   const reportQuery = usePerformanceReport(filters, page, PAGE_SIZE);
   const filterOptionsQuery = usePerformanceReportFilters();
-
   const report = reportQuery.data;
   const topCountryData = useMemo(
     () => report?.countryDemand.slice(0, 8) ?? [],
     [report?.countryDemand],
   );
-
   const topBranchData = useMemo(
-    () => report?.branchPerformance.slice(0, 12) ?? [],
+    () => report?.branchPerformance ?? [],
     [report?.branchPerformance],
   );
-
-  const counselorPerformanceData = useMemo(
-    () => report?.counselorPerformance ?? [],
+  const branchTotals = useMemo(
+    () => calculatePerformanceTotals(topBranchData),
+    [topBranchData],
+  );
+  const counselorGroups = useMemo(
+    () => groupCounselorPerformance(report?.counselorPerformance ?? []),
     [report?.counselorPerformance],
   );
-
-  const counselorBranchRowSpans = useMemo(() => {
-    const spans = new Map<string, number>();
-
-    for (const row of counselorPerformanceData) {
-      spans.set(row.branchId, (spans.get(row.branchId) ?? 0) + 1);
-    }
-
-    return spans;
-  }, [counselorPerformanceData]);
-
+  const counselorTotals = useMemo(
+    () => calculatePerformanceTotals(report?.counselorPerformance ?? []),
+    [report?.counselorPerformance],
+  );
   const leadSourceData = useMemo(
     () => report?.leadSourceBreakdown.slice(0, 7) ?? [],
     [report?.leadSourceBreakdown],
   );
-
   const leadStatusData = useMemo(
     () => report?.leadStatusBreakdown.slice(0, 7) ?? [],
     [report?.leadStatusBreakdown],
   );
-
   const applicationStatusData = useMemo(
     () => report?.applicationStatusBreakdown.slice(0, 7) ?? [],
     [report?.applicationStatusBreakdown],
-  );
-
-  const visaStatusData = useMemo(
-    () => report?.visaStatusBreakdown.slice(0, 7) ?? [],
-    [report?.visaStatusBreakdown],
   );
 
   const handleApplyFilters = (nextFilters: PerformanceReportFilters) => {
@@ -241,11 +366,9 @@ export default function PerformanceReportsPage() {
   const handleExport = async () => {
     try {
       setIsExporting(true);
-
       const blob = await exportPerformanceReport(filters);
       const date = new Date().toISOString().slice(0, 10);
-
-      downloadBlob(blob, `vsource-lead-student-performance-${date}.xlsx`);
+      downloadBlob(blob, `vsource-performance-report-${date}.xlsx`);
       toast.success("Excel report downloaded successfully");
     } catch (error) {
       toast.error(
@@ -262,7 +385,7 @@ export default function PerformanceReportsPage() {
     <PageTransition>
       <PageHeader
         title="Performance Reports"
-        description="Live lead, all walk-ins, student conversion, applications, visa and loan analytics."
+        description="Role-secured walk-in, Application, target, uni application, CAS, and conversion analytics."
         actions={
           <Button
             size="sm"
@@ -290,6 +413,7 @@ export default function PerformanceReportsPage() {
         isLoading={filterOptionsQuery.isLoading}
         onApply={handleApplyFilters}
       />
+
       {reportQuery.isError && (
         <Card className="mb-4 border-destructive/40">
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -314,1042 +438,844 @@ export default function PerformanceReportsPage() {
         </Card>
       )}
 
-   <Accordion type="single" collapsible className="mb-4">
-  <AccordionItem
-    value="report-summary"
-    className="overflow-hidden rounded-xl border bg-card shadow-sm"
-  >
-    <AccordionTrigger className="px-4 py-4 text-left hover:no-underline sm:px-6">
-      <div className="flex min-w-0 items-start gap-3">
-        <div className="shrink-0 rounded-xl bg-primary/10 p-2.5 text-primary">
-          <LayoutDashboard className="size-5" />
+      <ReportAccordion
+        value="report-summary"
+        title="Performance Summary"
+        description="High-level lead, student, target, application, offer, CAS, and visa totals."
+        icon={LayoutDashboard}
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          {reportQuery.isLoading || !report ? (
+            Array.from({ length: 13 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          ) : (
+            <>
+              <SummaryCard
+                title="Active Leads"
+                value={report.summary.totalLeads.toLocaleString("en-IN")}
+                description="Unconverted lead records"
+                icon={BriefcaseBusiness}
+              />
+              <SummaryCard
+                title="Lost Leads"
+                value={report.summary.lostLeads.toLocaleString("en-IN")}
+                description="Lead status marked as lost"
+                icon={ArrowRightLeft}
+              />
+              <SummaryCard
+                title="Converted Students"
+                value={report.summary.totalStudents.toLocaleString("en-IN")}
+                description={`${report.summary.conversionRate}% walk-in conversion`}
+                icon={GraduationCap}
+              />
+              <SummaryCard
+                title="Dropped Students"
+                value={report.summary.droppedStudents.toLocaleString("en-IN")}
+                description="Student status marked as dropped"
+                icon={GraduationCap}
+              />
+              <SummaryCard
+                title="Leads Added"
+                value={report.summary.totalLeadsCreated.toLocaleString("en-IN")}
+                description="Created in the selected lifecycle period"
+                icon={BriefcaseBusiness}
+              />
+              <SummaryCard
+                title="Student Target"
+                value={report.summary.totalTarget.toLocaleString("en-IN")}
+                description={`${report.summary.targetAssignments.toLocaleString("en-IN")} target assignments`}
+                icon={Landmark}
+              />
+              <SummaryCard
+                title="Target Achieved"
+                value={report.summary.totalAchieved.toLocaleString("en-IN")}
+                description={`${report.summary.targetCompletionPercentage}% of target`}
+                icon={CheckCircle2}
+              />
+              <SummaryCard
+                title="University Applications"
+                value={report.summary.totalApplications.toLocaleString("en-IN")}
+                description="Applications matching the selected filters"
+                icon={FileText}
+              />
+              <SummaryCard
+                title="Offers"
+                value={report.summary.offerApplications.toLocaleString("en-IN")}
+                description="Applications with an offer status"
+                icon={FileText}
+              />
+              <SummaryCard
+                title="All Walk-in Records"
+                value={report.summary.totalPipelineRecords.toLocaleString("en-IN")}
+                description="Active leads and converted students"
+                icon={ArrowRightLeft}
+              />
+              <SummaryCard
+                title="CAS Received"
+                value={report.summary.casReceivedStudents.toLocaleString("en-IN")}
+                description="Students with CAS received"
+                icon={CheckCircle2}
+              />
+              <SummaryCard
+                title="Visa Approved"
+                value={report.summary.visaApprovedStudents.toLocaleString("en-IN")}
+                description="Students with approved visas"
+                icon={CheckCircle2}
+              />
+            </>
+          )}
         </div>
+      </ReportAccordion>
 
-        <div className="min-w-0">
-          <p className="font-semibold">Performance Summary</p>
+      <ReportAccordion
+        value="branch-performance"
+        title="Branch-wise Performance"
+        description="Every branch row is followed by a final all-branch calculation row."
+        icon={TableProperties}
 
-          <p className="mt-1 text-xs font-normal leading-5 text-muted-foreground">
-            View lead, student, target, application, visa, and loan performance
-            totals.
-          </p>
-        </div>
-      </div>
-    </AccordionTrigger>
-
-    <AccordionContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        {reportQuery.isLoading || !report ? (
-          Array.from({ length: 11 }).map((_, index) => (
-            <SummarySkeleton key={index} />
-          ))
-        ) : (
-          <>
-            <SummaryCard
-              title="Active Leads"
-              value={report.summary.totalLeads.toLocaleString("en-IN")}
-              description={`${report.summary.qualifiedLeads.toLocaleString(
-                "en-IN",
-              )} qualified leads`}
-              icon={BriefcaseBusiness}
-            />
-
-            <SummaryCard
-              title="Lost Leads"
-              value={report.summary.lostLeads.toLocaleString("en-IN")}
-              description="Lead status marked as Lost"
-              icon={ArrowRightLeft}
-            />
-
-            <SummaryCard
-              title="Converted Students"
-              value={report.summary.totalStudents.toLocaleString("en-IN")}
-              description={`${report.summary.conversionRate}% walk-in conversion`}
-              icon={GraduationCap}
-            />
-
-            <SummaryCard
-              title="Dropped Students"
-              value={report.summary.droppedStudents.toLocaleString("en-IN")}
-              description="Student status marked as Dropped"
-              icon={GraduationCap}
-            />
-
-            <SummaryCard
-              title="Leads Added"
-              value={report.summary.totalLeadsCreated.toLocaleString("en-IN")}
-              description="Created by counsellors in the selected period"
-              icon={BriefcaseBusiness}
-            />
-
-            <SummaryCard
-              title="Student Target"
-              value={report.summary.totalTarget.toLocaleString("en-IN")}
-              description={`${report.summary.targetMonths.toLocaleString(
-                "en-IN",
-              )} configured target month${
-                report.summary.targetMonths === 1 ? "" : "s"
-              }`}
-              icon={Landmark}
-            />
-
-            <SummaryCard
-              title="Target Achieved"
-              value={report.summary.totalAchieved.toLocaleString("en-IN")}
-              description={`${report.summary.targetCompletionPercentage}% of the student target`}
-              icon={CheckCircle2}
-            />
-
-            <SummaryCard
-              title="Uni Applications"
-              value={report.summary.totalApplications.toLocaleString("en-IN")}
-              description={`${report.summary.offerApplications.toLocaleString(
-                "en-IN",
-              )} applications with offers`}
-              icon={FileText}
-            />
-
-            <SummaryCard
-              title="All Walk-in Records"
-              value={report.summary.totalPipelineRecords.toLocaleString(
-                "en-IN",
-              )}
-              description="Active leads and converted students"
-              icon={ArrowRightLeft}
-            />
-
-            <SummaryCard
-              title="Visa Approved"
-              value={report.summary.visaApprovedStudents.toLocaleString(
-                "en-IN",
-              )}
-              description={`${report.summary.casReceivedStudents.toLocaleString(
-                "en-IN",
-              )} students with CAS received`}
-              icon={CheckCircle2}
-            />
-
-            
-          </>
-        )}
-      </div>
-    </AccordionContent>
-  </AccordionItem>
-</Accordion>
-
-      <Accordion type="single" defaultValue="performance-tables" collapsible className="mb-4">
-        <AccordionItem
-          value="performance-tables"
-          className="overflow-hidden rounded-xl border bg-card shadow-sm"
-        >
-          <AccordionTrigger className="px-4 py-4 text-left hover:no-underline sm:px-6">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
-                <TableProperties className="size-5" />
-              </div>
-              <div>
-                <p className="font-semibold">Performance Tables</p>
-                <p className="mt-1 text-xs font-normal leading-5 text-muted-foreground">
-                  Branch, counsellor, and detailed lead/student performance.
-                  
-                </p>
-              </div>
-            </div>
-          </AccordionTrigger>
-
-          <AccordionContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-            <Card className="mb-4">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Branch-wise Performance
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Target, achieved, and leads added follow the selected date,
-                  branch, and counsellor. Other metrics follow all report
-                  filters.
-                </p>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1900px] text-sm">
-                    <thead>
-                      <tr className="border-b bg-secondary/30 text-xs text-muted-foreground">
-                        <th className="px-4 py-3 text-left font-medium">
-                          Branch
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Leads Added
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Active Leads
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Lost Leads
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Students
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Dropped Students
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Target
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Achieved
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Target %
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Uni Applications
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Conversion
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Visa Approved
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Sanctioned
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Disbursed
-                        </th>
+      >
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[2160px] text-sm">
+                <thead>
+                  <tr className="border-b bg-secondary/30 text-xs text-muted-foreground">
+                    <th className="px-4 py-3 text-left font-medium">Branch</th>
+                    <MetricHeaderCells />
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportQuery.isLoading ? (
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <tr key={index} className="border-b">
+                        <td colSpan={16} className="px-4 py-3">
+                          <Skeleton className="h-8 w-full" />
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {reportQuery.isLoading ? (
-                        Array.from({ length: 5 }).map((_, index) => (
-                          <tr key={index} className="border-b">
-                            <td colSpan={14} className="px-4 py-3">
-                              <Skeleton className="h-8 w-full" />
-                            </td>
-                          </tr>
-                        ))
-                      ) : topBranchData.length ? (
-                        topBranchData.map((branch) => (
-                          <tr
-                            key={branch.branchId}
-                            className="border-b last:border-0 hover:bg-secondary/20"
-                          >
-                            <td className="px-4 py-3 font-medium">
-                              {branch.branch}
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold">
-                              {branch.leadsCreated}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {branch.leads}
-                            </td>
-                            <td className="px-4 py-3 text-right text-destructive">
-                              {branch.lostLeads}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {branch.students}
-                            </td>
-                            <td className="px-4 py-3 text-right text-destructive">
-                              {branch.droppedStudents}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {branch.target}
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold">
-                              {branch.achieved}
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold">
-                              {branch.targetCompletionPercentage}%
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {branch.applications}
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold">
-                              {branch.conversionRate}%
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {branch.visaApproved}
-                            </td>
-                            
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={14}
-                            className="px-4 py-10 text-center text-muted-foreground"
-                          >
-                            No branch performance data found.
+                    ))
+                  ) : topBranchData.length ? (
+                    <>
+                      {topBranchData.map((branch) => (
+                        <tr
+                          key={branch.branchId}
+                          className="border-b hover:bg-secondary/20"
+                        >
+                          <td className="px-4 py-3 font-medium">
+                            {branch.branch}
                           </td>
+                          <MetricCells row={branch} />
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="mb-4">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Counsellor-wise Performance
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Each counsellor is shown once under the branch with the most
-                  activity in the selected report.
-                </p>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[2450px] text-sm">
-                    <thead>
-                      <tr className="border-b bg-secondary/30 text-xs text-muted-foreground">
-                        <th className="px-4 py-3 text-left font-medium">
-                          Branch
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Counsellor
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Total Walk-ins
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Leads Added
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          All Leads
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Qualified
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Lead Lost
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Students
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Stud Dropped
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Target
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Achieved
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Target %
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Uni Applications
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Offers
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Conversion
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          CAS
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Visa Approved
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Loan Sanctioned
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Sanctioned Amount
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
-                          Disbursed Amount
-                        </th>
+                      ))}
+                      <tr className="border-t-2 bg-muted/60 font-semibold">
+                        <td className="px-4 py-3">Grand Total</td>
+                        <MetricCells row={branchTotals} />
                       </tr>
-                    </thead>
-                    <tbody>
-                      {reportQuery.isLoading ? (
-                        Array.from({ length: 6 }).map((_, index) => (
-                          <tr key={index} className="border-b">
-                            <td colSpan={20} className="px-4 py-3">
-                              <Skeleton className="h-9 w-full" />
-                            </td>
-                          </tr>
-                        ))
-                      ) : counselorPerformanceData.length ? (
-                        counselorPerformanceData.map((row, index) => {
-                          const isFirstBranchRow =
-                            index === 0 ||
-                            counselorPerformanceData[index - 1]?.branchId !==
-                              row.branchId;
+                    </>
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={16}
+                        className="px-4 py-12 text-center text-muted-foreground"
+                      >
+                        No branch performance data found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </ReportAccordion>
 
-                          return (
+      <ReportAccordion
+        value="counselor-performance"
+        title="Counsellor-wise Performance"
+        description="Counsellors and associates are grouped by branch with a branch subtotal and final grand total."
+        icon={Users}
+        defaultOpen
+      >
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[2320px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b bg-secondary/30 text-xs text-muted-foreground">
+                    <th className="px-4 py-3 text-left font-medium">
+                      Branch
+                    </th>
+
+                    <th className="px-4 py-3 text-left font-medium">
+                      Counsellor / Associate
+                    </th>
+
+                    <MetricHeaderCells />
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {reportQuery.isLoading ? (
+                    Array.from({ length: 6 }).map((_, index) => (
+                      <tr key={index} className="border-b">
+                        <td colSpan={17} className="px-4 py-3">
+                          <Skeleton className="h-9 w-full" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : counselorGroups.length ? (
+                    <>
+                      {counselorGroups.map((group) => (
+                        <Fragment key={group.branchId}>
+                          {group.rows.map((row, rowIndex) => (
                             <tr
                               key={`${row.branchId}-${row.counselorId}`}
-                              className="border-b align-middle last:border-0 hover:bg-secondary/20"
+                              className="border-b hover:bg-secondary/20"
                             >
-                              {isFirstBranchRow && (
+                              {rowIndex === 0 && (
                                 <td
-                                  rowSpan={
-                                    counselorBranchRowSpans.get(row.branchId) ??
-                                    1
-                                  }
-                                  className="border-r bg-muted/25 px-4 py-3 align-top font-semibold"
+                                  rowSpan={group.rows.length}
+                                  className="min-w-[220px] border-r bg-muted/20 px-5 py-4 align-middle font-semibold"
                                 >
-                                  {row.branch}
+                                  <div className="max-w-[190px] leading-6">
+                                    {group.branch}
+                                  </div>
                                 </td>
                               )}
+
                               <td className="px-4 py-3 font-medium">
                                 {row.counselor}
                               </td>
-                              <td className="px-4 py-3 text-right font-semibold">
-                                {row.totalWalkins}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.leadsCreated}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.leads}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.qualifiedLeads}
-                              </td>
-                              <td className="px-4 py-3 text-right text-destructive">
-                                {row.lostLeads}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.students}
-                              </td>
-                              <td className="px-4 py-3 text-right text-destructive">
-                                {row.droppedStudents}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.target}
-                              </td>
-                              <td className="px-4 py-3 text-right font-semibold">
-                                {row.achieved}
-                              </td>
-                              <td className="px-4 py-3 text-right font-semibold">
-                                {row.targetCompletionPercentage}%
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.applications}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.offers}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.conversionRate}%
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.casReceived}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.visaApproved}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {row.loanSanctioned}
-                              </td>
-                              
+
+                              <MetricCells row={row} />
                             </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={20}
-                            className="px-4 py-12 text-center text-muted-foreground"
-                          >
-                            No counsellor performance data found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                          ))}
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-4">
-                <div>
-                  <CardTitle className="text-base">
-                    Lead and Student Records
-                  </CardTitle>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Converted leads appear only as students, preventing
-                    duplicate walkins records.
-                  </p>
-                </div>
-                <Badge variant="secondary">
-                  {report?.pagination.total.toLocaleString("en-IN") ?? 0}{" "}
-                  records
-                </Badge>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1450px] text-sm">
-                    <thead>
-                      <tr className="border-b bg-secondary/30 text-xs text-muted-foreground">
-                        <th className="px-4 py-3 text-left font-medium">
-                          Type
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Lead No.
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Person
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Contact
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Branch / Counselor
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Source / Country
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Latest Uni Application
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Visa / Loan
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium">
-                          Created
-                        </th>
+                          <tr className="border-b-2 bg-muted/40 font-semibold">
+                            <td
+                              colSpan={2}
+                              className="px-4 py-3 text-left"
+                            >
+                              {group.branch} Total
+                            </td>
+
+                            <MetricCells row={group.totals} />
+                          </tr>
+                        </Fragment>
+                      ))}
+
+                      <tr className="border-t-2 bg-muted/70 font-semibold">
+                        <td
+                          colSpan={2}
+                          className="px-4 py-3 text-left"
+                        >
+                          Grand Total — All Branches
+                        </td>
+
+                        <MetricCells row={counselorTotals} />
                       </tr>
-                    </thead>
-                    <tbody>
-                      {reportQuery.isLoading ? (
-                        Array.from({ length: 8 }).map((_, index) => (
-                          <tr key={index} className="border-b">
-                            <td colSpan={10} className="px-4 py-3">
-                              <Skeleton className="h-10 w-full" />
-                            </td>
-                          </tr>
-                        ))
-                      ) : report?.rows.length ? (
-                        report.rows.map((row) => (
-                          <tr
-                            key={`${row.recordType}-${row.recordId}`}
-                            className="border-b align-top last:border-0 hover:bg-secondary/20"
+                    </>
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={17}
+                        className="px-4 py-12 text-center text-muted-foreground"
+                      >
+                        No counsellor performance data found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </ReportAccordion>
+
+      {/* <ReportAccordion
+        value="operational-breakdown"
+        title="Operational Number Breakdown"
+        description="Additional numerical tables for lifecycle, applications, lead sources, and country demand."
+        icon={BarChart3}
+      >
+        <div className="grid gap-4 xl:grid-cols-2">
+          <SimpleBreakdownTable
+            title="Lead Lifecycle"
+            label="Status"
+            rows={(report?.leadStatusBreakdown ?? []).map((row) => ({
+              label: row.status,
+              count: row.count,
+            }))}
+          />
+          <SimpleBreakdownTable
+            title="Application Status"
+            label="Status"
+            rows={(report?.applicationStatusBreakdown ?? []).map((row) => ({
+              label: row.status,
+              count: row.count,
+            }))}
+          />
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Lead Source Numbers</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-80 overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-card">
+                    <tr className="border-y bg-secondary/30 text-xs text-muted-foreground">
+                      <th className="px-4 py-3 text-left font-medium">Source</th>
+                      <th className="px-4 py-3 text-right font-medium">Leads</th>
+                      <th className="px-4 py-3 text-right font-medium">Students</th>
+                      <th className="px-4 py-3 text-right font-medium">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(report?.leadSourceBreakdown ?? []).map((row) => (
+                      <tr key={row.source} className="border-b last:border-0">
+                        <td className="px-4 py-3 font-medium">{row.source}</td>
+                        <td className="px-4 py-3 text-right">{row.leads}</td>
+                        <td className="px-4 py-3 text-right">{row.students}</td>
+                        <td className="px-4 py-3 text-right font-semibold">
+                          {row.total}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Country Demand Numbers</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-80 overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-card">
+                    <tr className="border-y bg-secondary/30 text-xs text-muted-foreground">
+                      <th className="px-4 py-3 text-left font-medium">Country</th>
+                      <th className="px-4 py-3 text-right font-medium">Leads</th>
+                      <th className="px-4 py-3 text-right font-medium">Students</th>
+                      <th className="px-4 py-3 text-right font-medium">
+                        Applications
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(report?.countryDemand ?? []).map((row) => (
+                      <tr key={row.country} className="border-b last:border-0">
+                        <td className="px-4 py-3 font-medium">{row.country}</td>
+                        <td className="px-4 py-3 text-right">{row.leads}</td>
+                        <td className="px-4 py-3 text-right">{row.students}</td>
+                        <td className="px-4 py-3 text-right font-semibold">
+                          {row.applications}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </ReportAccordion> */}
+
+      <ReportAccordion
+        value="pipeline-records"
+        title="Walk-in and Application Records"
+        description="Converted Walkins appear only as applications, preventing duplicate walk-in records."
+        icon={FileText}
+      >
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardTitle className="text-base">Detailed Records</CardTitle>
+            <Badge variant="secondary">
+              {report?.pagination.total.toLocaleString("en-IN") ?? 0} records
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1450px] text-sm">
+                <thead>
+                  <tr className="border-b bg-secondary/30 text-xs text-muted-foreground">
+                    <th className="px-4 py-3 text-left font-medium">Type</th>
+                    <th className="px-4 py-3 text-left font-medium">Walk-in No.</th>
+                    <th className="px-4 py-3 text-left font-medium">Person</th>
+                    <th className="px-4 py-3 text-left font-medium">Contact</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Branch / Counselor
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Source / Country
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">Status</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Latest University Application
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      CAS / Visa / Loan
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportQuery.isLoading ? (
+                    Array.from({ length: 8 }).map((_, index) => (
+                      <tr key={index} className="border-b">
+                        <td colSpan={10} className="px-4 py-3">
+                          <Skeleton className="h-10 w-full" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : report?.rows.length ? (
+                    report.rows.map((row) => (
+                      <tr
+                        key={`${row.recordType}-${row.recordId}`}
+                        className="border-b align-top last:border-0 hover:bg-secondary/20"
+                      >
+                        <td className="px-4 py-3">{getRecordBadge(row)}</td>
+                        <td className="px-4 py-3 font-mono text-xs font-semibold">
+                          {row.leadNumber || "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium">{row.studentName}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {row.courseName}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p>{row.mobileNumber || "—"}</p>
+                          <p className="mt-1 max-w-[220px] truncate text-xs text-muted-foreground">
+                            {row.emailId || "—"}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p>{row.branchName}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {row.counselorName}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p>{row.source}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {row.countryName}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant="outline"
+                            className={getLifecycleBadgeClass(
+                              row.lifecycleStatus,
+                            )}
                           >
-                            <td className="px-4 py-3">{getRecordBadge(row)}</td>
-                            <td className="px-4 py-3 font-mono text-xs font-semibold">
-                              {row.leadNumber || "—"}
-                            </td>
-                            <td className="px-4 py-3">
-                              <p className="font-medium">{row.studentName}</p>
+                            {humanizeReportStatus(row.lifecycleStatus)}
+                          </Badge>
+                          {row.currentStage && row.currentStage !== "lead" && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {humanizeReportStatus(row.currentStage)}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {row.recordType === "student" ? (
+                            <>
+                              <p className="max-w-[230px] truncate font-medium">
+                                {row.latestUniversityName}
+                              </p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {row.courseName}
+                                {row.applicationsCount} application
+                                {row.applicationsCount === 1 ? "" : "s"}
+                                {row.latestApplicationStatus
+                                  ? ` · ${humanizeReportStatus(
+                                    row.latestApplicationStatus,
+                                  )}`
+                                  : ""}
                               </p>
-                            </td>
-                            <td className="px-4 py-3">
-                              <p>{row.mobileNumber || "—"}</p>
-                              <p className="mt-1 max-w-[220px] truncate text-xs text-muted-foreground">
-                                {row.emailId || "—"}
-                              </p>
-                            </td>
-                            <td className="px-4 py-3">
-                              <p>{row.branchName}</p>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              Not converted
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {row.recordType === "student" ? (
+                            <>
+                              <p>CAS: {humanizeReportStatus(row.casStatus)}</p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {row.counselorName}
+                                Visa: {humanizeReportStatus(row.visaStatus)} · Loan:{" "}
+                                {humanizeReportStatus(row.loanStatus)}
                               </p>
-                            </td>
-                            <td className="px-4 py-3">
-                              <p>{row.source}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {row.countryName}
-                              </p>
-                            </td>
-                            <td className="px-4 py-3">
-                              <Badge
-                                variant="outline"
-                                className={getLifecycleBadgeClass(
-                                  row.lifecycleStatus,
-                                )}
-                              >
-                                {humanizeReportStatus(row.lifecycleStatus)}
-                              </Badge>
-                              {row.currentStage &&
-                                row.currentStage !== "lead" && (
-                                  <p className="mt-1 text-xs text-muted-foreground">
-                                    {humanizeReportStatus(row.currentStage)}
-                                  </p>
-                                )}
-                            </td>
-                            <td className="px-4 py-3">
-                              {row.recordType === "student" ? (
-                                <>
-                                  <p className="max-w-[230px] truncate font-medium">
-                                    {row.latestUniversityName}
-                                  </p>
-                                  <p className="mt-1 text-xs text-muted-foreground">
-                                    {row.applicationsCount} application
-                                    {row.applicationsCount === 1 ? "" : "s"}
-                                    {row.latestApplicationStatus
-                                      ? ` · ${humanizeReportStatus(
-                                          row.latestApplicationStatus,
-                                        )}`
-                                      : ""}
-                                  </p>
-                                </>
-                              ) : (
-                                <span className="text-muted-foreground">
-                                  Not converted
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3">
-                              {row.recordType === "student" ? (
-                                <>
-                                  <p>
-                                    Visa: {humanizeReportStatus(row.visaStatus)}
-                                  </p>
-                                  <p className="mt-1 text-xs text-muted-foreground">
-                                    Loan: {humanizeReportStatus(row.loanStatus)}
-                                  </p>
-                                </>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <p>{formatReportDate(row.createdAt)}</p>
-                              {row.nextFollowup && (
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  Follow-up:{" "}
-                                  {formatReportDate(row.nextFollowup)}
-                                </p>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={10}
-                            className="px-4 py-12 text-center text-muted-foreground"
-                          >
-                            No leads or students match the selected filters.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <p>{formatReportDate(row.createdAt)}</p>
+                          {row.nextFollowup && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Follow-up: {formatReportDate(row.nextFollowup)}
+                            </p>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={10}
+                        className="px-4 py-12 text-center text-muted-foreground"
+                      >
+                        No Walk-in or applications match the selected filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="mt-4 flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            Showing {report?.rows.length ?? 0} of {report?.pagination.total ?? 0}{" "}
+            records
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!report || report.pagination.page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              Previous
+            </Button>
+            <span className="rounded-md bg-secondary/40 px-3 py-1.5 text-xs font-medium text-foreground">
+              Page {report?.pagination.page ?? 1} of{" "}
+              {report?.pagination.totalPages ?? 1}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={
+                !report ||
+                report.pagination.page >= report.pagination.totalPages
+              }
+              onClick={() =>
+                setPage((current) =>
+                  Math.min(report?.pagination.totalPages ?? current, current + 1),
+                )
+              }
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </ReportAccordion>
+
+      <ReportAccordion
+        value="analytics-charts"
+        title="Analytics Charts"
+        description="Monthly funnel, country demand, source mix, lifecycle, and application charts."
+        icon={BarChart3}
+      >
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">All Walk-ins</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {reportQuery.isLoading ? (
+                <Skeleton className="h-72 w-full" />
+              ) : report?.monthlyVolume.length ? (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={report.monthlyVolume}
+                      margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--color-border)"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="label"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        stroke="var(--color-muted-foreground)"
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        stroke="var(--color-muted-foreground)"
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--color-card)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: 10,
+                          fontSize: 12,
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="leads"
+                        name="New Leads"
+                        stroke={CHART_COLORS[0]}
+                        strokeWidth={2.5}
+                        dot={{ r: 3 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="students"
+                        name="Converted Students"
+                        stroke={CHART_COLORS[2]}
+                        strokeWidth={2.5}
+                        dot={{ r: 3 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="applications"
+                        name="Applications"
+                        stroke={CHART_COLORS[1]}
+                        strokeWidth={2.5}
+                        dot={{ r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-              </CardContent>
-            </Card>
+              ) : (
+                <ChartEmptyState />
+              )}
+            </CardContent>
+          </Card>
 
-            <div className="mt-4 flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-              <p>
-                Showing {report?.rows.length ?? 0} of{" "}
-                {report?.pagination.total ?? 0} records
-              </p>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Country Demand</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {reportQuery.isLoading ? (
+                <Skeleton className="h-72 w-full" />
+              ) : topCountryData.length ? (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={topCountryData}
+                      margin={{ top: 10, right: 10, left: -15, bottom: 20 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--color-border)"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="country"
+                        fontSize={10}
+                        tickLine={false}
+                        axisLine={false}
+                        stroke="var(--color-muted-foreground)"
+                        angle={-20}
+                        textAnchor="end"
+                        height={55}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        stroke="var(--color-muted-foreground)"
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--color-card)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: 10,
+                          fontSize: 12,
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Bar
+                        dataKey="leads"
+                        name="Leads"
+                        fill={CHART_COLORS[0]}
+                        radius={[5, 5, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="students"
+                        name="Students"
+                        fill={CHART_COLORS[2]}
+                        radius={[5, 5, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="applications"
+                        name="Applications"
+                        fill={CHART_COLORS[1]}
+                        radius={[5, 5, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <ChartEmptyState />
+              )}
+            </CardContent>
+          </Card>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!report || report.pagination.page <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                >
-                  Previous
-                </Button>
-                <span className="rounded-md bg-secondary/40 px-3 py-1.5 text-xs font-medium text-foreground">
-                  Page {report?.pagination.page ?? 1} of{" "}
-                  {report?.pagination.totalPages ?? 1}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    !report ||
-                    report.pagination.page >= report.pagination.totalPages
-                  }
-                  onClick={() =>
-                    setPage((current) =>
-                      Math.min(
-                        report?.pagination.totalPages ?? current,
-                        current + 1,
-                      ),
-                    )
-                  }
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Walk-in Source Mix</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {reportQuery.isLoading ? (
+                <Skeleton className="h-72 w-full" />
+              ) : leadSourceData.length ? (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={leadSourceData}
+                        dataKey="total"
+                        nameKey="source"
+                        innerRadius={52}
+                        outerRadius={88}
+                        paddingAngle={2}
+                      >
+                        {leadSourceData.map((item, index) => (
+                          <Cell
+                            key={`${item.source}-${index}`}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--color-card)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: 10,
+                          fontSize: 12,
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <ChartEmptyState />
+              )}
+            </CardContent>
+          </Card>
 
-      <Accordion type="single" collapsible className="mb-4">
-        <AccordionItem
-          value="analytics-charts"
-          className="overflow-hidden rounded-xl border bg-card shadow-sm"
-        >
-          <AccordionTrigger className="px-4 py-4 text-left hover:no-underline sm:px-6">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
-                <BarChart3 className="size-5" />
-              </div>
-              <div>
-                <p className="font-semibold">Analytics Charts</p>
-                <p className="mt-1 text-xs font-normal leading-5 text-muted-foreground">
-                  Monthly funnel, country demand, source mix, lifecycle,
-                  application, and visa charts. 
-                </p>
-              </div>
-            </div>
-          </AccordionTrigger>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Walk-in Lifecycle Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {reportQuery.isLoading ? (
+                <Skeleton className="h-72 w-full" />
+              ) : leadStatusData.length ? (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={leadStatusData}
+                      layout="vertical"
+                      margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--color-border)"
+                        horizontal={false}
+                      />
+                      <XAxis
+                        type="number"
+                        allowDecimals={false}
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="status"
+                        width={95}
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--color-card)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: 10,
+                          fontSize: 12,
+                        }}
+                      />
+                      <Bar
+                        dataKey="count"
+                        name="Records"
+                        fill={CHART_COLORS[0]}
+                        radius={[0, 6, 6, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <ChartEmptyState />
+              )}
+            </CardContent>
+          </Card>
 
-          <AccordionContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-            <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">All Walkins</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {reportQuery.isLoading ? (
-                    <Skeleton className="h-72 w-full" />
-                  ) : report?.monthlyVolume.length ? (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={report.monthlyVolume}
-                          margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="var(--color-border)"
-                            vertical={false}
+          <Card className="xl:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Application Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {reportQuery.isLoading ? (
+                <Skeleton className="h-72 w-full" />
+              ) : applicationStatusData.length ? (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={applicationStatusData}
+                        dataKey="count"
+                        nameKey="status"
+                        outerRadius={90}
+                        paddingAngle={2}
+                      >
+                        {applicationStatusData.map((item, index) => (
+                          <Cell
+                            key={`${item.status}-${index}`}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
                           />
-                          <XAxis
-                            dataKey="label"
-                            fontSize={11}
-                            tickLine={false}
-                            axisLine={false}
-                            stroke="var(--color-muted-foreground)"
-                          />
-                          <YAxis
-                            allowDecimals={false}
-                            fontSize={11}
-                            tickLine={false}
-                            axisLine={false}
-                            stroke="var(--color-muted-foreground)"
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              background: "var(--color-card)",
-                              border: "1px solid var(--color-border)",
-                              borderRadius: 10,
-                              fontSize: 12,
-                            }}
-                          />
-                          <Legend wrapperStyle={{ fontSize: 11 }} />
-                          <Line
-                            type="monotone"
-                            dataKey="leads"
-                            name="New Leads"
-                            stroke={CHART_COLORS[0]}
-                            strokeWidth={2.5}
-                            dot={{ r: 3 }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="students"
-                            name="Converted Students"
-                            stroke={CHART_COLORS[2]}
-                            strokeWidth={2.5}
-                            dot={{ r: 3 }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="applications"
-                            name="Applications"
-                            stroke={CHART_COLORS[1]}
-                            strokeWidth={2.5}
-                            dot={{ r: 3 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <ChartEmptyState />
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Country Demand</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {reportQuery.isLoading ? (
-                    <Skeleton className="h-72 w-full" />
-                  ) : topCountryData.length ? (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={topCountryData}
-                          margin={{ top: 10, right: 10, left: -15, bottom: 20 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="var(--color-border)"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="country"
-                            fontSize={10}
-                            tickLine={false}
-                            axisLine={false}
-                            stroke="var(--color-muted-foreground)"
-                            angle={-20}
-                            textAnchor="end"
-                            height={55}
-                          />
-                          <YAxis
-                            allowDecimals={false}
-                            fontSize={11}
-                            tickLine={false}
-                            axisLine={false}
-                            stroke="var(--color-muted-foreground)"
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              background: "var(--color-card)",
-                              border: "1px solid var(--color-border)",
-                              borderRadius: 10,
-                              fontSize: 12,
-                            }}
-                          />
-                          <Legend wrapperStyle={{ fontSize: 11 }} />
-                          <Bar
-                            dataKey="leads"
-                            name="Leads"
-                            fill={CHART_COLORS[0]}
-                            radius={[5, 5, 0, 0]}
-                          />
-                          <Bar
-                            dataKey="students"
-                            name="Students"
-                            fill={CHART_COLORS[2]}
-                            radius={[5, 5, 0, 0]}
-                          />
-                          <Bar
-                            dataKey="applications"
-                            name="Applications"
-                            fill={CHART_COLORS[1]}
-                            radius={[5, 5, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <ChartEmptyState />
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Lead Source Mix</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {reportQuery.isLoading ? (
-                    <Skeleton className="h-72 w-full" />
-                  ) : leadSourceData.length ? (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={leadSourceData}
-                            dataKey="total"
-                            nameKey="source"
-                            innerRadius={52}
-                            outerRadius={88}
-                            paddingAngle={2}
-                          >
-                            {leadSourceData.map((item, index) => (
-                              <Cell
-                                key={`${item.source}-${index}`}
-                                fill={CHART_COLORS[index % CHART_COLORS.length]}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              background: "var(--color-card)",
-                              border: "1px solid var(--color-border)",
-                              borderRadius: 10,
-                              fontSize: 12,
-                            }}
-                          />
-                          <Legend wrapperStyle={{ fontSize: 11 }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <ChartEmptyState />
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">
-                    Lead Lifecycle Status
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {reportQuery.isLoading ? (
-                    <Skeleton className="h-72 w-full" />
-                  ) : leadStatusData.length ? (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={leadStatusData}
-                          layout="vertical"
-                          margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="var(--color-border)"
-                            horizontal={false}
-                          />
-                          <XAxis
-                            type="number"
-                            allowDecimals={false}
-                            fontSize={11}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <YAxis
-                            type="category"
-                            dataKey="status"
-                            width={95}
-                            fontSize={11}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              background: "var(--color-card)",
-                              border: "1px solid var(--color-border)",
-                              borderRadius: 10,
-                              fontSize: 12,
-                            }}
-                          />
-                          <Bar
-                            dataKey="count"
-                            name="Records"
-                            fill={CHART_COLORS[0]}
-                            radius={[0, 6, 6, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <ChartEmptyState />
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">
-                    Application Status
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {reportQuery.isLoading ? (
-                    <Skeleton className="h-72 w-full" />
-                  ) : applicationStatusData.length ? (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={applicationStatusData}
-                            dataKey="count"
-                            nameKey="status"
-                            outerRadius={90}
-                            paddingAngle={2}
-                          >
-                            {applicationStatusData.map((item, index) => (
-                              <Cell
-                                key={`${item.status}-${index}`}
-                                fill={CHART_COLORS[index % CHART_COLORS.length]}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              background: "var(--color-card)",
-                              border: "1px solid var(--color-border)",
-                              borderRadius: 10,
-                              fontSize: 12,
-                            }}
-                          />
-                          <Legend wrapperStyle={{ fontSize: 11 }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <ChartEmptyState />
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Visa Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {reportQuery.isLoading ? (
-                    <Skeleton className="h-72 w-full" />
-                  ) : visaStatusData.length ? (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={visaStatusData}
-                            dataKey="count"
-                            nameKey="status"
-                            innerRadius={50}
-                            outerRadius={88}
-                            paddingAngle={2}
-                          >
-                            {visaStatusData.map((item, index) => (
-                              <Cell
-                                key={`${item.status}-${index}`}
-                                fill={CHART_COLORS[index % CHART_COLORS.length]}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              background: "var(--color-card)",
-                              border: "1px solid var(--color-border)",
-                              borderRadius: 10,
-                              fontSize: 12,
-                            }}
-                          />
-                          <Legend wrapperStyle={{ fontSize: 11 }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <ChartEmptyState />
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--color-card)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: 10,
+                          fontSize: 12,
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <ChartEmptyState />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </ReportAccordion>
     </PageTransition>
   );
 }

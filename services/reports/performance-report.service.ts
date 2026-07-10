@@ -1,3 +1,5 @@
+import axios from "axios";
+import { api } from "@/lib/api";
 import type {
   ApiResponse,
   PerformanceReportData,
@@ -5,112 +7,106 @@ import type {
   PerformanceReportFilterOptions,
 } from "@/types/performance-report";
 
-function buildQueryString(
+type ErrorPayload = {
+  message?: string;
+  error?: string;
+};
+
+const endpoints = {
+  report: "/reports/performance",
+  filters: "/reports/filters",
+  export: "/reports/performance/export",
+} as const;
+
+function buildParams(
   filters: PerformanceReportFilters,
-  pagination?: {
-    page: number;
-    limit: number;
-  },
-): string {
-  const searchParams = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(filters)) {
-    if (value) {
-      searchParams.set(key, value);
-    }
-  }
-
-  if (pagination) {
-    searchParams.set("page", String(pagination.page));
-    searchParams.set("limit", String(pagination.limit));
-  }
-
-  return searchParams.toString();
+  pagination?: { page: number; limit: number },
+): Record<string, string | number> {
+  return Object.fromEntries(
+    Object.entries({ ...filters, ...pagination }).filter(
+      ([, value]) => value !== "" && value !== null && value !== undefined,
+    ),
+  ) as Record<string, string | number>;
 }
 
-async function parseApiResponse<T>(response: Response): Promise<T> {
-  const contentType = response.headers.get("content-type") ?? "";
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (!axios.isAxiosError(error)) {
+    return error instanceof Error ? error.message : fallback;
+  }
 
-  if (!contentType.includes("application/json")) {
-    const responseText = await response.text();
-    const preview = responseText
+  const data = error.response?.data as ErrorPayload | string | undefined;
+
+  if (typeof data === "string") {
+    const message = data
       .replace(/<[^>]*>/g, " ")
       .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 180);
+      .trim();
 
-    throw new Error(
-      response.ok
-        ? "The server returned a non-JSON response."
-        : preview || `Request failed with status ${response.status}`,
-    );
+    return message.slice(0, 180) || error.message || fallback;
   }
 
-  const payload = (await response.json()) as ApiResponse<T>;
-
-  if (!response.ok || !payload.success) {
-    throw new Error(
-      payload.message || `Request failed with status ${response.status}`,
-    );
-  }
-
-  return payload.data;
+  return data?.message || data?.error || error.message || fallback;
 }
 
-export async function getPerformanceReport(
+async function unwrap<T>(request: Promise<{ data: ApiResponse<T> }>): Promise<T> {
+  try {
+    const { data } = await request;
+
+    if (!data.success) {
+      throw new Error(data.message || "Request failed");
+    }
+
+    return data.data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error, "Request failed"));
+  }
+}
+
+export function getPerformanceReport(
   filters: PerformanceReportFilters,
   page: number,
   limit: number,
 ): Promise<PerformanceReportData> {
-  const queryString = buildQueryString(filters, {
-    page,
-    limit,
-  });
-
-  const response = await fetch(`/api/reports/performance?${queryString}`, {
-    method: "GET",
-    cache: "no-store",
-  });
-
-  return parseApiResponse<PerformanceReportData>(response);
+  return unwrap(
+    api.get<ApiResponse<PerformanceReportData>>(endpoints.report, {
+      params: buildParams(filters, { page, limit }),
+    }),
+  );
 }
 
-export async function getPerformanceReportFilterOptions(): Promise<PerformanceReportFilterOptions> {
-  const response = await fetch("/api/reports/filters", {
-    method: "GET",
-    cache: "no-store",
-  });
-
-  return parseApiResponse<PerformanceReportFilterOptions>(response);
+export function getPerformanceReportFilterOptions(): Promise<PerformanceReportFilterOptions> {
+  return unwrap(
+    api.get<ApiResponse<PerformanceReportFilterOptions>>(endpoints.filters),
+  );
 }
 
 export async function exportPerformanceReport(
   filters: PerformanceReportFilters,
 ): Promise<Blob> {
-  const queryString = buildQueryString(filters);
-  const response = await fetch(
-    `/api/reports/performance/export?${queryString}`,
-    {
-      method: "GET",
-      cache: "no-store",
-    },
-  );
+  try {
+    const { data } = await api.get<Blob>(endpoints.export, {
+      params: buildParams(filters),
+      responseType: "blob",
+    });
 
-  if (!response.ok) {
-    let message = "Unable to export performance report";
+    return data;
+  } catch (error) {
+    if (
+      axios.isAxiosError(error) &&
+      error.response?.data instanceof Blob &&
+      error.response.data.type.includes("application/json")
+    ) {
+      const payload = JSON.parse(
+        await error.response.data.text(),
+      ) as ErrorPayload;
 
-    try {
-      const payload = (await response.json()) as {
-        message?: string;
-      };
-
-      message = payload.message || message;
-    } catch {
-      message = "Unable to export performance report";
+      throw new Error(
+        payload.message || payload.error || "Unable to export report",
+      );
     }
 
-    throw new Error(message);
+    throw new Error(
+      getErrorMessage(error, "Unable to export performance report"),
+    );
   }
-
-  return response.blob();
 }

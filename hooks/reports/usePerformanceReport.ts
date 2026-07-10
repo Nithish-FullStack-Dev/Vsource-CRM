@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getPerformanceReport } from "@/services/reports/performance-report.service";
 import { performanceReportQueryKeys } from "@/services/reports/performance-report-query-key";
 import type { PerformanceReportFilters } from "@/types/performance-report";
@@ -11,6 +11,7 @@ export function usePerformanceReport(
   return useQuery({
     queryKey: performanceReportQueryKeys.report(filters, page, limit),
     queryFn: () => getPerformanceReport(filters, page, limit),
-    placeholderData: (previousData) => previousData,
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
   });
 }

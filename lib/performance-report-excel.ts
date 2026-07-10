@@ -1,23 +1,28 @@
 import ExcelJS from "exceljs";
+import {
+  calculatePerformanceTotals,
+  groupCounselorPerformance,
+} from "@/lib/performance-report-calculations";
 import type {
   PerformanceReportData,
   PerformanceReportFilters,
+  PerformanceReportMetricRow,
   PerformanceReportRow,
 } from "@/types/performance-report";
 
 const HEADER_FILL = "FF9F1239";
 const HEADER_TEXT = "FFFFFFFF";
 const SUBTLE_FILL = "FFF8FAFC";
+const TOTAL_FILL = "FFF1F5F9";
+const GRAND_TOTAL_FILL = "FFE2E8F0";
 const BORDER_COLOR = "FFE2E8F0";
 
 function humanize(value: string): string {
-  if (!value) {
-    return "All";
-  }
-
   return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
+    ? value
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (character) => character.toUpperCase())
+    : "All";
 }
 
 function formatDate(value: string | null): string {
@@ -26,103 +31,84 @@ function formatDate(value: string | null): string {
   }
 
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toLocaleDateString("en-IN");
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-IN");
 }
 
 function styleHeader(row: ExcelJS.Row): void {
   row.height = 24;
-  row.font = {
-    bold: true,
-    color: {
-      argb: HEADER_TEXT,
-    },
-  };
+  row.font = { bold: true, color: { argb: HEADER_TEXT } };
   row.fill = {
     type: "pattern",
     pattern: "solid",
-    fgColor: {
-      argb: HEADER_FILL,
-    },
+    fgColor: { argb: HEADER_FILL },
   };
-  row.alignment = {
-    vertical: "middle",
+  row.alignment = { vertical: "middle" };
+}
+
+function styleTotalRow(
+  row: ExcelJS.Row,
+  fill: string,
+  fontColor = "FF0F172A",
+): void {
+  row.font = { bold: true, color: { argb: fontColor } };
+  row.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: fill },
   };
 }
 
 function styleWorksheet(worksheet: ExcelJS.Worksheet): void {
-  worksheet.views = [
-    {
-      state: "frozen",
-      ySplit: 1,
-    },
-  ];
+  worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
   worksheet.eachRow((row, rowNumber) => {
     row.eachCell((cell) => {
       cell.border = {
-        top: {
-          style: "thin",
-          color: {
-            argb: BORDER_COLOR,
-          },
-        },
-        left: {
-          style: "thin",
-          color: {
-            argb: BORDER_COLOR,
-          },
-        },
-        bottom: {
-          style: "thin",
-          color: {
-            argb: BORDER_COLOR,
-          },
-        },
-        right: {
-          style: "thin",
-          color: {
-            argb: BORDER_COLOR,
-          },
-        },
+        top: { style: "thin", color: { argb: BORDER_COLOR } },
+        left: { style: "thin", color: { argb: BORDER_COLOR } },
+        bottom: { style: "thin", color: { argb: BORDER_COLOR } },
+        right: { style: "thin", color: { argb: BORDER_COLOR } },
       };
-
-      cell.alignment = {
-        vertical: "middle",
-        wrapText: true,
-      };
+      cell.alignment = { vertical: "middle", wrapText: true };
     });
 
-    if (rowNumber > 1 && rowNumber % 2 === 0) {
+    if (rowNumber > 1 && rowNumber % 2 === 0 && !row.font?.bold) {
       row.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: {
-          argb: SUBTLE_FILL,
-        },
+        fgColor: { argb: SUBTLE_FILL },
       };
     }
   });
 
-  const headerRow = worksheet.getRow(1);
-  styleHeader(headerRow);
+  styleHeader(worksheet.getRow(1));
 
   if (worksheet.columnCount > 0 && worksheet.rowCount > 0) {
     worksheet.autoFilter = {
-      from: {
-        row: 1,
-        column: 1,
-      },
-      to: {
-        row: 1,
-        column: worksheet.columnCount,
-      },
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: worksheet.columnCount },
     };
   }
+}
+
+function metricValues(metrics: PerformanceReportMetricRow) {
+  return {
+    totalWalkins: metrics.totalWalkins,
+    leadsCreated: metrics.leadsCreated,
+    leads: metrics.leads,
+    qualifiedLeads: metrics.qualifiedLeads,
+    lostLeads: metrics.lostLeads,
+    students: metrics.students,
+    droppedStudents: metrics.droppedStudents,
+    target: metrics.target,
+    achieved: metrics.achieved,
+    targetCompletionPercentage: `${metrics.targetCompletionPercentage}%`,
+    applications: metrics.applications,
+    offers: metrics.offers,
+    conversionRate: `${metrics.conversionRate}%`,
+    casReceived: metrics.casReceived,
+    visaApproved: metrics.visaApproved,
+  };
 }
 
 function addSummarySheet(
@@ -131,21 +117,11 @@ function addSummarySheet(
   filters: PerformanceReportFilters,
 ): void {
   const worksheet = workbook.addWorksheet("Summary");
-
   worksheet.columns = [
-    {
-      header: "Metric",
-      key: "metric",
-      width: 36,
-    },
-    {
-      header: "Value",
-      key: "value",
-      width: 24,
-    },
+    { header: "Metric", key: "metric", width: 38 },
+    { header: "Value", key: "value", width: 24 },
   ];
-
-  const summaryRows: Array<[string, string | number]> = [
+  const rows: Array<[string, string | number]> = [
     ["Generated At", new Date(report.generatedAt).toLocaleString("en-IN")],
     ["All Walk-in Records", report.summary.totalPipelineRecords],
     ["Leads Added", report.summary.totalLeadsCreated],
@@ -157,46 +133,22 @@ function addSummarySheet(
     ["Student Target", report.summary.totalTarget],
     ["Target Achieved", report.summary.totalAchieved],
     ["Target Completion", `${report.summary.targetCompletionPercentage}%`],
-    ["Target Months Included", report.summary.targetMonths],
-    ["Lead to Student Conversion Rate", `${report.summary.conversionRate}%`],
-    ["Student Applications", report.summary.totalApplications],
+    ["Target Assignments", report.summary.targetAssignments],
+    ["Lead to Student Conversion", `${report.summary.conversionRate}%`],
+    ["University Applications", report.summary.totalApplications],
     ["Offer Applications", report.summary.offerApplications],
-    ["Visa Approved Students", report.summary.visaApprovedStudents],
     ["CAS Received Students", report.summary.casReceivedStudents],
-    ["Loan Sanctioned Students", report.summary.loanSanctionedStudents],
+    ["Visa Approved Students", report.summary.visaApprovedStudents],
   ];
 
-  const currencyMetrics = new Set([
-    "Total Applied Amount",
-    "Total Sanctioned Amount",
-    "Total Disbursed Amount",
-  ]);
-
-  for (const [metric, value] of summaryRows) {
-    const row = worksheet.addRow({ metric, value });
-
-    if (currencyMetrics.has(metric)) {
-      row.getCell(2).numFmt = "₹#,##0.00";
-    }
-  }
-
+  rows.forEach(([metric, value]) => worksheet.addRow({ metric, value }));
   styleWorksheet(worksheet);
 
   const filtersWorksheet = workbook.addWorksheet("Applied Filters");
-
   filtersWorksheet.columns = [
-    {
-      header: "Filter",
-      key: "filter",
-      width: 34,
-    },
-    {
-      header: "Value",
-      key: "value",
-      width: 44,
-    },
+    { header: "Filter", key: "filter", width: 34 },
+    { header: "Value", key: "value", width: 44 },
   ];
-
   const filterRows: Array<[string, string]> = [
     ["Search", filters.search || "All"],
     ["Report Scope", humanize(filters.recordScope)],
@@ -218,10 +170,9 @@ function addSummarySheet(
     ["Custom End Date", filters.endDate || "Not Set"],
   ];
 
-  for (const [filter, value] of filterRows) {
-    filtersWorksheet.addRow({ filter, value });
-  }
-
+  filterRows.forEach(([filter, value]) =>
+    filtersWorksheet.addRow({ filter, value }),
+  );
   styleWorksheet(filtersWorksheet);
 }
 
@@ -231,7 +182,6 @@ function addPipelineSheet(
   rows: PerformanceReportRow[],
 ): void {
   const worksheet = workbook.addWorksheet(name);
-
   worksheet.columns = [
     { header: "Record Type", key: "recordType", width: 16 },
     { header: "Lead Number", key: "leadNumber", width: 18 },
@@ -250,11 +200,7 @@ function addPipelineSheet(
     { header: "Converted Date", key: "convertedAt", width: 18 },
     { header: "Next Follow-up", key: "nextFollowup", width: 18 },
     { header: "Applications", key: "applicationsCount", width: 15 },
-    {
-      header: "Latest University",
-      key: "latestUniversityName",
-      width: 34,
-    },
+    { header: "Latest University", key: "latestUniversityName", width: 34 },
     {
       header: "Latest Application Date",
       key: "latestApplicationDate",
@@ -270,19 +216,13 @@ function addPipelineSheet(
     { header: "Visa Status", key: "visaStatus", width: 18 },
     { header: "Loan Status", key: "loanStatus", width: 18 },
     { header: "NBFC", key: "nbfc", width: 20 },
-    {
-      header: "Fintech Assignee",
-      key: "fintechAssigneeName",
-      width: 24,
-    },
-    { header: "Sanctioned Amount", key: "sanctionedAmount", width: 20 },
-    { header: "Disbursed Amount", key: "disbursedAmount", width: 20 },
+    { header: "Fintech Assignee", key: "fintechAssigneeName", width: 24 },
     { header: "Lead ID", key: "leadId", width: 38 },
     { header: "Student ID", key: "studentId", width: 38 },
     { header: "Record ID", key: "recordId", width: 38 },
   ];
 
-  for (const row of rows) {
+  rows.forEach((row) => {
     worksheet.addRow({
       ...row,
       recordType: humanize(row.recordType),
@@ -298,10 +238,7 @@ function addPipelineSheet(
       visaStatus: humanize(row.visaStatus),
       loanStatus: humanize(row.loanStatus),
     });
-  }
-
-  worksheet.getColumn("sanctionedAmount").numFmt = "₹#,##0.00";
-  worksheet.getColumn("disbursedAmount").numFmt = "₹#,##0.00";
+  });
   styleWorksheet(worksheet);
 }
 
@@ -310,7 +247,6 @@ function addApplicationsSheet(
   report: PerformanceReportData,
 ): void {
   const worksheet = workbook.addWorksheet("Applications");
-
   worksheet.columns = [
     { header: "Lead Number", key: "leadNumber", width: 18 },
     { header: "Student Name", key: "studentName", width: 24 },
@@ -332,23 +268,16 @@ function addApplicationsSheet(
     { header: "Visa Paid Status", key: "visaPaidStatus", width: 20 },
     { header: "CAS Status", key: "casStatus", width: 20 },
     { header: "Visa Status", key: "visaStatus", width: 20 },
-    {
-      header: "Fintech Assignee",
-      key: "fintechAssigneeName",
-      width: 24,
-    },
+    { header: "Fintech Assignee", key: "fintechAssigneeName", width: 24 },
     { header: "NBFC", key: "nbfc", width: 22 },
     { header: "Loan Status", key: "loanStatus", width: 20 },
     { header: "PF Status", key: "pfStatus", width: 20 },
-    { header: "Applied Amount", key: "appliedAmount", width: 18 },
-    { header: "Sanctioned Amount", key: "sanctionedAmount", width: 20 },
     { header: "Disbursed", key: "disbursed", width: 14 },
-    { header: "Disbursed Amount", key: "disbursedAmount", width: 20 },
     { header: "Student ID", key: "studentId", width: 38 },
     { header: "Application ID", key: "applicationId", width: 38 },
   ];
 
-  for (const row of report.applicationRows ?? []) {
+  (report.applicationRows ?? []).forEach((row) => {
     worksheet.addRow({
       ...row,
       applicationDate: formatDate(row.applicationDate),
@@ -363,11 +292,7 @@ function addApplicationsSheet(
       pfStatus: humanize(row.pfStatus),
       disbursed: row.disbursed ? "Yes" : "No",
     });
-  }
-
-  worksheet.getColumn("appliedAmount").numFmt = "₹#,##0.00";
-  worksheet.getColumn("sanctionedAmount").numFmt = "₹#,##0.00";
-  worksheet.getColumn("disbursedAmount").numFmt = "₹#,##0.00";
+  });
   styleWorksheet(worksheet);
 }
 
@@ -376,14 +301,12 @@ function addMonthlySheet(
   report: PerformanceReportData,
 ): void {
   const worksheet = workbook.addWorksheet("Monthly Funnel");
-
   worksheet.columns = [
     { header: "Month", key: "label", width: 18 },
     { header: "New Leads", key: "leads", width: 18 },
     { header: "Converted Students", key: "students", width: 20 },
     { header: "Applications", key: "applications", width: 18 },
   ];
-
   worksheet.addRows(report.monthlyVolume);
   styleWorksheet(worksheet);
 }
@@ -393,67 +316,22 @@ function addCountrySheet(
   report: PerformanceReportData,
 ): void {
   const worksheet = workbook.addWorksheet("Country Demand");
-
   worksheet.columns = [
     { header: "Country", key: "country", width: 24 },
     { header: "Leads", key: "leads", width: 16 },
     { header: "Students", key: "students", width: 16 },
     { header: "Applications", key: "applications", width: 18 },
   ];
-
   worksheet.addRows(report.countryDemand);
   styleWorksheet(worksheet);
 }
 
-function addBranchSheet(
-  workbook: ExcelJS.Workbook,
-  report: PerformanceReportData,
-): void {
-  const worksheet = workbook.addWorksheet("Branch Performance");
-
-  worksheet.columns = [
-    { header: "Branch", key: "branch", width: 28 },
-    { header: "Leads Added", key: "leadsCreated", width: 18 },
-    { header: "Active Leads", key: "leads", width: 16 },
-    { header: "Lost Leads", key: "lostLeads", width: 16 },
-    { header: "Students", key: "students", width: 16 },
-    { header: "Dropped Students", key: "droppedStudents", width: 20 },
-    { header: "Student Target", key: "target", width: 18 },
-    { header: "Target Achieved", key: "achieved", width: 18 },
-    {
-      header: "Target Completion",
-      key: "targetCompletionPercentage",
-      width: 20,
-    },
-    { header: "Applications", key: "applications", width: 18 },
-    { header: "Conversion Rate", key: "conversionRate", width: 20 },
-    { header: "Visa Approved", key: "visaApproved", width: 18 },
-    { header: "Sanctioned Amount", key: "sanctionedAmount", width: 22 },
-    { header: "Disbursed Amount", key: "disbursedAmount", width: 22 },
-  ];
-
-  for (const row of report.branchPerformance) {
-    worksheet.addRow({
-      ...row,
-      targetCompletionPercentage: `${row.targetCompletionPercentage}%`,
-      conversionRate: `${row.conversionRate}%`,
-    });
-  }
-
-  worksheet.getColumn("sanctionedAmount").numFmt = "₹#,##0.00";
-  worksheet.getColumn("disbursedAmount").numFmt = "₹#,##0.00";
-  styleWorksheet(worksheet);
-}
-
-function addCounselorSheet(
-  workbook: ExcelJS.Workbook,
-  report: PerformanceReportData,
-): void {
-  const worksheet = workbook.addWorksheet("Counsellor Performance");
-
-  worksheet.columns = [
-    { header: "Branch", key: "branch", width: 26 },
-    { header: "Counsellor", key: "counselor", width: 26 },
+function performanceColumns(firstHeader: string, secondHeader?: string) {
+  return [
+    { header: firstHeader, key: "branch", width: 28 },
+    ...(secondHeader
+      ? [{ header: secondHeader, key: "counselor", width: 26 }]
+      : []),
     { header: "Total Walk-ins", key: "totalWalkins", width: 18 },
     { header: "Leads Added", key: "leadsCreated", width: 16 },
     { header: "Active Leads", key: "leads", width: 16 },
@@ -473,66 +351,59 @@ function addCounselorSheet(
     { header: "Conversion Rate", key: "conversionRate", width: 18 },
     { header: "CAS Received", key: "casReceived", width: 16 },
     { header: "Visa Approved", key: "visaApproved", width: 16 },
-    { header: "Loan Sanctioned", key: "loanSanctioned", width: 18 },
-    { header: "Sanctioned Amount", key: "sanctionedAmount", width: 22 },
-    { header: "Disbursed Amount", key: "disbursedAmount", width: 22 },
   ];
-
-  for (const row of report.counselorPerformance) {
-    worksheet.addRow({
-      ...row,
-      targetCompletionPercentage: `${row.targetCompletionPercentage}%`,
-      conversionRate: `${row.conversionRate}%`,
-    });
-  }
-
-  worksheet.getColumn("sanctionedAmount").numFmt = "₹#,##0.00";
-  worksheet.getColumn("disbursedAmount").numFmt = "₹#,##0.00";
-  styleWorksheet(worksheet);
-
-  let groupStart = 2;
-
-  while (groupStart <= worksheet.rowCount) {
-    const branch = worksheet.getCell(groupStart, 1).value;
-    let groupEnd = groupStart;
-
-    while (
-      groupEnd + 1 <= worksheet.rowCount &&
-      worksheet.getCell(groupEnd + 1, 1).value === branch
-    ) {
-      groupEnd += 1;
-    }
-
-    if (groupEnd > groupStart) {
-      worksheet.mergeCells(groupStart, 1, groupEnd, 1);
-      worksheet.getCell(groupStart, 1).alignment = {
-        vertical: "middle",
-        horizontal: "left",
-        wrapText: true,
-      };
-    }
-
-    groupStart = groupEnd + 1;
-  }
 }
 
-function addStatusSheet(
+function addBranchSheet(
   workbook: ExcelJS.Workbook,
-  name: string,
-  rows: Array<{
-    status: string;
-    count: number;
-  }>,
+  report: PerformanceReportData,
 ): void {
-  const worksheet = workbook.addWorksheet(name);
+  const worksheet = workbook.addWorksheet("Branch Performance");
+  worksheet.columns = performanceColumns("Branch");
 
-  worksheet.columns = [
-    { header: "Status", key: "status", width: 30 },
-    { header: "Count", key: "count", width: 16 },
-  ];
+  report.branchPerformance.forEach((row) => {
+    worksheet.addRow({ branch: row.branch, ...metricValues(row) });
+  });
 
-  worksheet.addRows(rows);
+  const totalRow = worksheet.addRow({
+    branch: "Grand Total",
+    ...metricValues(calculatePerformanceTotals(report.branchPerformance)),
+  });
   styleWorksheet(worksheet);
+  styleTotalRow(totalRow, GRAND_TOTAL_FILL);
+}
+
+function addCounselorSheet(
+  workbook: ExcelJS.Workbook,
+  report: PerformanceReportData,
+): void {
+  const worksheet = workbook.addWorksheet("Counsellor Performance");
+  worksheet.columns = performanceColumns("Branch", "Counsellor");
+
+  groupCounselorPerformance(report.counselorPerformance).forEach((group) => {
+    group.rows.forEach((row) => {
+      worksheet.addRow({
+        branch: row.branch,
+        counselor: row.counselor,
+        ...metricValues(row),
+      });
+    });
+
+    const subtotalRow = worksheet.addRow({
+      branch: `${group.branch} Total`,
+      counselor: "",
+      ...metricValues(group.totals),
+    });
+    styleTotalRow(subtotalRow, TOTAL_FILL);
+  });
+
+  const grandTotalRow = worksheet.addRow({
+    branch: "Grand Total",
+    counselor: "",
+    ...metricValues(calculatePerformanceTotals(report.counselorPerformance)),
+  });
+  styleWorksheet(worksheet);
+  styleTotalRow(grandTotalRow, GRAND_TOTAL_FILL);
 }
 
 function addLeadSourceSheet(
@@ -540,15 +411,27 @@ function addLeadSourceSheet(
   report: PerformanceReportData,
 ): void {
   const worksheet = workbook.addWorksheet("Lead Sources");
-
   worksheet.columns = [
     { header: "Source", key: "source", width: 28 },
     { header: "Leads", key: "leads", width: 16 },
     { header: "Students", key: "students", width: 16 },
     { header: "Total", key: "total", width: 16 },
   ];
-
   worksheet.addRows(report.leadSourceBreakdown);
+  styleWorksheet(worksheet);
+}
+
+function addStatusSheet(
+  workbook: ExcelJS.Workbook,
+  name: string,
+  rows: Array<{ status: string; count: number }>,
+): void {
+  const worksheet = workbook.addWorksheet(name);
+  worksheet.columns = [
+    { header: "Status", key: "status", width: 30 },
+    { header: "Count", key: "count", width: 16 },
+  ];
+  worksheet.addRows(rows);
   styleWorksheet(worksheet);
 }
 
@@ -557,7 +440,6 @@ export async function buildPerformanceReportWorkbook(
   filters: PerformanceReportFilters,
 ): Promise<Uint8Array> {
   const workbook = new ExcelJS.Workbook();
-
   workbook.creator = "VSource CRM";
   workbook.lastModifiedBy = "VSource CRM";
   workbook.created = new Date();
@@ -566,6 +448,8 @@ export async function buildPerformanceReportWorkbook(
   workbook.title = "Performance Report";
 
   addSummarySheet(workbook, report, filters);
+  addBranchSheet(workbook, report);
+  addCounselorSheet(workbook, report);
   addPipelineSheet(workbook, "Pipeline Records", report.rows);
   addPipelineSheet(
     workbook,
@@ -580,8 +464,6 @@ export async function buildPerformanceReportWorkbook(
   addApplicationsSheet(workbook, report);
   addMonthlySheet(workbook, report);
   addCountrySheet(workbook, report);
-  addBranchSheet(workbook, report);
-  addCounselorSheet(workbook, report);
   addLeadSourceSheet(workbook, report);
   addStatusSheet(workbook, "Lead Status", report.leadStatusBreakdown);
   addStatusSheet(
@@ -589,10 +471,6 @@ export async function buildPerformanceReportWorkbook(
     "Application Status",
     report.applicationStatusBreakdown,
   );
-  addStatusSheet(workbook, "Visa Status", report.visaStatusBreakdown);
-  addStatusSheet(workbook, "Loan Status", report.loanStatusBreakdown);
 
-  const buffer = await workbook.xlsx.writeBuffer();
-
-  return new Uint8Array(buffer);
+  return new Uint8Array(await workbook.xlsx.writeBuffer());
 }

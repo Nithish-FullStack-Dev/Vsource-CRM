@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
 import { handleError } from "@/lib/api-helpers";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
+import { resolvePerformanceReportAccessScope } from "@/lib/performance-report-access";
 import { buildPerformanceReportWorkbook } from "@/lib/performance-report-excel";
 import {
   getPerformanceReportForExport,
   parsePerformanceReportFilters,
-  type PerformanceReportAccessScope,
 } from "@/lib/performance-reports";
-import { getAuthorizedUser, ROLES } from "@/lib/rbac";
+import { getAuthorizedUser } from "@/lib/rbac";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,34 +19,15 @@ export async function GET(req: NextRequest) {
       MODULES.STUDENT_PROFILES,
       PERMISSIONS.READ,
     );
-
     const filters = parsePerformanceReportFilters(req.nextUrl.searchParams);
-
-    let accessScope: PerformanceReportAccessScope = {
-      kind: "all",
-    };
-
-    if (currentUser.role.name === ROLES.BRANCH_MANAGER) {
-      accessScope = {
-        kind: "branches",
-        branchIds: currentUser.branches.map((branch) => branch.id),
-      };
-    } else if (
-      currentUser.role.name !== ROLES.SUPER_ADMIN &&
-      currentUser.role.name !== ROLES.DIRECTOR
-    ) {
-      accessScope = {
-        kind: "user",
-        userId: currentUser.id,
-        userName: currentUser.name,
-      };
-    }
-
-    const report = await getPerformanceReportForExport(filters, accessScope);
+    const report = await getPerformanceReportForExport(
+      filters,
+      resolvePerformanceReportAccessScope(currentUser),
+    );
     const workbook = await buildPerformanceReportWorkbook(report, filters);
     const date = new Date().toISOString().slice(0, 10);
 
-    return new Response(workbook as unknown as BodyInit, {
+    return new Response(Buffer.from(workbook), {
       status: 200,
       headers: {
         "Content-Type":
