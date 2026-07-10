@@ -39,6 +39,7 @@ export type StudentStage =
   | "visa_approved"
   | "visa_rejected"
   | "enrolled";
+
 export interface StudentRecord {
   id: string;
 
@@ -240,6 +241,10 @@ export type StudentVisaProfile = {
   visaStatus?: "APPROVED" | "REJECTED" | "DECISION_PENDING";
 
   universityStartDate?: string | null;
+
+  universityEndDate: string;
+
+  interviewStatus: "" | "PASSED" | "FAILED" | "NO_INTERVIEW";
 
   createdAt?: string;
 

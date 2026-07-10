@@ -332,6 +332,11 @@ export function StudentTable({
               <th
                 className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
               >
+                Interview Status
+              </th>
+              <th
+                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
+              >
                 CAS DEADLINE DATE
               </th>
               <th
@@ -602,6 +607,16 @@ export function StudentTable({
                         )}`}
                       >
                         {getText(visaProfile?.ihsPaidStatus, "Not updated")}
+                      </span>
+                    </td>
+
+                    <td className={`${normalCellClass} text-center`}>
+                      <span
+                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                          visaProfile?.interviewStatus,
+                        )}`}
+                      >
+                        {getText(visaProfile?.interviewStatus, "Not updated")}
                       </span>
                     </td>
 

@@ -4,14 +4,29 @@ import { api } from "@/lib/api";
 export type StudentVisaProfile = {
   id: string;
   studentId: string;
+
   depositDeadlineDate: string;
+
   depositStatus: "" | "PENDING" | "PAID";
+
   ihsPaidStatus: "" | "PENDING" | "PAID" | "PAID_PARTIALLY";
+
   visaPaidStatus: string;
+
   casDeadlineDate: string;
+
   casStatus: "" | "PENDING" | "APPLIED" | "RECEIVED";
+
   visaStatus: "" | "DECISION_PENDING" | "APPROVED" | "REJECTED";
+
+  visaDecisionDate: string;
+
   universityStartDate: string;
+
+  universityEndDate: string;
+
+  interviewStatus: "" | "PASSED" | "FAILED" | "NO_INTERVIEW";
+
   createdAt?: string;
   updatedAt?: string;
 };

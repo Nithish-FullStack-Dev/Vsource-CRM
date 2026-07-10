@@ -7,19 +7,24 @@ import {
 import { toast } from "sonner";
 
 export type StudentVisaProfilePayload = {
-  depositDeadlineDate: string | null;
-  depositStatus: "PENDING" | "PAID" | null;
+  depositDeadlineDate?: string | null;
+  depositStatus?: "PENDING" | "PAID" | null;
 
-  ihsPaidStatus: "PENDING" | "PAID" | "PAID_PARTIALLY" | null;
+  ihsPaidStatus?: "PENDING" | "PAID" | "PAID_PARTIALLY" | null;
 
-  visaPaidStatus: string | null;
+  visaPaidStatus?: string | null;
 
-  casDeadlineDate: string | null;
-  casStatus: "PENDING" | "APPLIED" | "RECEIVED" | null;
+  casDeadlineDate?: string | null;
+  casStatus?: "PENDING" | "APPLIED" | "RECEIVED" | null;
 
-  visaStatus: "DECISION_PENDING" | "APPROVED" | "REJECTED" | null;
+  visaStatus?: "DECISION_PENDING" | "APPROVED" | "REJECTED" | null;
 
-  universityStartDate: string | null;
+  visaDecisionDate?: string | null;
+
+  universityStartDate?: string | null;
+  universityEndDate?: string | null;
+
+  interviewStatus?: "PASSED" | "FAILED" | "NO_INTERVIEW" | null;
 };
 
 type SaveStudentVisaProfileVariables = {
