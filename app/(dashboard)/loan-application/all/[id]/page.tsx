@@ -176,7 +176,7 @@ export default function LoanApplicationProfilePage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            {/* <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={a.loanStatus}
                 onValueChange={(loanStatus) => update.mutate({ loanStatus })}
@@ -192,7 +192,7 @@ export default function LoanApplicationProfilePage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
           </div>
           <div className="space-y-6">
             <div className="overflow-x-auto">
