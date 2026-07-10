@@ -1,9 +1,18 @@
-// app/api/loan-applications/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 
 import db from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+
+import { updateLoanApplicationSchema } from "@/schemas/loan-application/loan-application.schema";
+
+import {
+  serializeLoanApplication,
+  toLoanApplicationData,
+} from "@/lib/loan-application/server";
+
+/* -------------------------------------------------------------------------- */
+/*                                  INCLUDE                                   */
+/* -------------------------------------------------------------------------- */
 
 const loanApplicationInclude = {
   branch: {
@@ -61,6 +70,10 @@ const loanApplicationInclude = {
   },
 } satisfies Prisma.LoanApplicationInclude;
 
+/* -------------------------------------------------------------------------- */
+/*                        SYNC LOAN REQUIRED LEADS                            */
+/* -------------------------------------------------------------------------- */
+
 async function syncLoanRequiredLeads() {
   const leads = await db.lead.findMany({
     where: {
@@ -114,12 +127,6 @@ async function syncLoanRequiredLeads() {
           leadId: lead.id,
         },
 
-        /**
-         * Existing Loan Application
-         *
-         * Keep the application synchronized with
-         * the Master Walk-In lead.
-         */
         update: {
           fullName: lead.studentName?.trim() || "Unknown Applicant",
 
@@ -154,9 +161,6 @@ async function syncLoanRequiredLeads() {
           intake: lead.preferredIntake,
         },
 
-        /**
-         * New Loan Application
-         */
         create: {
           applicationId: `LOAN-${lead.leadNumber}`,
 
@@ -186,12 +190,6 @@ async function syncLoanRequiredLeads() {
 
           remarks: lead.remarks,
 
-          /**
-           * IMPORTANT
-           *
-           * These values now work with the fixed
-           * constants.ts getLoanTabs().
-           */
           applicantCategory: "Student",
 
           loanCategory: "Education Loan",
@@ -214,6 +212,11 @@ async function syncLoanRequiredLeads() {
     }),
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                    GET                                     */
+/* -------------------------------------------------------------------------- */
+
 export async function GET(request: NextRequest) {
   try {
     await syncLoanRequiredLeads();
@@ -288,7 +291,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      data: rows,
+      data: rows.map(serializeLoanApplication),
     });
   } catch (error) {
     console.error("GET LOAN APPLICATIONS ERROR:", error);
@@ -309,49 +312,136 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body: unknown = await request.json();
 
-    const created = await db.loanApplication.create({
-      data: {
-        applicationId: `LOAN-${Date.now()}`,
+    /*
+     * Validate incoming request.
+     */
+    const values = updateLoanApplicationSchema.parse(body);
 
-        fullName: body.fullName,
+    /*
+     * Convert validated form values into Prisma data.
+     */
+    const applicationData = toLoanApplicationData(values);
 
-        mobile: body.mobile,
+    /*
+     * Required create fields must be explicitly present because
+     * toLoanApplicationData() is also used by PATCH and therefore
+     * likely returns Prisma.LoanApplicationUpdateInput.
+     */
+    const createData: Prisma.LoanApplicationUncheckedCreateInput = {
+      ...applicationData,
 
-        email: body.email,
+      applicationId: `LOAN-${Date.now()}`,
 
-        branchId: body.branchId,
+      fullName: values.fullName ?? "",
 
-        applicantCategory: body.applicantCategory,
+      mobile: values.mobile ?? "",
 
-        loanCategory: body.loanCategory,
-      },
+      email: values.email ?? "",
 
-      include: loanApplicationInclude,
+      branchId: values.branchId ?? "",
+
+      applicantCategory: values.applicantCategory ?? "",
+
+      loanCategory: values.loanCategory ?? "",
+
+      loanStatus: values.loanStatus ?? "New Enquiry",
+    };
+
+    const created = await db.$transaction(async (tx) => {
+      const loanApplication = await tx.loanApplication.create({
+        data: createData,
+
+        include: loanApplicationInclude,
+      });
+
+      await tx.loanActivity.create({
+        data: {
+          applicationId: loanApplication.id,
+
+          type: "created",
+
+          title: "Loan application created",
+
+          description: "New loan enquiry was created.",
+        },
+      });
+
+      return loanApplication;
     });
 
     return NextResponse.json(
       {
         message: "Loan enquiry created successfully",
-        data: created,
+
+        data: serializeLoanApplication(created),
       },
       {
         status: 201,
       },
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("POST LOAN APPLICATION ERROR:", error);
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        return NextResponse.json(
+          {
+            message: "A loan application with this value already exists",
+            code: error.code,
+            meta: error.meta,
+          },
+          {
+            status: 409,
+          },
+        );
+      }
+
+      if (error.code === "P2003") {
+        return NextResponse.json(
+          {
+            message:
+              "Invalid related record. Please verify branch, counselor, or fintech assignee.",
+            code: error.code,
+            meta: error.meta,
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+
       return NextResponse.json(
         {
-          message: error.message,
+          message: "Database error while creating loan application",
           code: error.code,
           meta: error.meta,
         },
         {
           status: 500,
+        },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === "object" &&
+      "issues" in error &&
+      Array.isArray(error.issues)
+    ) {
+      const issues = error.issues as Array<{
+        message?: string;
+      }>;
+
+      return NextResponse.json(
+        {
+          message: issues[0]?.message ?? "Invalid loan application data",
+
+          errors: issues,
+        },
+        {
+          status: 400,
         },
       );
     }
