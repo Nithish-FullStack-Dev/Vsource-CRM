@@ -44,7 +44,6 @@ export default function StudentRemarksTimelineTab({
           onSubmit={onAddRemark}
           isSubmitting={isRemarkSubmitting}
           canCreate={canCreate}
-          isDarkMode={isDarkMode}
           formatDate={formatDate}
         />
       </Card>
@@ -55,7 +54,6 @@ export default function StudentRemarksTimelineTab({
           onSubmit={onAddTimeline}
           isSubmitting={isTimelineSubmitting}
           canCreate={canCreate}
-          isDarkMode={isDarkMode}
           formatDate={formatDate}
         />
       </Card>
