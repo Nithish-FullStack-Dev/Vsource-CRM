@@ -42,7 +42,7 @@ const loanApplicationInclude = {
       email: true,
     },
   },
-
+  disbursement: true,
   bankApplications: {
     include: {
       bank: {
@@ -198,7 +198,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
           data: {
             bachelorsCourse: values.qualification ?? null,
 
-            graduationStatus: values.graduationStatus ?? null,
+            graduationStatus: values.graduationStatus
+              ? (values.graduationStatus as any)
+              : null,
 
             bachelorsPercentage:
               values.percentage !== undefined &&

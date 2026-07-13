@@ -321,10 +321,6 @@ export function BanksTab({ applicationId }: { applicationId: string }) {
   }
 
   function closeDialog() {
-    if (isSaving) {
-      return;
-    }
-
     setDialogOpen(false);
     setEditingApplication(null);
 
