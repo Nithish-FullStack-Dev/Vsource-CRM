@@ -3,10 +3,19 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquareText, Send, UserRound } from "lucide-react";
-import { Remarks } from "@/types/student";
-
+// import { Remarks } from "@/types/student";
+interface RemarkItem {
+  id: string;
+  note: string;
+  createdAt: string | Date;
+  createdBy?: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+  } | null;
+}
 interface StudentRemarksSectionProps {
-  remarks: Remarks[];
+  remarks: RemarkItem[];
   onSubmit: (note: string) => Promise<void> | void;
   isSubmitting: boolean;
   canCreate: boolean;

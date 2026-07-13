@@ -580,11 +580,10 @@ export const followUpSchema = z.object({
  * ============================================================
  */
 export const activitySchema = z.object({
-  type: optionalString,
-
+  type: z.string().optional(),
   title: z.string().trim().min(1, "Title is required"),
-
-  description: optionalString,
+  description: z.string().trim().optional().nullable(),
+  createdById: z.string().uuid().optional().nullable(),
 });
 
 export const optionalPositiveNumber = z.preprocess(
