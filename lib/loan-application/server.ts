@@ -1,3 +1,4 @@
+// lib\loan-application\server.ts
 import db from '@/lib/prisma';
 import type { LoanApplicationPayload } from '@/schemas/loan-application/loan-application.schema';
 import { LOAN_DOCUMENT_CHECKLIST } from '@/lib/loan-application/constants';

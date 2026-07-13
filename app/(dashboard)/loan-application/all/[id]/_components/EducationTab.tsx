@@ -64,10 +64,6 @@ import {
 import { InfoCard, InfoGrid, TabHeader } from "./ProfileUI";
 import type { LoanApplication } from "./types";
 
-/* -------------------------------------------------------------------------- */
-/*                                    TYPES                                   */
-/* -------------------------------------------------------------------------- */
-
 interface EducationTabProps {
   applicant: LoanApplication;
 }
@@ -128,10 +124,6 @@ interface Option {
   label: string;
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                  CONSTANTS                                 */
-/* -------------------------------------------------------------------------- */
-
 const GRADUATION_STATUS_OPTIONS = [
   "Pursuing",
   "Completed",
@@ -157,11 +149,6 @@ const OFFER_LETTER_OPTIONS = [
   "COL",
   "UCOL",
 ] as const;
-
-/* -------------------------------------------------------------------------- */
-/*                                  HELPERS                                   */
-/* -------------------------------------------------------------------------- */
-
 const toOptions = (
   items: readonly string[] | Array<{ id: string; name: string }>,
 ): Option[] =>
@@ -204,10 +191,6 @@ function getArrayData<T>(response: unknown): T[] {
   return [];
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                  MAIN TAB                                  */
-/* -------------------------------------------------------------------------- */
-
 export function EducationTab({ applicant }: EducationTabProps) {
   const [editOpen, setEditOpen] = useState(false);
 
@@ -230,7 +213,6 @@ export function EducationTab({ applicant }: EducationTabProps) {
               </Button>
             }
           />
-
           <InfoGrid>
             <InfoCard
               icon={GraduationCap}
@@ -344,10 +326,6 @@ export function EducationTab({ applicant }: EducationTabProps) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              EDIT EDUCATION                                */
-/* -------------------------------------------------------------------------- */
-
 function EditEducationDialog({
   applicant,
   open,
@@ -377,11 +355,6 @@ function EditEducationDialog({
 
   const selectedCountryName = watch("country");
   const selectedUniversityName = watch("university");
-
-  /* ------------------------------------------------------------------------ */
-  /*                         CURRENT INSTITUTIONS                             */
-  /* ------------------------------------------------------------------------ */
-
   const {
     data: institutions = [],
     isLoading: institutionsLoading,
@@ -418,11 +391,6 @@ function EditEducationDialog({
 
     await refetchInstitutions();
   };
-
-  /* ------------------------------------------------------------------------ */
-  /*                            QUALIFICATIONS                                */
-  /* ------------------------------------------------------------------------ */
-
   const { data: qualifications = [], isLoading: qualificationsLoading } =
     useQuery<MasterItem[]>({
       queryKey: ["loan-courses"],
@@ -435,11 +403,6 @@ function EditEducationDialog({
         return getArrayData<MasterItem>(data);
       },
     });
-
-  /* ------------------------------------------------------------------------ */
-  /*                         COUNTRY AND INTAKE                               */
-  /* ------------------------------------------------------------------------ */
-
   useEffect(() => {
     let mounted = true;
 
@@ -475,20 +438,10 @@ function EditEducationDialog({
       mounted = false;
     };
   }, []);
-
-  /* ------------------------------------------------------------------------ */
-  /*                            SELECTED COUNTRY                              */
-  /* ------------------------------------------------------------------------ */
-
   const selectedCountry = useMemo(
     () => countries.find((country) => country.name === selectedCountryName),
     [countries, selectedCountryName],
   );
-
-  /* ------------------------------------------------------------------------ */
-  /*                          ABROAD UNIVERSITIES                             */
-  /* ------------------------------------------------------------------------ */
-
   const {
     data: abroadUniversities = [],
     isLoading: abroadUniversitiesLoading,
@@ -516,11 +469,6 @@ function EditEducationDialog({
       return getArrayData<AbroadUniversity>(data);
     },
   });
-
-  /* ------------------------------------------------------------------------ */
-  /*                         SELECTED UNIVERSITY                              */
-  /* ------------------------------------------------------------------------ */
-
   const selectedAbroadUniversity = useMemo(
     () =>
       abroadUniversities.find(
@@ -528,11 +476,6 @@ function EditEducationDialog({
       ),
     [abroadUniversities, selectedUniversityName],
   );
-
-  /* ------------------------------------------------------------------------ */
-  /*                          UNIVERSITY COURSES                              */
-  /* ------------------------------------------------------------------------ */
-
   const {
     data: universityCourses = [],
     isLoading: universityCoursesLoading,
@@ -562,11 +505,6 @@ function EditEducationDialog({
       return getArrayData<UniversityCourse>(data);
     },
   });
-
-  /* ------------------------------------------------------------------------ */
-  /*                              RESET FORM                                  */
-  /* ------------------------------------------------------------------------ */
-
   useEffect(() => {
     if (!open) {
       return;
@@ -578,10 +516,6 @@ function EditEducationDialog({
     setInstitutionSearch("");
     setIsCreatingInstitution(false);
   }, [open, applicant, reset]);
-
-  /* ------------------------------------------------------------------------ */
-  /*                              CLOSE DIALOG                                */
-  /* ------------------------------------------------------------------------ */
 
   const handleDialogChange = (nextOpen: boolean) => {
     if (update.isPending || isCreatingInstitution) {
@@ -597,11 +531,6 @@ function EditEducationDialog({
 
     onOpenChange(nextOpen);
   };
-
-  /* ------------------------------------------------------------------------ */
-  /*                                 SUBMIT                                   */
-  /* ------------------------------------------------------------------------ */
-
   const onSubmit = async (values: UpdateLoanApplicationValues) => {
     const payload: UpdateLoanApplicationValues = {
       qualification: normalizeOptionalString(values.qualification),
@@ -1110,11 +1039,6 @@ function EditEducationDialog({
     </Dialog>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/*                            SELECT FORM FIELD                               */
-/* -------------------------------------------------------------------------- */
-
 interface SelectFormFieldProps {
   control: ReturnType<typeof useForm<UpdateLoanApplicationValues>>["control"];
 
@@ -1190,10 +1114,6 @@ function SelectFormField({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              FORM SECTION                                  */
-/* -------------------------------------------------------------------------- */
-
 interface FormSectionProps {
   title: string;
   description: string;
@@ -1230,10 +1150,6 @@ function FormSection({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*                               FORM FIELD                                   */
-/* -------------------------------------------------------------------------- */
-
 interface FormFieldProps {
   label: string;
   error?: string;
@@ -1253,30 +1169,38 @@ function FormField({ label, error, children }: FormFieldProps) {
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/*                              DEFAULT VALUES                                */
-/* -------------------------------------------------------------------------- */
-
 function getEducationDefaultValues(
   applicant: LoanApplication,
 ): UpdateLoanApplicationValues {
   return {
     qualification: applicant.qualification ?? "",
+
     graduationStatus: applicant.graduationStatus ?? "",
+
     percentage: applicant.percentage ?? "",
+
     yearOfPassing: applicant.yearOfPassing ?? "",
+
     currentInstitution: applicant.currentInstitution ?? "",
+
     workExperience: applicant.workExperience ?? "",
 
     studyDestination: applicant.studyDestination ?? "",
+
     country: applicant.country ?? "",
+
     university: applicant.university ?? "",
+
     courseName: applicant.courseName ?? "",
+
     courseLevel: applicant.courseLevel ?? "",
+
     courseDuration: applicant.courseDuration ?? "",
+
     intake: applicant.intake ?? "",
+
     admissionStatus: applicant.admissionStatus ?? "",
+
     offerLetterReceived: applicant.offerLetterReceived ?? "",
   };
 }
