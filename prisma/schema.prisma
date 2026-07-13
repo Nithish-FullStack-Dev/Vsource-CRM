@@ -57,6 +57,8 @@ model User {
   loanApplicationsCounseled LoanApplication[] @relation("LoanApplicationCounselor")
   loanApplicationsFintech   LoanApplication[] @relation("LoanApplicationFintech")
 
+  loanActivitiesCreated LoanActivity[] @relation("LoanActivityCreatedBy")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -913,6 +915,10 @@ model Bank {
 
   status Boolean @default(true)
 
+  loanApplications LoanBankApplication[]
+
+  sanctions LoanSanction[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1164,8 +1170,13 @@ model LoanApplication {
   followUps                LoanFollowUp[]
   activities               LoanActivity[]
   documents                LoanDocument[]
-  createdAt                DateTime              @default(now())
-  updatedAt                DateTime              @updatedAt
+
+  sanction LoanSanction?
+
+  disbursement LoanDisbursement?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([branchId])
   @@index([counselorId])
@@ -1175,27 +1186,123 @@ model LoanApplication {
 }
 
 model LoanBankApplication {
-  id               String          @id @default(uuid())
-  applicationId    String
-  application      LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  bank             String
-  branch           String?
-  applicationNo    String?
-  loginDate        DateTime?
-  appliedAmount    Decimal?        @db.Decimal(12, 2)
-  sanctionedAmount Decimal?        @db.Decimal(12, 2)
-  sanctionDate     DateTime?
-  disbursedAmount  Decimal?        @db.Decimal(12, 2)
-  disbursementDate DateTime?
-  roi              Decimal?        @db.Decimal(5, 2)
-  tenure           Int?
-  status           String?
-  remarks          String?         @db.Text
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id String @id @default(uuid())
+
+  applicationId String
+  application   LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  bankId String
+  bank   Bank   @relation(fields: [bankId], references: [id])
+
+  branch String?
+
+  applicationNo String?
+
+  applicationDate DateTime?
+
+  appliedAmount Decimal? @db.Decimal(12, 2)
+
+  loanType String?
+
+  roi Decimal? @db.Decimal(5, 2)
+
+  tenure Int?
+
+  processingFee Decimal? @db.Decimal(12, 2)
+
+  insuranceAmount Decimal? @db.Decimal(12, 2)
+
+  moratorium String?
+
+  loginExecutive String?
+
+  status String?
+
+  rejectionReason String?
+
+  remarks String? @db.Text
+
+  sanction LoanSanction?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([applicationId])
-  @@index([bank])
+  @@index([bankId])
+  @@index([status])
+}
+
+model LoanSanction {
+  id String @id @default(uuid())
+
+  applicationId String          @unique
+  application   LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  bankApplicationId String?              @unique
+  bankApplication   LoanBankApplication? @relation(fields: [bankApplicationId], references: [id])
+
+  bankId String
+  bank   Bank   @relation(fields: [bankId], references: [id])
+
+  sanctionNo String?
+
+  sanctionDate DateTime?
+
+  sanctionedAmount Decimal? @db.Decimal(12, 2)
+
+  roi Decimal? @db.Decimal(5, 2)
+
+  tenure Int?
+
+  emi Decimal? @db.Decimal(12, 2)
+
+  moratorium String?
+
+  processingFee Decimal? @db.Decimal(12, 2)
+
+  insuranceAmount Decimal? @db.Decimal(12, 2)
+
+  sanctionLetter String?
+
+  expiryDate DateTime?
+
+  remarks String? @db.Text
+
+  disbursement LoanDisbursement?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bankId])
+}
+
+model LoanDisbursement {
+  id String @id @default(uuid())
+
+  applicationId String          @unique
+  application   LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  sanctionId String       @unique
+  sanction   LoanSanction @relation(fields: [sanctionId], references: [id], onDelete: Cascade)
+
+  disbursementDate DateTime?
+
+  disbursedAmount Decimal? @db.Decimal(12, 2)
+
+  disbursementReference String?
+
+  accountNumber String?
+
+  transactionId String?
+
+  beneficiary String?
+
+  paymentMode String?
+
+  remarks String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model LoanCoApplicant {
@@ -1264,15 +1371,20 @@ model LoanFollowUp {
 }
 
 model LoanActivity {
-  id            String          @id @default(uuid())
+  id            String   @id @default(uuid())
   applicationId String
-  application   LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   type          String?
   title         String
-  description   String?         @db.Text
-  createdAt     DateTime        @default(now())
+  description   String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  createdBy User? @relation("LoanActivityCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([applicationId])
+  @@index([createdById])
 }
 
 model LoanDocument {
