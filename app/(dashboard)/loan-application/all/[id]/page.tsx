@@ -1,5 +1,6 @@
 // app\(dashboard)\loan-application\all\[id]\page.tsx
 "use client";
+
 import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -53,6 +54,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DepositTab } from "./_components/DepositTab";
+
 const icons: Record<string, React.ElementType> = {
   basic: User,
   documents: FolderOpen,
@@ -76,6 +79,7 @@ const initials = (name?: string) =>
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
 export default function LoanApplicationProfilePage() {
   const router = useRouter();
   const params = useParams();
@@ -137,7 +141,7 @@ export default function LoanApplicationProfilePage() {
       banks: <BanksTab applicationId={a.id} />,
       sanction: <SanctionTab applicant={a as any} />,
       disbursement: <DisbursementTab applicant={a as any} />,
-      deposit: <CoApplicantTab applicant={a as any} />,
+      deposit: <DepositTab applicant={a as any} />,
       remarks: <RemarksTab applicant={a as any} />,
     })[tab] ?? null;
   return (

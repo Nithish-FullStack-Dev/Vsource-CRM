@@ -130,6 +130,36 @@ export type CoApplicant = {
   updatedAt?: string | Date | null;
 };
 
+export type LoanDisbursement = {
+  id?: string;
+
+  applicationId?: string;
+
+  sanctionId?: string;
+
+  sanction?: LoanSanction | null;
+
+  disbursementDate?: string | Date | null;
+
+  disbursedAmount?: number | string | null;
+
+  disbursementReference?: string | null;
+
+  accountNumber?: string | null;
+
+  transactionId?: string | null;
+
+  beneficiary?: string | null;
+
+  paymentMode?: string | null;
+
+  remarks?: string | null;
+
+  createdAt?: string | Date | null;
+
+  updatedAt?: string | Date | null;
+};
+
 export type FollowUp = {
   id?: string;
   date?: string | Date | null;
@@ -269,6 +299,9 @@ export type LoanApplication = {
   depositReference?: string | null;
   depositBank?: string | null;
   depositRemarks?: string | null;
+  depositStatus?: string | "Pending";
+
+  disbursement: LoanDisbursement;
 
   sanction?: LoanSanction | null;
   coApplicants?: CoApplicant[];
