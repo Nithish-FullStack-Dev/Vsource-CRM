@@ -1,16 +1,16 @@
 // app\api\loan-applications\[id]\route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-import db from '@/lib/prisma';
+import db from "@/lib/prisma";
 
-import { updateLoanApplicationSchema } from '@/schemas/loan-application/loan-application.schema';
+import { updateLoanApplicationSchema } from "@/schemas/loan-application/loan-application.schema";
 
 import {
   serializeLoanApplication,
   toLoanApplicationData,
-} from '@/lib/loan-application/server';
+} from "@/lib/loan-application/server";
 
-import { Prisma } from '@/generated/prisma/client';
+import { Prisma } from "@/generated/prisma/client";
 
 type Ctx = {
   params: Promise<{
@@ -45,31 +45,40 @@ const loanApplicationInclude = {
 
   bankApplications: {
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   },
 
   coApplicants: {
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   },
 
   followUps: {
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   },
 
   activities: {
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
+    },
+    include: {
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
     },
   },
 
   documents: {
     orderBy: {
-      uploadedAt: 'desc',
+      uploadedAt: "desc",
     },
   },
 } satisfies Prisma.LoanApplicationInclude;
@@ -92,11 +101,11 @@ export async function GET(_: NextRequest, ctx: Ctx) {
     if (!row) {
       return NextResponse.json(
         {
-          message: 'Loan application not found',
+          message: "Loan application not found",
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
@@ -104,15 +113,15 @@ export async function GET(_: NextRequest, ctx: Ctx) {
       data: serializeLoanApplication(row),
     });
   } catch (error) {
-    console.error('GET loan application error:', error);
+    console.error("GET loan application error:", error);
 
     return NextResponse.json(
       {
-        message: 'Failed to load loan application',
+        message: "Failed to load loan application",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }
@@ -141,11 +150,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (!existingApplication) {
       return NextResponse.json(
         {
-          message: 'Loan application not found',
+          message: "Loan application not found",
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
@@ -167,9 +176,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       await tx.loanActivity.create({
         data: {
           applicationId: id,
-          type: 'updated',
-          title: 'Loan application updated',
-          description: 'Loan application details were updated.',
+          type: "updated",
+          title: "Loan application updated",
+          description: "Loan application details were updated.",
         },
       });
     });
@@ -184,32 +193,32 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (!updated) {
       return NextResponse.json(
         {
-          message: 'Loan application not found after update',
+          message: "Loan application not found after update",
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
     return NextResponse.json({
-      message: 'Loan application updated successfully',
+      message: "Loan application updated successfully",
       data: serializeLoanApplication(updated),
     });
   } catch (error: any) {
-    console.error('PATCH loan application error:', error);
+    console.error("PATCH loan application error:", error);
 
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2025'
+      error.code === "P2025"
     ) {
       return NextResponse.json(
         {
-          message: 'Loan application not found',
+          message: "Loan application not found",
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
@@ -218,11 +227,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         message:
           error?.issues?.[0]?.message ||
           error?.message ||
-          'Failed to update loan application',
+          "Failed to update loan application",
       },
       {
         status: 400,
-      }
+      },
     );
   }
 }
@@ -247,11 +256,11 @@ export async function DELETE(_: NextRequest, ctx: Ctx) {
     if (!existingApplication) {
       return NextResponse.json(
         {
-          message: 'Loan application not found',
+          message: "Loan application not found",
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
@@ -262,34 +271,32 @@ export async function DELETE(_: NextRequest, ctx: Ctx) {
     });
 
     return NextResponse.json({
-      message: 'Loan application deleted successfully',
+      message: "Loan application deleted successfully",
     });
   } catch (error: any) {
-    console.error('DELETE loan application error:', error);
+    console.error("DELETE loan application error:", error);
 
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2025'
+      error.code === "P2025"
     ) {
       return NextResponse.json(
         {
-          message: 'Loan application not found',
+          message: "Loan application not found",
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
     return NextResponse.json(
       {
-        message:
-          error?.message ||
-          'Failed to delete loan application',
+        message: error?.message || "Failed to delete loan application",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }
