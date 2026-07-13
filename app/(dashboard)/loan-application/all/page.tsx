@@ -47,12 +47,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { LoanApplication } from "@/types/loan-application";
+import { LoanApplication } from "./[id]/_components/types";
+
 const ALL = "__all__";
-const unique = (items: string[]) =>
-  [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+const unique = (items: (string | null | undefined)[]) =>
+  [...new Set(items.filter((item): item is string => !!item))].sort((a, b) =>
+    a.localeCompare(b),
+  );
 const assignee = (a: LoanApplication) => a.fintechAssigneeName || "";
-const bank = (a: LoanApplication) => a.bankApplications?.[0]?.bank || "";
+const bank = (a: LoanApplication) => a.bankApplications?.[0]?.bank?.name ?? "";
+
+const formatFollowUpValue = (value: string | Date | null | undefined) =>
+  value instanceof Date ? value.toLocaleDateString() : (value ?? "");
 
 function downloadCsv(rows: LoanApplication[]) {
   const headers = [
@@ -80,11 +86,11 @@ function downloadCsv(rows: LoanApplication[]) {
       a.loanCategory,
       assignee(a),
       bank(a),
-      a.requiredLoanAmount || "",
-      a.sanctionedAmount || "",
-      a.disbursedAmount || "",
-      a.loanStatus || "",
-      a.nextFollowUp || "",
+      a.requiredLoanAmount ?? "",
+      a.sanctionedAmount ?? "",
+      a.disbursedAmount ?? "",
+      a.loanStatus ?? "",
+      a.nextFollowUp ?? "",
     ]
       .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
       .join(","),
@@ -119,7 +125,7 @@ export default function LoanApplicationsPage() {
     () =>
       unique(
         rows.flatMap((a) =>
-          (a.bankApplications ?? []).map((x) => x.bank || ""),
+          (a.bankApplications ?? []).map((x) => x.bank?.name),
         ),
       ),
     [rows],
@@ -129,16 +135,22 @@ export default function LoanApplicationsPage() {
     return rows.filter((a) => {
       if (
         s &&
-        ![a.fullName, a.applicationId, a.mobile, a.email || ""].some((v) =>
-          v.toLowerCase().includes(s),
-        )
+        ![
+          a.fullName ?? "",
+          a.applicationId ?? "",
+          a.mobile ?? "",
+          a.email ?? "",
+        ].some((v) => v.toLowerCase().includes(s))
       )
         return false;
       if (cat !== ALL && a.applicantCategory !== cat) return false;
       if (loan !== ALL && a.loanCategory !== loan) return false;
       if (status !== ALL && a.loanStatus !== status) return false;
       if (user !== ALL && assignee(a) !== user) return false;
-      if (b !== ALL && !(a.bankApplications ?? []).some((x) => x.bank === b))
+      if (
+        b !== ALL &&
+        !(a.bankApplications ?? []).some((x) => x.bank?.name === b)
+      )
         return false;
       return true;
     });
@@ -352,10 +364,10 @@ export default function LoanApplicationsPage() {
                         {a.mobile}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {assignee(a) || "—"}
+                        {assignee(a as any) || "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {bank(a) || "—"}
+                        {bank(a as any) || "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         {formatINR(a.requiredLoanAmount)}
@@ -375,7 +387,7 @@ export default function LoanApplicationsPage() {
                         />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
-                        {a.nextFollowUp || "—"}
+                        {formatFollowUpValue(a.nextFollowUp) || "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -396,7 +408,7 @@ export default function LoanApplicationsPage() {
                             size="icon"
                             className="h-8 w-8 text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
                             aria-label={`Delete ${a.fullName}`}
-                            onClick={() => setDeleteApplication(a)}
+                            onClick={() => setDeleteApplication(a as any)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>

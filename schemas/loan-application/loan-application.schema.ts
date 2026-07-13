@@ -428,33 +428,116 @@ export type UpdateLoanApplicationValues = z.input<
  * BANK APPLICATION SCHEMA
  * ============================================================
  */
+export const optionalPositiveNumber = z.preprocess(
+  (value) => {
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      Number.isNaN(value)
+    ) {
+      return undefined;
+    }
+
+    return Number(value);
+  },
+  z
+    .number({
+      error: "Enter a valid number",
+    })
+    .finite("Enter a valid number")
+    .positive("Value must be greater than 0")
+    .optional(),
+);
+
+export const optionalInteger = z.preprocess(
+  (value) => {
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      Number.isNaN(value)
+    ) {
+      return undefined;
+    }
+
+    return Number(value);
+  },
+  z
+    .number({
+      error: "Enter a valid number",
+    })
+    .int("Only whole numbers are allowed")
+    .nonnegative("Negative values are not allowed")
+    .optional(),
+);
+
+export const optionalCibil = z.preprocess(
+  (value) => {
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      Number.isNaN(value)
+    ) {
+      return undefined;
+    }
+
+    return Number(value);
+  },
+  z
+    .number({
+      error: "Enter a valid CIBIL score",
+    })
+    .int("CIBIL score must be a whole number")
+    .min(300, "CIBIL score must be at least 300")
+    .max(900, "CIBIL score cannot exceed 900")
+    .optional(),
+);
+
 export const bankApplicationSchema = z.object({
-  bank: z.string().trim().min(1, "Bank / NBFC name is required"),
+  bankId: z.string().min(1, "Please select a bank or NBFC"),
 
   branch: optionalString,
 
   applicationNo: optionalString,
 
-  loginDate: optionalDate,
+  applicationDate: z.string().optional().or(z.literal("")),
 
   appliedAmount: optionalNumber,
 
-  sanctionedAmount: optionalNumber,
+  loanType: optionalString,
 
-  sanctionDate: optionalDate,
+  roi: z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) {
+      return undefined;
+    }
 
-  disbursedAmount: optionalNumber,
+    const parsedValue = Number(value);
 
-  disbursementDate: optionalDate,
+    return Number.isNaN(parsedValue) ? value : parsedValue;
+  }, z.number().min(0, "ROI cannot be negative").max(100, "ROI cannot exceed 100").optional()),
 
-  roi: optionalNumber,
+  tenure: optionalInteger,
 
-  tenure: optionalNumber,
+  processingFee: optionalNumber,
+
+  insuranceAmount: optionalNumber,
+
+  moratorium: optionalString,
+
+  loginExecutive: optionalString,
 
   status: optionalString,
 
+  rejectionReason: optionalString,
+
   remarks: optionalString,
 });
+
+export type BankApplicationFormInput = z.input<typeof bankApplicationSchema>;
+
+export type BankApplicationFormValues = z.output<typeof bankApplicationSchema>;
 
 /**
 /**
@@ -585,73 +668,6 @@ export const activitySchema = z.object({
   description: z.string().trim().optional().nullable(),
   createdById: z.string().uuid().optional().nullable(),
 });
-
-export const optionalPositiveNumber = z.preprocess(
-  (value) => {
-    if (
-      value === "" ||
-      value === null ||
-      value === undefined ||
-      Number.isNaN(value)
-    ) {
-      return undefined;
-    }
-
-    return Number(value);
-  },
-  z
-    .number({
-      error: "Enter a valid number",
-    })
-    .finite("Enter a valid number")
-    .positive("Value must be greater than 0")
-    .optional(),
-);
-
-export const optionalInteger = z.preprocess(
-  (value) => {
-    if (
-      value === "" ||
-      value === null ||
-      value === undefined ||
-      Number.isNaN(value)
-    ) {
-      return undefined;
-    }
-
-    return Number(value);
-  },
-  z
-    .number({
-      error: "Enter a valid number",
-    })
-    .int("Only whole numbers are allowed")
-    .nonnegative("Negative values are not allowed")
-    .optional(),
-);
-
-export const optionalCibil = z.preprocess(
-  (value) => {
-    if (
-      value === "" ||
-      value === null ||
-      value === undefined ||
-      Number.isNaN(value)
-    ) {
-      return undefined;
-    }
-
-    return Number(value);
-  },
-  z
-    .number({
-      error: "Enter a valid CIBIL score",
-    })
-    .int("CIBIL score must be a whole number")
-    .min(300, "CIBIL score must be at least 300")
-    .max(900, "CIBIL score cannot exceed 900")
-    .optional(),
-);
 
 export const createFinancialEditSchema = (loanCategory?: string | null) =>
   z

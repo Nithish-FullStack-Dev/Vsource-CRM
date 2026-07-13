@@ -1,85 +1,147 @@
-import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/prisma';
-import { bankApplicationSchema } from '@/schemas/loan-application/loan-application.schema';
+// app\api\loan-applications\[id]\banks\route.ts
 
-type Ctx = {
+import { NextRequest, NextResponse } from "next/server";
+import db from "@/lib/prisma";
+import { bankApplicationSchema } from "@/schemas/loan-application/loan-application.schema";
+import { Prisma } from "@/generated/prisma/client";
+
+type RouteContext = {
   params: Promise<{
     id: string;
   }>;
 };
 
-const toDate = (value?: string | null): Date | null => {
-  return value ? new Date(value) : null;
-};
+function toOptionalDate(value?: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
 
-export async function POST(req: NextRequest, ctx: Ctx) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid application date");
+  }
+
+  return date;
+}
+
+function toDecimal(value?: number | null): Prisma.Decimal | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  return new Prisma.Decimal(value);
+}
+
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const { id } = await ctx.params;
-
-    const body = await req.json();
+    const { id: applicationId } = await context.params;
+    const body = await request.json();
 
     const validatedData = bankApplicationSchema.parse(body);
 
-    // Check if loan application exists
-    const application = await db.loanApplication.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-      },
-    });
+    const [application, bank] = await Promise.all([
+      db.loanApplication.findUnique({
+        where: {
+          id: applicationId,
+        },
+        select: {
+          id: true,
+          applicationId: true,
+          fullName: true,
+        },
+      }),
+
+      db.bank.findFirst({
+        where: {
+          id: validatedData.bankId,
+          status: true,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      }),
+    ]);
 
     if (!application) {
       return NextResponse.json(
         {
-          message: 'Loan application not found',
+          message: "Loan application not found",
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
-    // Create bank application and activity log
-    const created = await db.$transaction(async (tx) => {
-      const bankApplication = await tx.loanBankApplication.create({
-        data: {
-          id: crypto.randomUUID(),
-          applicationId: id,
+    if (!bank) {
+      return NextResponse.json(
+        {
+          message: "Selected bank or NBFC was not found or is inactive",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
 
-          bank: validatedData.bank,
+    const created = await db.$transaction(async (transaction) => {
+      const bankApplication = await transaction.loanBankApplication.create({
+        data: {
+          applicationId,
+
+          bankId: validatedData.bankId,
+
           branch: validatedData.branch ?? null,
+
           applicationNo: validatedData.applicationNo ?? null,
 
-          loginDate: toDate(validatedData.loginDate),
+          applicationDate: toOptionalDate(validatedData.applicationDate),
 
-          appliedAmount: validatedData.appliedAmount ?? null,
-          sanctionedAmount: validatedData.sanctionedAmount ?? null,
+          appliedAmount: toDecimal(validatedData.appliedAmount),
 
-          sanctionDate: toDate(validatedData.sanctionDate),
+          loanType: validatedData.loanType ?? null,
 
-          disbursedAmount: validatedData.disbursedAmount ?? null,
+          roi: toDecimal(validatedData.roi),
 
-          disbursementDate: toDate(validatedData.disbursementDate),
-
-          roi: validatedData.roi ?? null,
           tenure: validatedData.tenure ?? null,
-          status: validatedData.status ?? null,
-          remarks: validatedData.remarks ?? null,
 
-          // Required by your current Prisma schema
-          updatedAt: new Date(),
+          processingFee: toDecimal(validatedData.processingFee),
+
+          insuranceAmount: toDecimal(validatedData.insuranceAmount),
+
+          moratorium: validatedData.moratorium ?? null,
+
+          loginExecutive: validatedData.loginExecutive ?? null,
+
+          status: validatedData.status ?? null,
+
+          rejectionReason: validatedData.rejectionReason ?? null,
+
+          remarks: validatedData.remarks ?? null,
+        },
+
+        include: {
+          bank: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+            },
+          },
         },
       });
 
-      await tx.loanActivity.create({
+      await transaction.loanActivity.create({
         data: {
-          id: crypto.randomUUID(),
-          applicationId: id,
-          type: 'banks',
-          title: 'Bank application added',
-          description: `Bank application added for ${validatedData.bank}`,
+          applicationId,
+
+          type: "banks",
+
+          title: "Bank application added",
+
+          description: `Bank application added for ${bank.name}`,
         },
       });
 
@@ -88,26 +150,97 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
     return NextResponse.json(
       {
-        message: 'Bank application added successfully',
+        message: "Bank application added successfully",
         data: created,
       },
       {
         status: 201,
-      }
+      },
     );
-  } catch (error: any) {
-    console.error('POST bank application error:', error);
+  } catch (error: unknown) {
+    console.error("POST bank application error:", error);
+
+    if (error instanceof Error) {
+      return NextResponse.json(
+        {
+          message: error.message,
+        },
+        {
+          status: 400,
+        },
+      );
+    }
 
     return NextResponse.json(
       {
-        message:
-          error?.issues?.[0]?.message ||
-          error?.message ||
-          'Failed to add bank application',
+        message: "Failed to add bank application",
       },
       {
-        status: 400,
-      }
+        status: 500,
+      },
+    );
+  }
+}
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+
+    const application = await db.loanApplication.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        bankApplications: {
+          include: {
+            bank: {
+              select: {
+                id: true,
+                name: true,
+                status: true,
+              },
+            },
+            sanction: {
+              select: {
+                id: true,
+                sanctionNo: true,
+                sanctionDate: true,
+                sanctionedAmount: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
+    });
+
+    if (!application) {
+      return NextResponse.json(
+        {
+          message: "Loan application not found",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
+
+    return NextResponse.json(application.bankApplications);
+  } catch (error) {
+    console.error("GET BANK APPLICATIONS ERROR:", error);
+
+    return NextResponse.json(
+      {
+        message: "Failed to load bank applications",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }
