@@ -154,7 +154,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
 
-    const body = await req.json();
+    const body: unknown = await req.json();
 
     const values = updateLoanApplicationSchema.parse(body);
 
@@ -178,20 +178,48 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       );
     }
 
-    /**
-     * Update application and create activity
-     * in the same transaction.
-     *
-     * IDs and updatedAt are automatically handled
-     * by the current Prisma schema.
-     */
-    await db.$transaction(async (tx) => {
-      await tx.loanApplication.update({
+    const updated = await db.$transaction(async (tx) => {
+      const updatedLoanApplication = await tx.loanApplication.update({
         where: {
           id,
         },
         data: toLoanApplicationData(values),
+        select: {
+          id: true,
+          leadId: true,
+        },
       });
+
+      if (updatedLoanApplication.leadId) {
+        await tx.lead.update({
+          where: {
+            id: updatedLoanApplication.leadId,
+          },
+          data: {
+            bachelorsCourse: values.qualification ?? null,
+
+            graduationStatus: values.graduationStatus ?? null,
+
+            bachelorsPercentage:
+              values.percentage !== undefined &&
+              values.percentage !== null &&
+              values.percentage !== ""
+                ? Number(values.percentage)
+                : null,
+
+            bachelorsYearOfPassing:
+              values.yearOfPassing !== undefined &&
+              values.yearOfPassing !== null &&
+              values.yearOfPassing !== ""
+                ? Number(values.yearOfPassing)
+                : null,
+
+            bachelorsUniversityName: values.currentInstitution ?? null,
+
+            workExperience: values.workExperience ?? null,
+          },
+        });
+      }
 
       await tx.loanActivity.create({
         data: {
@@ -202,30 +230,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         },
       });
     });
-
-    const updated = await db.loanApplication.findUnique({
-      where: {
-        id,
-      },
-      include: loanApplicationInclude,
-    });
-
-    if (!updated) {
-      return NextResponse.json(
-        {
-          message: "Loan application not found after update",
-        },
-        {
-          status: 404,
-        },
-      );
-    }
-
     return NextResponse.json({
       message: "Loan application updated successfully",
       data: serializeLoanApplication(updated),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("PATCH loan application error:", error);
 
     if (
@@ -242,15 +251,36 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       );
     }
 
+    if (
+      error &&
+      typeof error === "object" &&
+      "issues" in error &&
+      Array.isArray(error.issues)
+    ) {
+      const issues = error.issues as Array<{
+        message?: string;
+      }>;
+
+      return NextResponse.json(
+        {
+          message: issues[0]?.message ?? "Invalid loan application data",
+          errors: issues,
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
     return NextResponse.json(
       {
         message:
-          error?.issues?.[0]?.message ||
-          error?.message ||
-          "Failed to update loan application",
+          error instanceof Error
+            ? error.message
+            : "Failed to update loan application",
       },
       {
-        status: 400,
+        status: 500,
       },
     );
   }

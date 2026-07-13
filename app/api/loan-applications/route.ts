@@ -124,11 +124,19 @@ async function syncLoanRequiredLeads() {
       place: true,
       source: true,
       branchId: true,
+
+      bachelorsCourse: true,
+      bachelorsUniversityName: true,
+      bachelorsPercentage: true,
+      bachelorsYearOfPassing: true,
+
       graduationStatus: true,
       workExperience: true,
+
       preferredCountry: true,
       preferredIntake: true,
       preferredCourse: true,
+
       nextFollowup: true,
       remarks: true,
       createdAt: true,
@@ -137,11 +145,9 @@ async function syncLoanRequiredLeads() {
         where: {
           isPrimary: true,
         },
-
         select: {
           counselorId: true,
         },
-
         take: 1,
       },
     },
@@ -151,51 +157,37 @@ async function syncLoanRequiredLeads() {
     return;
   }
 
+  const existingApplications = await db.loanApplication.findMany({
+    where: {
+      leadId: {
+        in: leads.map((lead) => lead.id),
+      },
+    },
+
+    select: {
+      leadId: true,
+    },
+  });
+
+  const existingLeadIds = new Set(
+    existingApplications
+      .map((application) => application.leadId)
+      .filter((leadId): leadId is string => Boolean(leadId)),
+  );
+
+  const newLeads = leads.filter((lead) => !existingLeadIds.has(lead.id));
+
+  if (newLeads.length === 0) {
+    return;
+  }
+
   await db.$transaction(
-    leads.map((lead) => {
+    newLeads.map((lead) => {
       const counselorId = lead.counselors[0]?.counselorId ?? null;
 
-      return db.loanApplication.upsert({
-        where: {
-          leadId: lead.id,
-        },
-
-        update: {
-          fullName: lead.studentName?.trim() || "Unknown Applicant",
-
-          mobile: lead.mobileNumber?.trim() || "",
-
-          email: lead.emailId?.trim() || "",
-
-          passport: lead.passport,
-
-          passportExpireDate: lead.passportExpireDate,
-
-          currentAddress: lead.place,
-
-          leadSource: lead.source,
-
-          branchId: lead.branchId,
-
-          counselorId,
-
-          nextFollowUp: lead.nextFollowup,
-
-          graduationStatus: lead.graduationStatus,
-
-          workExperience: lead.workExperience,
-
-          studyDestination: lead.preferredCountry,
-
-          country: lead.preferredCountry,
-
-          courseName: lead.preferredCourse,
-
-          intake: lead.preferredIntake,
-        },
-
-        create: {
-          applicationId: `${lead.leadNumber}`,
+      return db.loanApplication.create({
+        data: {
+          applicationId: lead.leadNumber,
 
           leadId: lead.id,
 
@@ -229,17 +221,33 @@ async function syncLoanRequiredLeads() {
 
           loanStatus: "New Enquiry",
 
+          // EDUCATION BACKGROUND
+          qualification: lead.bachelorsCourse,
+
           graduationStatus: lead.graduationStatus,
+
+          percentage:
+            lead.bachelorsPercentage != null
+              ? String(lead.bachelorsPercentage)
+              : null,
+
+          yearOfPassing:
+            lead.bachelorsYearOfPassing != null
+              ? String(lead.bachelorsYearOfPassing)
+              : null,
+
+          currentInstitution: lead.bachelorsUniversityName,
 
           workExperience: lead.workExperience,
 
-          studyDestination: lead.preferredCountry,
+          // STUDY / ABROAD INFORMATION
+          studyDestination: lead.preferredCountry ? "Abroad" : null,
 
-          country: lead.preferredCountry,
+          country: lead.preferredCountry || null,
 
-          courseName: lead.preferredCourse,
+          courseName: lead.preferredCourse || null,
 
-          intake: lead.preferredIntake,
+          intake: lead.preferredIntake || null,
         },
       });
     }),
