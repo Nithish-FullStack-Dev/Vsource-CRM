@@ -1,3 +1,4 @@
+// app\(dashboard)\loan-application\all\[id]\_components\types.ts
 export type BankApplication = {
   id?: string;
   bank?: string | null;
@@ -17,19 +18,38 @@ export type BankApplication = {
 
 export type CoApplicant = {
   id?: string;
+
   name?: string | null;
   relationship?: string | null;
+  dob?: string | Date | null;
+  gender?: string | null;
+
   mobile?: string | null;
+  altMobile?: string | null;
   email?: string | null;
-  income?: number | null;
-  occupation?: string | null;
-  monthlyIncome?: number | null;
+
+  pan?: string | null;
+  aadhaar?: string | null;
+
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pin?: string | null;
+
   employmentType?: string | null;
-  companyName?: string | null;
-  annualIncome?: number | null;
-  existingEmi?: number | null;
-  
+  occupation?: string | null;
+  employerName?: string | null;
+  designation?: string | null;
+
+  monthlyIncome?: number | string | null;
+  annualIncome?: number | string | null;
+  existingEmi?: number | string | null;
+  income?: number | string | null;
+
   cibilScore?: number | null;
+
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
 };
 
 export type FollowUp = {

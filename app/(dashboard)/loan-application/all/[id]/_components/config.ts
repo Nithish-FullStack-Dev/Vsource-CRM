@@ -49,16 +49,23 @@ export const formatDate = (value?: string | Date | null) => {
     ? "Not provided"
     : date.toLocaleDateString("en-GB");
 };
+export function formatINR(value?: number | string | null): string | undefined {
+  if (value === null || value === undefined || value === "") {
+    return undefined;
+  }
 
-export const formatINR = (value?: number | null) =>
-  typeof value === "number" && !Number.isNaN(value)
-    ? new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-        maximumFractionDigits: 0,
-      }).format(value)
-    : "—";
+  const amount = typeof value === "number" ? value : Number(value);
 
+  if (!Number.isFinite(amount)) {
+    return undefined;
+  }
+
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
 export const getErrorMessage = (caughtError: unknown, fallback: string) => {
   if (caughtError instanceof Error && caughtError.message) {
     return caughtError.message;
@@ -127,8 +134,6 @@ export function getTabsForLoanApplicant(
   }
 
   tabs.push({ key: "financial", label: "Financial" });
-
-
 
   if (bankProcessLoans.includes(loanCategory || "")) {
     tabs.push(
