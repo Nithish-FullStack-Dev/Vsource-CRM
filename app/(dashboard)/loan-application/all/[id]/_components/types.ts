@@ -1,19 +1,97 @@
-// app\(dashboard)\loan-application\all\[id]\_components\types.ts
 export type BankApplication = {
   id?: string;
-  bank?: string | null;
+
+  applicationId?: string;
+
+  bankId?: string;
+
+  bank?: {
+    id: string;
+    name: string;
+    status?: boolean;
+  } | null;
+
   branch?: string | null;
+
   applicationNo?: string | null;
-  appliedAmount?: number | null;
-  sanctionedAmount?: number | null;
-  disbursedAmount?: number | null;
-  roi?: number | null;
+
+  applicationDate?: string | Date | null;
+
+  appliedAmount?: number | string | null;
+
+  loanType?: string | null;
+
+  roi?: number | string | null;
+
   tenure?: number | null;
+
+  processingFee?: number | string | null;
+
+  insuranceAmount?: number | string | null;
+
+  moratorium?: string | null;
+
+  loginExecutive?: string | null;
+
   status?: string | null;
+
+  rejectionReason?: string | null;
+
   remarks?: string | null;
-  loginDate?: string | Date | null;
+
+  createdAt?: string | Date | null;
+
+  updatedAt?: string | Date | null;
+};
+
+export type LoanSanction = {
+  id?: string;
+
+  applicationId?: string;
+
+  bankApplicationId?: string | null;
+
+  bankId?: string;
+
+  bank?: {
+    id: string;
+    name: string;
+    status?: boolean;
+  } | null;
+
+  bankApplication?: {
+    id: string;
+    applicationNo?: string | null;
+    applicationDate?: string | Date | null;
+  } | null;
+
+  sanctionNo?: string | null;
+
   sanctionDate?: string | Date | null;
-  disbursementDate?: string | Date | null;
+
+  sanctionedAmount?: number | string | null;
+
+  roi?: number | string | null;
+
+  tenure?: number | null;
+
+  emi?: number | string | null;
+
+  moratorium?: string | null;
+
+  processingFee?: number | string | null;
+
+  insuranceAmount?: number | string | null;
+
+  sanctionLetter?: string | null;
+
+  expiryDate?: string | Date | null;
+
+  remarks?: string | null;
+
+  createdAt?: string | Date | null;
+
+  updatedAt?: string | Date | null;
 };
 
 export type CoApplicant = {
@@ -192,6 +270,7 @@ export type LoanApplication = {
   depositBank?: string | null;
   depositRemarks?: string | null;
 
+  sanction?: LoanSanction | null;
   coApplicants?: CoApplicant[];
   bankApplications?: BankApplication[];
   followUps?: FollowUp[];

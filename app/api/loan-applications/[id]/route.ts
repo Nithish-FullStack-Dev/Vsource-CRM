@@ -44,6 +44,16 @@ const loanApplicationInclude = {
   },
 
   bankApplications: {
+    include: {
+      bank: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+        },
+      },
+    },
+
     orderBy: {
       createdAt: "desc",
     },
@@ -58,6 +68,16 @@ const loanApplicationInclude = {
   followUps: {
     orderBy: {
       createdAt: "desc",
+    },
+  },
+
+  sanction: {
+    include: {
+      bank: {
+        select: {
+          name: true,
+        },
+      },
     },
   },
 

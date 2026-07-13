@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import {
   useLoanApplication,
+  useLoanStatus,
   useUpdateLoanApplication,
 } from "@/hooks/loan-application/useLoanApplications";
 import { getLoanTabs, LOAN_STATUSES } from "@/lib/loan-application/constants";
@@ -44,9 +45,14 @@ import { CibilTab } from "./_components/CibilTab";
 import { BanksTab } from "./_components/BanksTab";
 import { SanctionTab } from "./_components/SanctionTab";
 import { DisbursementTab } from "./_components/DisbursementTab";
-import { FollowUpsTab } from "./_components/FollowUpsTab";
-import { ActivityTab } from "./_components/ActivityTab";
 import { RemarksTab } from "./_components/RemarksTab";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 const icons: Record<string, React.ElementType> = {
   basic: User,
   documents: FolderOpen,
@@ -76,11 +82,14 @@ export default function LoanApplicationProfilePage() {
   const id = params.id as string;
   const [tab, setTab] = useState("basic");
   const { data: a, isLoading, isError, error } = useLoanApplication(id);
-  const update = useUpdateLoanApplication(id);
+  const update = useLoanStatus(id);
   const tabs = useMemo(
     () => (a ? getLoanTabs(a.applicantCategory, a.loanCategory) : []),
     [a],
   );
+  const [open, setOpen] = useState(false);
+  const [loanStatus, setLoanStatus] = useState("");
+
   if (isLoading)
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-sm font-semibold text-slate-500">
@@ -109,23 +118,27 @@ export default function LoanApplicationProfilePage() {
         </div>
       </div>
     );
+  // Cast applicant props to any to avoid cross-module type incompatibilities
   const render = () =>
     ({
-      basic: <BasicTab applicant={a} />,
-      education: <EducationTab applicant={a} />,
-      employment: <EmploymentTab applicant={a} />,
-      business: <BusinessTab applicant={a} />,
-      coapplicant: <CoApplicantTab applicant={a} />,
-      financial: <FinancialTab applicant={a} />,
+      basic: <BasicTab applicant={a as any} />,
+      education: <EducationTab applicant={a as any} />,
+      employment: <EmploymentTab applicant={a as any} />,
+      business: <BusinessTab applicant={a as any} />,
+      coapplicant: <CoApplicantTab applicant={a as any} />,
+      financial: <FinancialTab applicant={a as any} />,
       documents: (
-        <DocumentsTab applicationId={a.id} applicantName={a.fullName} />
+        <DocumentsTab
+          applicationId={a.id ?? ""}
+          applicantName={a.fullName ?? ""}
+        />
       ),
-      cibil: <CibilTab applicant={a} />,
-      banks: <BanksTab applicant={a} />,
-      sanction: <SanctionTab applicant={a} />,
-      disbursement: <DisbursementTab applicant={a} />,
-      deposit: <CoApplicantTab applicant={a} />,
-      remarks: <RemarksTab applicant={a} />,
+      cibil: <CibilTab applicant={a as any} />,
+      banks: <BanksTab applicationId={a.id} />,
+      sanction: <SanctionTab applicant={a as any} />,
+      disbursement: <DisbursementTab applicant={a as any} />,
+      deposit: <CoApplicantTab applicant={a as any} />,
+      remarks: <RemarksTab applicant={a as any} />,
     })[tab] ?? null;
   return (
     <PageTransition>
@@ -142,7 +155,7 @@ export default function LoanApplicationProfilePage() {
               </button>
               <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-lg font-black text-white">
-                {initials(a.fullName)}
+                {initials(a.fullName ?? "-")}
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -153,8 +166,8 @@ export default function LoanApplicationProfilePage() {
                     {a.applicationId}
                   </span>
                   <StatusBadge
-                    status={a.loanStatus}
-                    className={loanStatusTone(a.loanStatus)}
+                    status={a.loanStatus ?? "-"}
+                    className={loanStatusTone(a.loanStatus ?? "")}
                   />
                   {a.priority && (
                     <span className="rounded bg-red-600/10 px-1.5 py-0.5 text-[10px] font-black text-red-600">
@@ -176,23 +189,16 @@ export default function LoanApplicationProfilePage() {
                 </div>
               </div>
             </div>
-            {/* <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={a.loanStatus}
-                onValueChange={(loanStatus) => update.mutate({ loanStatus })}
-              >
-                <SelectTrigger className="h-9 w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LOAN_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div> */}
+
+            <Button
+              onClick={() => {
+                setLoanStatus(a.loanStatus ?? "-");
+                setOpen(true);
+              }}
+              variant="outline"
+            >
+              Update Loan Status
+            </Button>
           </div>
           <div className="space-y-6">
             <div className="overflow-x-auto">
@@ -219,6 +225,51 @@ export default function LoanApplicationProfilePage() {
             </div>
           </div>
         </main>
+
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Update Loan Status</DialogTitle>
+              <DialogDescription>Select the new loan status.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <Select value={loanStatus} onValueChange={setLoanStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {LOAN_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+
+                <Button
+                  disabled={update.isPending}
+                  onClick={() =>
+                    update.mutate(
+                      { loanStatus },
+                      {
+                        onSuccess: () => setOpen(false),
+                      },
+                    )
+                  }
+                >
+                  {update.isPending ? "Updating..." : "Update"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </PageTransition>
   );

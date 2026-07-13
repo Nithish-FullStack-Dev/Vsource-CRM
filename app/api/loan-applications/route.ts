@@ -1,3 +1,5 @@
+// app\api\loan-applications\route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 
 import db from "@/lib/prisma";
@@ -39,7 +41,38 @@ const loanApplicationInclude = {
     },
   },
 
+  sanction: {
+    include: {
+      bank: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+        },
+      },
+
+      bankApplication: {
+        select: {
+          id: true,
+          applicationNo: true,
+          applicationDate: true,
+          appliedAmount: true,
+        },
+      },
+    },
+  },
+
   bankApplications: {
+    include: {
+      bank: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+        },
+      },
+    },
+
     orderBy: {
       createdAt: "desc",
     },
