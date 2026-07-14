@@ -57,7 +57,8 @@ model User {
   loanApplicationsCounseled LoanApplication[] @relation("LoanApplicationCounselor")
   loanApplicationsFintech   LoanApplication[] @relation("LoanApplicationFintech")
 
-  loanActivitiesCreated LoanActivity[] @relation("LoanActivityCreatedBy")
+  loanActivitiesCreated  LoanActivity[]    @relation("LoanActivityCreatedBy")
+  loanApplicationCreated LoanApplication[] @relation("LoanApplicationCreatedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1180,6 +1181,10 @@ model LoanApplication {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  createdById String?
+
+  createdBy User? @relation("LoanApplicationCreatedBy", fields: [createdById], references: [id])
 
   @@index([branchId])
   @@index([counselorId])

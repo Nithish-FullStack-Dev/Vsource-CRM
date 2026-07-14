@@ -11,6 +11,8 @@ import {
   serializeLoanApplication,
   toLoanApplicationData,
 } from "@/lib/loan-application/server";
+import { getAuthorizedUser, ROLES } from "@/lib/rbac";
+import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 
 /* -------------------------------------------------------------------------- */
 /*                                  INCLUDE                                   */
@@ -260,6 +262,12 @@ async function syncLoanRequiredLeads() {
 
 export async function GET(request: NextRequest) {
   try {
+    const currentUser = await getAuthorizedUser(
+      request,
+      MODULES.LOAN_APPLICATION,
+      PERMISSIONS.READ,
+    );
+
     await syncLoanRequiredLeads();
 
     const searchParams = request.nextUrl.searchParams;
@@ -275,6 +283,8 @@ export async function GET(request: NextRequest) {
     const fintechAssigneeId = searchParams.get("fintechAssigneeId")?.trim();
 
     const where: Prisma.LoanApplicationWhereInput = {};
+
+    const roleName = currentUser.role.name;
 
     if (applicantCategory) {
       where.applicantCategory = applicantCategory;
@@ -321,6 +331,8 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // if(roleName === ROLES.SUPER_ADMIN || )
+
     const rows = await db.loanApplication.findMany({
       where,
 
@@ -352,6 +364,12 @@ export async function GET(request: NextRequest) {
 }
 export async function POST(request: NextRequest) {
   try {
+    const currentUser = await getAuthorizedUser(
+      request,
+      MODULES.LOAN_APPLICATION,
+      PERMISSIONS.CREATE,
+    );
+
     const body: unknown = await request.json();
 
     const values = updateLoanApplicationSchema.parse(body);
@@ -425,6 +443,8 @@ export async function POST(request: NextRequest) {
         loanCategory: values.loanCategory ?? "",
 
         loanStatus: values.loanStatus ?? "New Enquiry",
+
+        createdById: currentUser.id,
       };
 
       const loanApplication = await tx.loanApplication.create({
