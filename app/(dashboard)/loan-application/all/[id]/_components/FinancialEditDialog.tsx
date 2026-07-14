@@ -183,7 +183,7 @@ export function FinancialEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
-      <DialogContent className="flex max-h-[94vh] w-[calc(100%-1rem)] max-w-5xl flex-col overflow-hidden p-4 sm:w-full">
+      <DialogContent className="flex max-h-[80vh] w-[calc(100%-1rem)] max-w-5xl flex-col overflow-y-scroll p-4 sm:w-full">
         <DialogHeader>
           <DialogTitle>Edit Financial Details</DialogTitle>
           <DialogDescription>

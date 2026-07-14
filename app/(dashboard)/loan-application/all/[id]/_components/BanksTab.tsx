@@ -675,7 +675,7 @@ export function BanksTab({ applicationId }: { applicationId: string }) {
                 />
               </FormField>
 
-              <FormField
+              {/* <FormField
                 label="Rejection Reason"
                 error={errors.rejectionReason}
               >
@@ -684,7 +684,7 @@ export function BanksTab({ applicationId }: { applicationId: string }) {
                   disabled={isSaving}
                   {...register("rejectionReason")}
                 />
-              </FormField>
+              </FormField> */}
             </div>
 
             <FormField label="Remarks" error={errors.remarks}>

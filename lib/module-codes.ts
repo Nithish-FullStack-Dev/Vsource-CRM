@@ -13,6 +13,7 @@ export const MODULES = {
   ROLES: "ROLES",
   USERS: "USERS",
   ASSIGN_TARGET: "ASSIGN_TARGET",
+  LOAN_APPLICATION: "LOAN_APPLICATION",
 } as const;
 
 export const PERMISSIONS = {
