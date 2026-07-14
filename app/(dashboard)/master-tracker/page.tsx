@@ -942,7 +942,7 @@ export default function ApplicationsTrackerPage() {
         </AlertDialogContent>
       </AlertDialog>
       <div className="w-full overflow-x-auto overscroll-x-contain pb-4">
-        <div className="grid min-w-[1400px] grid-cols-5 items-start gap-4">
+        <div className="grid min-w-[1400px] grid-cols-5 items-stretch gap-4">
           {KANBAN_COLUMNS.map((column) => {
             const columnStudents = filteredTrackerData.filter(
               (student) => mapStageToKanban(student) === column.id,
@@ -981,7 +981,7 @@ export default function ApplicationsTrackerPage() {
                 }}
                 onDragOver={(event) => handleDragOver(event, column.id)}
                 onDrop={(event) => handleDrop(event, column.id)}
-                className={`flex min-h-[600px] min-w-0 flex-col rounded-2xl border p-4 transition-colors ${
+                className={`flex min-h-[600px] min-w-0 flex-col self-stretch rounded-2xl border p-4 transition-colors ${
                   isDragOver
                     ? "border-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/20"
                     : isValidDropColumn
@@ -1001,9 +1001,17 @@ export default function ApplicationsTrackerPage() {
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-1 flex-col gap-3">
                   {columnStudents.length === 0 ? (
-                    <div className="flex h-40 items-center justify-center rounded-xl border border-dashed text-center text-xs font-semibold text-slate-400">
+                    <div
+                      className={`flex min-h-40 flex-1 items-center justify-center rounded-xl border border-dashed text-center text-xs font-semibold transition-colors ${
+                        isDragOver
+                          ? "border-emerald-400 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20"
+                          : isValidDropColumn
+                            ? "border-blue-400 bg-blue-50/50 text-blue-600 dark:bg-blue-950/20"
+                            : "border-slate-300 text-slate-400 dark:border-slate-700"
+                      }`}
+                    >
                       {isValidDropColumn ? "Drop student here" : "No students"}
                     </div>
                   ) : (
