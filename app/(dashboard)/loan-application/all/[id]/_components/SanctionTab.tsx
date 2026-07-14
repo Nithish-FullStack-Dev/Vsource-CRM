@@ -11,8 +11,15 @@ import { InfoCard, InfoGrid, TabHeader } from "./ProfileUI";
 import type { LoanApplication } from "./types";
 import { SanctionEditDialog } from "./SanctionEditDialog";
 import { Button } from "@/components/ui/button";
+import { MODULES } from "@/lib/module-codes";
 
-export function SanctionTab({ applicant }: { applicant: LoanApplication }) {
+export function SanctionTab({
+  applicant,
+  canUpdate,
+}: {
+  applicant: LoanApplication;
+  canUpdate: (moduleCode: string) => boolean;
+}) {
   const sanction = applicant.sanction;
 
   return (
@@ -21,17 +28,19 @@ export function SanctionTab({ applicant }: { applicant: LoanApplication }) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
         <TabHeader eyebrow="Approval Stage" title="Sanction Details" />
 
-        <SanctionEditDialog
-          applicant={applicant}
-          trigger={
-            <Button
-              variant="default"
-              className="flex items-center gap-2 self-start sm:self-auto"
-            >
-              <Edit className="w-4 h-4" /> Edit Sanction
-            </Button>
-          }
-        />
+        {canUpdate(MODULES.LOAN_APPLICATION) && (
+          <SanctionEditDialog
+            applicant={applicant}
+            trigger={
+              <Button
+                variant="default"
+                className="flex items-center gap-2 self-start sm:self-auto"
+              >
+                <Edit className="w-4 h-4" /> Edit Sanction
+              </Button>
+            }
+          />
+        )}
       </div>
 
       <InfoGrid>

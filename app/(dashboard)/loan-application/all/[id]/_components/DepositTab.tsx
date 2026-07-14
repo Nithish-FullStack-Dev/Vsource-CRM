@@ -45,6 +45,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { LOAN_APPLICATION_KEYS } from "@/services/loan-application/loan-application-query-key";
+import { MODULES } from "@/lib/module-codes";
 
 type FormValues = {
   depositStatus: string;
@@ -55,7 +56,13 @@ type FormValues = {
   depositRemarks: string;
 };
 
-export function DepositTab({ applicant }: { applicant: LoanApplication }) {
+export function DepositTab({
+  applicant,
+  canUpdate,
+}: {
+  applicant: LoanApplication;
+  canUpdate: (moduleCode: string) => boolean;
+}) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
@@ -115,12 +122,14 @@ export function DepositTab({ applicant }: { applicant: LoanApplication }) {
             if (!val) reset();
           }}
         >
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Edit2 className="h-4 w-4" />
-              Edit Details
-            </Button>
-          </DialogTrigger>
+          {canUpdate(MODULES.LOAN_APPLICATION) && (
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Edit2 className="h-4 w-4" />
+                Edit Details
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Update Deposit Details</DialogTitle>

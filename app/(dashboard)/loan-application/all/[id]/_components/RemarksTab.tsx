@@ -17,6 +17,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 interface RemarksTabProps {
   applicant: LoanApplication;
+  canCreate: boolean;
 }
 
 interface CreatedByUser {
@@ -119,7 +120,7 @@ function formatDate(value?: string | Date | null): string {
   });
 }
 
-export function RemarksTab({ applicant }: RemarksTabProps) {
+export function RemarksTab({ applicant, canCreate }: RemarksTabProps) {
   const applicationId = applicant.id;
 
   const queryClient = useQueryClient();
@@ -325,7 +326,7 @@ export function RemarksTab({ applicant }: RemarksTabProps) {
         remarks={remarks}
         onSubmit={handleRemarkSubmit}
         isSubmitting={addRemarkMutation.isPending}
-        canCreate
+        canCreate={canCreate}
         formatDate={formatDate}
       />
 
@@ -333,7 +334,7 @@ export function RemarksTab({ applicant }: RemarksTabProps) {
         timeline={timeline}
         onSubmit={handleTimelineSubmit}
         isSubmitting={addTimelineMutation.isPending}
-        canCreate
+        canCreate={canCreate}
         formatDate={formatDate}
       />
     </div>
