@@ -1,5 +1,10 @@
 // hooks\loan-application\useLoanApplications.ts
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { LoanApplicationListFilters } from "@/types/loan-application";
 
@@ -17,14 +22,19 @@ import {
 import { LOAN_APPLICATION_KEYS } from "@/services/loan-application/loan-application-query-key";
 import { api } from "@/lib/api";
 import { BankApplication } from "@/(dashboard)/loan-application/all/[id]/_components/types";
+
 const msg = (e: unknown, f: string) =>
   e instanceof Error && e.message ? e.message : f;
+
 export function useLoanApplications(filters: LoanApplicationListFilters = {}) {
   return useQuery({
     queryKey: LOAN_APPLICATION_KEYS.list(filters),
     queryFn: () => getLoanApplications(filters),
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
   });
 }
+
 export function useLoanApplication(id: string) {
   return useQuery({
     queryKey: LOAN_APPLICATION_KEYS.detail(id),
@@ -32,6 +42,7 @@ export function useLoanApplication(id: string) {
     queryFn: () => getLoanApplication(id),
   });
 }
+
 export function useCreateLoanApplication() {
   const qc = useQueryClient();
   return useMutation({
@@ -43,6 +54,7 @@ export function useCreateLoanApplication() {
     onError: (e) => toast.error(msg(e, "Failed to create loan enquiry")),
   });
 }
+
 export function useUpdateLoanApplication(id: string) {
   const qc = useQueryClient();
 
@@ -67,6 +79,7 @@ export function useUpdateLoanApplication(id: string) {
     },
   });
 }
+
 export function useDeleteLoanApplication() {
   const qc = useQueryClient();
   return useMutation({

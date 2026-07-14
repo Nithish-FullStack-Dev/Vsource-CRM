@@ -69,7 +69,7 @@ export type LoanSanction = {
 
   sanctionDate?: string | Date | null;
 
-  sanctionedAmount?: number | string | null;
+  sanctionedAmount?: string | null;
 
   roi?: number | string | null;
 
