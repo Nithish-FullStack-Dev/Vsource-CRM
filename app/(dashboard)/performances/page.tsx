@@ -1,3 +1,4 @@
+// app\(dashboard)\performances\page.tsx
 "use client";
 
 import { Fragment, useMemo, useState, type ReactNode } from "react";

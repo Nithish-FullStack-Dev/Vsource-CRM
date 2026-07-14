@@ -1,3 +1,4 @@
+// app\api\reports\performance\route.ts
 import { NextRequest } from "next/server";
 import { handleError, ok } from "@/lib/api-helpers";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
