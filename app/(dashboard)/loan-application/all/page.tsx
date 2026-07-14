@@ -48,6 +48,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LoanApplication } from "./[id]/_components/types";
+import { MODULES } from "@/lib/module-codes";
+import { useAuth } from "@/store";
 
 const ALL = "__all__";
 const unique = (items: (string | null | undefined)[]) =>
@@ -57,54 +59,24 @@ const unique = (items: (string | null | undefined)[]) =>
 const assignee = (a: LoanApplication) => a.fintechAssigneeName || "";
 const bank = (a: LoanApplication) => a.bankApplications?.[0]?.bank?.name ?? "";
 
-const formatFollowUpValue = (value: string | Date | null | undefined) =>
-  value instanceof Date ? value.toLocaleDateString() : (value ?? "");
+const formatFollowUpValue = (
+  value: string | Date | null | undefined,
+): string => {
+  if (!value) return "-";
 
-function downloadCsv(rows: LoanApplication[]) {
-  const headers = [
-    "Application ID",
-    "Applicant",
-    "Email",
-    "Mobile",
-    "Category",
-    "Loan Type",
-    "Assignee",
-    "Bank / NBFC",
-    "Applied Amount",
-    "Sanctioned Amount",
-    "Disbursed Amount",
-    "Status",
-    "Next Follow Up",
-  ];
-  const csvRows = rows.map((a) =>
-    [
-      a.applicationId,
-      a.fullName,
-      a.email,
-      a.mobile,
-      a.applicantCategory,
-      a.loanCategory,
-      assignee(a),
-      bank(a),
-      a.requiredLoanAmount ?? "",
-      a.sanctionedAmount ?? "",
-      a.disbursedAmount ?? "",
-      a.loanStatus ?? "",
-      a.nextFollowUp ?? "",
-    ]
-      .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
-      .join(","),
-  );
-  const blob = new Blob([[headers.join(","), ...csvRows].join("\n")], {
-    type: "text/csv;charset=utf-8;",
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
   });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `loan-applications-${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
+};
 
 export default function LoanApplicationsPage() {
   const [q, setQ] = useState("");
@@ -119,7 +91,7 @@ export default function LoanApplicationsPage() {
   const users = useMemo(() => unique(rows.map(assignee)), [rows]);
   const [deleteApplication, setDeleteApplication] =
     useState<LoanApplication | null>(null);
-
+  const { canDelete } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const banks = useMemo(
     () =>
@@ -402,16 +374,18 @@ export default function LoanApplicationsPage() {
                             </Button>
                           </Link>
 
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
-                            aria-label={`Delete ${a.fullName}`}
-                            onClick={() => setDeleteApplication(a as any)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {canDelete(MODULES.LOAN_APPLICATION) && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+                              aria-label={`Delete ${a.fullName}`}
+                              onClick={() => setDeleteApplication(a as any)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

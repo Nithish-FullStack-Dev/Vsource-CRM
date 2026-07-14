@@ -7,6 +7,7 @@ import StudentTimelineSection, {
 } from "./StudentTimelineSection";
 import StudentRemarksSection from "./StudentRemarksSection";
 import { Card } from "../ui/card";
+import { MODULES } from "@/lib/module-codes";
 
 interface StudentRemarksTimelineTabProps {
   studentId: string;

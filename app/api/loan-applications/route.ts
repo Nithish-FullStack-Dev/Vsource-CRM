@@ -331,7 +331,48 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // if(roleName === ROLES.SUPER_ADMIN || )
+    if (roleName !== ROLES.SUPER_ADMIN && roleName !== ROLES.DIRECTOR) {
+      const existingAnd = Array.isArray(where.AND)
+        ? where.AND
+        : where.AND
+          ? [where.AND]
+          : [];
+
+      if (roleName === ROLES.BRANCH_MANAGER) {
+        where.AND = [
+          ...existingAnd,
+          {
+            OR: [
+              {
+                createdById: currentUser.id,
+              },
+              {
+                fintechAssigneeId: currentUser.id,
+              },
+              {
+                branchId: {
+                  in: currentUser.branches.map((branch) => branch.id),
+                },
+              },
+            ],
+          },
+        ];
+      } else {
+        where.AND = [
+          ...existingAnd,
+          {
+            OR: [
+              {
+                createdById: currentUser.id,
+              },
+              {
+                fintechAssigneeId: currentUser.id,
+              },
+            ],
+          },
+        ];
+      }
+    }
 
     const rows = await db.loanApplication.findMany({
       where,

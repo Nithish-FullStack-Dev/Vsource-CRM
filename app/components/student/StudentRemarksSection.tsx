@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageSquareText, Send, UserRound } from "lucide-react";
+import { MODULES } from "@/lib/module-codes";
 
 export interface RemarkItem {
   id: string;

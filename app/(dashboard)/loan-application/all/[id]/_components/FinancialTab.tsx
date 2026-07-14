@@ -7,8 +7,15 @@ import { formatINR } from "./config";
 import { InfoCard, InfoGrid, TabHeader } from "./ProfileUI";
 import type { LoanApplication } from "./types";
 import { FinancialEditDialog } from "./FinancialEditDialog";
+import { MODULES } from "@/lib/module-codes";
 
-export function FinancialTab({ applicant }: { applicant: LoanApplication }) {
+export function FinancialTab({
+  applicant,
+  canUpdate,
+}: {
+  applicant: LoanApplication;
+  canUpdate: (moduleCode: string) => boolean;
+}) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
@@ -17,15 +24,17 @@ export function FinancialTab({ applicant }: { applicant: LoanApplication }) {
         eyebrow="Loan Requirement"
         title="Financial Details"
         action={
-          <Button
-            type="button"
-            size="sm"
-            className="gap-2 bg-red-600 text-white hover:bg-red-700"
-            onClick={() => setDialogOpen(true)}
-          >
-            <Pencil className="h-4 w-4" />
-            Edit Financial Details
-          </Button>
+          canUpdate(MODULES.LOAN_APPLICATION) ? (
+            <Button
+              type="button"
+              size="sm"
+              className="gap-2 bg-red-600 text-white hover:bg-red-700"
+              onClick={() => setDialogOpen(true)}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Financial Details
+            </Button>
+          ) : null
         }
       />
 

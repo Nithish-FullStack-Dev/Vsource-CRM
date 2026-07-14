@@ -4,20 +4,38 @@ import { formatINR } from "./config";
 import { InfoCard, InfoGrid, TabHeader } from "./ProfileUI";
 import type { LoanApplication } from "./types";
 
-export function EmploymentTab({ applicant }: { applicant: LoanApplication }) {
+export function EmploymentTab({
+  applicant,
+  canUpdate,
+}: {
+  applicant: LoanApplication;
+  canUpdate: (moduleCode: string) => boolean;
+}) {
   return (
     <div className="space-y-6">
       <TabHeader eyebrow="Applicant Work Profile" title="Employment Details" />
 
       <InfoGrid>
-        <InfoCard icon={Building2} label="Company Name" value={applicant.company} />
-        <InfoCard icon={Briefcase} label="Designation" value={applicant.designation} />
+        <InfoCard
+          icon={Building2}
+          label="Company Name"
+          value={applicant.company}
+        />
+        <InfoCard
+          icon={Briefcase}
+          label="Designation"
+          value={applicant.designation}
+        />
         <InfoCard
           icon={Briefcase}
           label="Employment Type"
           value={applicant.employmentType}
         />
-        <InfoCard icon={CreditCard} label="Employee ID" value={applicant.employeeId} />
+        <InfoCard
+          icon={CreditCard}
+          label="Employee ID"
+          value={applicant.employeeId}
+        />
         <InfoCard
           icon={Briefcase}
           label="Total Experience"

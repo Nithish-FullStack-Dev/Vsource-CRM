@@ -19,6 +19,7 @@ import {
   Users2,
   Wallet,
 } from "lucide-react";
+import { MODULES } from "@/lib/module-codes";
 
 export type TimelineType =
   | "note"

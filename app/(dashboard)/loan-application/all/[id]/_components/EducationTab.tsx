@@ -63,9 +63,11 @@ import {
 
 import { InfoCard, InfoGrid, TabHeader } from "./ProfileUI";
 import type { LoanApplication } from "./types";
+import { MODULES } from "@/lib/module-codes";
 
 interface EducationTabProps {
   applicant: LoanApplication;
+  canUpdate: (moduleCode: string) => boolean;
 }
 
 interface EditEducationDialogProps {
@@ -191,7 +193,7 @@ function getArrayData<T>(response: unknown): T[] {
   return [];
 }
 
-export function EducationTab({ applicant }: EducationTabProps) {
+export function EducationTab({ applicant, canUpdate }: EducationTabProps) {
   const [editOpen, setEditOpen] = useState(false);
 
   return (
@@ -202,15 +204,17 @@ export function EducationTab({ applicant }: EducationTabProps) {
             eyebrow="Student Details"
             title="Education Background"
             action={
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setEditOpen(true)}
-                className="gap-2"
-              >
-                <Pencil className="h-4 w-4" />
-                Edit Education
-              </Button>
+              canUpdate(MODULES.LOAN_APPLICATION) ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setEditOpen(true)}
+                  className="gap-2"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit Education
+                </Button>
+              ) : null
             }
           />
           <InfoGrid>

@@ -360,7 +360,7 @@ export function Sidebar() {
         </nav>
 
         {!sidebarCollapsed && (
-          <div className="m-3 rounded-xl p-3 bg-[image:var(--gradient-soft)] border border-border">
+          <div className="m-3 rounded-xl p-3 bg-(image:--gradient-soft) border border-border">
             <div className="text-xs font-semibold text-foreground">
               Need help?
             </div>

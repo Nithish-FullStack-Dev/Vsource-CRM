@@ -27,10 +27,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
-import type {
-  LoanDocumentChecklistItem,
-  LoanDocumentRecord,
-} from "./types";
+import type { LoanDocumentChecklistItem, LoanDocumentRecord } from "./types";
+import { MODULES } from "@/lib/module-codes";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
 const maxFileSize = 15 * 1024 * 1024;
@@ -161,10 +159,12 @@ function DocumentPreview({ record }: { record: LoanDocumentRecord }) {
 
 export function DocumentsTab({
   applicationId,
+  canUpdate,
 }: {
   applicationId: string;
   applicantName: string;
   isDarkMode?: boolean;
+  canUpdate: (moduleCode: string) => boolean;
 }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -543,7 +543,7 @@ export function DocumentsTab({
 
                     {isComplete ? (
                       <CheckCircle2 className="relative z-10 h-5 w-5 shrink-0 text-emerald-500 transition group-hover:opacity-0" />
-                    ) : (
+                    ) : canUpdate(MODULES.LOAN_APPLICATION) ? (
                       <button
                         type="button"
                         onClick={(event) => {
@@ -556,7 +556,7 @@ export function DocumentsTab({
                         <Upload className="h-3.5 w-3.5" />
                         Upload
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}
@@ -687,47 +687,49 @@ export function DocumentsTab({
                   </div>
                 )}
 
-                <div
-                  onDragEnter={(event) => {
-                    event.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={(event) => {
-                    event.preventDefault();
-                    setIsDragging(false);
-                  }}
-                  onDrop={handleDrop}
-                  onClick={() => openFilePicker(activeDocument)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
+                {canUpdate(MODULES.LOAN_APPLICATION) && (
+                  <div
+                    onDragEnter={(event) => {
                       event.preventDefault();
-                      openFilePicker(activeDocument);
-                    }
-                  }}
-                  className={`mt-5 cursor-pointer rounded-[18px] border border-dashed px-5 py-6 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-red-500 ${
-                    isDragging
-                      ? "border-red-500 bg-red-50 dark:bg-red-950/20"
-                      : "border-slate-300 bg-slate-50 hover:border-red-300 hover:bg-red-50/50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-red-900 dark:hover:bg-red-950/10"
-                  }`}
-                >
-                  <UploadCloud className="mx-auto h-6 w-6 text-slate-400" />
+                      setIsDragging(true);
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={(event) => {
+                      event.preventDefault();
+                      setIsDragging(false);
+                    }}
+                    onDrop={handleDrop}
+                    onClick={() => openFilePicker(activeDocument)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openFilePicker(activeDocument);
+                      }
+                    }}
+                    className={`mt-5 cursor-pointer rounded-[18px] border border-dashed px-5 py-6 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-red-500 ${
+                      isDragging
+                        ? "border-red-500 bg-red-50 dark:bg-red-950/20"
+                        : "border-slate-300 bg-slate-50 hover:border-red-300 hover:bg-red-50/50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-red-900 dark:hover:bg-red-950/10"
+                    }`}
+                  >
+                    <UploadCloud className="mx-auto h-6 w-6 text-slate-400" />
 
-                  <p className="mt-2 text-xs font-black text-slate-700 dark:text-slate-200">
-                    {activeDocument
-                      ? "Upload / Replace Device File here"
-                      : "Upload / Attach Device File here"}
-                  </p>
+                    <p className="mt-2 text-xs font-black text-slate-700 dark:text-slate-200">
+                      {activeDocument
+                        ? "Upload / Replace Device File here"
+                        : "Upload / Attach Device File here"}
+                    </p>
 
-                  <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                    PDF, JPG, PNG format
-                  </p>
-                </div>
+                    <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      PDF, JPG, PNG format
+                    </p>
+                  </div>
+                )}
 
                 {selectedFile && (
                   <div className="mt-4 rounded-[18px] border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
@@ -753,7 +755,8 @@ export function DocumentsTab({
                         onClick={() => {
                           setSelectedFile(null);
                           setFileError("");
-                          if (fileInputRef.current) fileInputRef.current.value = "";
+                          if (fileInputRef.current)
+                            fileInputRef.current.value = "";
                         }}
                         className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-white"
                       >

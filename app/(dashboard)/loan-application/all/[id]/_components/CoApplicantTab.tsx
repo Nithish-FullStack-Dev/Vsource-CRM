@@ -24,6 +24,7 @@ import { EmptyState, InfoCard, InfoGrid, TabHeader } from "./ProfileUI";
 import { CoApplicantDialog } from "./CoApplicantDialog";
 
 import type { CoApplicant, LoanApplication } from "./types";
+import { MODULES } from "@/lib/module-codes";
 
 function formatDate(value?: string | Date | null): string | undefined {
   if (!value) return undefined;
@@ -39,7 +40,15 @@ function formatDate(value?: string | Date | null): string | undefined {
   }).format(date);
 }
 
-export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
+export function CoApplicantTab({
+  applicant,
+  canCreate,
+  canUpdate,
+}: {
+  applicant: LoanApplication;
+  canUpdate: (moduleCode: string) => boolean;
+  canCreate: (moduleCode: string) => boolean;
+}) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const [selectedCoApplicant, setSelectedCoApplicant] =
@@ -72,16 +81,18 @@ export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
         title="Co-Applicant Information"
         action={
           coApplicants.length === 0 ? (
-            <Button
-              type="button"
-              size="sm"
-              className="gap-2 bg-red-600 text-white hover:bg-red-700"
-              onClick={handleAdd}
-            >
-              <Plus className="h-4 w-4" />
-              Add Co-Applicant
-            </Button>
-          ) : (
+            canCreate(MODULES.LOAN_APPLICATION) ? (
+              <Button
+                type="button"
+                size="sm"
+                className="gap-2 bg-red-600 text-white hover:bg-red-700"
+                onClick={handleAdd}
+              >
+                <Plus className="h-4 w-4" />
+                Add Co-Applicant
+              </Button>
+            ) : null
+          ) : canUpdate(MODULES.LOAN_APPLICATION) ? (
             <Button
               type="button"
               size="sm"
@@ -91,7 +102,7 @@ export function CoApplicantTab({ applicant }: { applicant: LoanApplication }) {
               <Pencil className="h-4 w-4" />
               Edit Co-Applicant
             </Button>
-          )
+          ) : null
         }
       />
 

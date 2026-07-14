@@ -64,6 +64,7 @@ import {
 } from "@/components/ui/select";
 import { useLoanBanks } from "@/hooks/loan-application/useLoanApplications";
 import { LOAN_APPLICATION_KEYS } from "@/services/loan-application/loan-application-query-key";
+import { MODULES } from "@/lib/module-codes";
 
 type BankApplicationRow = NonNullable<
   LoanApplication["bankApplications"]
@@ -199,7 +200,17 @@ function getEditFormValues(row: BankApplicationRow): BankApplicationFormInput {
   };
 }
 
-export function BanksTab({ applicationId }: { applicationId: string }) {
+export function BanksTab({
+  applicationId,
+  canUpdate,
+  canCreate,
+  canDelete,
+}: {
+  applicationId: string;
+  canUpdate: (moduleCode: string) => boolean;
+  canCreate: (moduleCode: string) => boolean;
+  canDelete: (moduleCode: string) => boolean;
+}) {
   const queryClient = useQueryClient();
 
   const { data: rows = [], isLoading } = useLoanBanks(applicationId);
@@ -355,12 +366,14 @@ export function BanksTab({ applicationId }: { applicationId: string }) {
     <div className="space-y-6">
       <TabHeader eyebrow="Bank Process" title="Bank / NBFC Applications" />
 
-      <div className="flex items-center justify-end">
-        <Button type="button" size="sm" onClick={openCreateDialog}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Bank Application
-        </Button>
-      </div>
+      {canCreate(MODULES.LOAN_APPLICATION) && (
+        <div className="flex items-center justify-end">
+          <Button type="button" size="sm" onClick={openCreateDialog}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Bank Application
+          </Button>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState message="No bank or NBFC applications found." />
@@ -447,27 +460,31 @@ export function BanksTab({ applicationId }: { applicationId: string }) {
 
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8"
-                    onClick={() => openEditDialog(row)}
-                    aria-label="Edit bank application"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  {canUpdate(MODULES.LOAN_APPLICATION) && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8"
+                      onClick={() => openEditDialog(row)}
+                      aria-label="Edit bank application"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
 
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => setDeletingApplication(row)}
-                    aria-label="Delete bank application"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {canDelete(MODULES.LOAN_APPLICATION) && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setDeletingApplication(row)}
+                      aria-label="Delete bank application"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

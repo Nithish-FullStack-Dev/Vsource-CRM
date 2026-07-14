@@ -55,6 +55,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DepositTab } from "./_components/DepositTab";
+import { useAuth } from "@/store";
+import { MODULES } from "@/lib/module-codes";
 
 const icons: Record<string, React.ElementType> = {
   basic: User,
@@ -81,6 +83,7 @@ const initials = (name?: string) =>
     .toUpperCase();
 
 export default function LoanApplicationProfilePage() {
+  const { canCreate, canUpdate, canDelete } = useAuth();
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -125,24 +128,45 @@ export default function LoanApplicationProfilePage() {
   // Cast applicant props to any to avoid cross-module type incompatibilities
   const render = () =>
     ({
-      basic: <BasicTab applicant={a as any} />,
-      education: <EducationTab applicant={a as any} />,
-      employment: <EmploymentTab applicant={a as any} />,
+      basic: <BasicTab applicant={a as any} canUpdate={canUpdate} />,
+      education: <EducationTab applicant={a as any} canUpdate={canUpdate} />,
+      employment: <EmploymentTab applicant={a as any} canUpdate={canUpdate} />,
       business: <BusinessTab applicant={a as any} />,
-      coapplicant: <CoApplicantTab applicant={a as any} />,
-      financial: <FinancialTab applicant={a as any} />,
+      coapplicant: (
+        <CoApplicantTab
+          applicant={a as any}
+          canUpdate={canUpdate}
+          canCreate={canCreate}
+        />
+      ),
+      financial: <FinancialTab applicant={a as any} canUpdate={canUpdate} />,
       documents: (
         <DocumentsTab
           applicationId={a.id ?? ""}
           applicantName={a.fullName ?? ""}
+          canUpdate={canUpdate}
         />
       ),
       cibil: <CibilTab applicant={a as any} />,
-      banks: <BanksTab applicationId={a.id} />,
-      sanction: <SanctionTab applicant={a as any} />,
-      disbursement: <DisbursementTab applicant={a as any} />,
-      deposit: <DepositTab applicant={a as any} />,
-      remarks: <RemarksTab applicant={a as any} />,
+      banks: (
+        <BanksTab
+          applicationId={a.id}
+          canUpdate={canUpdate}
+          canCreate={canCreate}
+          canDelete={canDelete}
+        />
+      ),
+      sanction: <SanctionTab applicant={a as any} canUpdate={canUpdate} />,
+      disbursement: (
+        <DisbursementTab applicant={a as any} canUpdate={canUpdate} />
+      ),
+      deposit: <DepositTab applicant={a as any} canUpdate={canUpdate} />,
+      remarks: (
+        <RemarksTab
+          applicant={a as any}
+          canCreate={canCreate(MODULES.LOAN_APPLICATION)}
+        />
+      ),
     })[tab] ?? null;
   return (
     <PageTransition>
@@ -194,15 +218,17 @@ export default function LoanApplicationProfilePage() {
               </div>
             </div>
 
-            <Button
-              onClick={() => {
-                setLoanStatus(a.loanStatus ?? "-");
-                setOpen(true);
-              }}
-              variant="outline"
-            >
-              Update Loan Status
-            </Button>
+            {canUpdate(MODULES.LOAN_APPLICATION) && (
+              <Button
+                onClick={() => {
+                  setLoanStatus(a.loanStatus ?? "-");
+                  setOpen(true);
+                }}
+                variant="outline"
+              >
+                Update Loan Status
+              </Button>
+            )}
           </div>
           <div className="space-y-6">
             <div className="overflow-x-auto">

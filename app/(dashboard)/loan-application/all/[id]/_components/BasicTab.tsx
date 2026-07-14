@@ -49,9 +49,11 @@ import {
 import { formatDate } from "./config";
 import { InfoCard, InfoGrid, TabHeader } from "./ProfileUI";
 import type { LoanApplication } from "./types";
+import { MODULES } from "@/lib/module-codes";
 
 interface BasicTabProps {
   applicant: LoanApplication;
+  canUpdate: (moduleCode: string) => boolean;
 }
 
 interface BranchOption {
@@ -87,7 +89,7 @@ interface MasterDataState {
 
 const EMPTY_SELECT_VALUE = "__none__";
 
-export function BasicTab({ applicant }: BasicTabProps) {
+export function BasicTab({ applicant, canUpdate }: BasicTabProps) {
   const [editOpen, setEditOpen] = useState(false);
 
   return (
@@ -97,15 +99,17 @@ export function BasicTab({ applicant }: BasicTabProps) {
           eyebrow="Applicant Profile"
           title="Basic Information"
           action={
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setEditOpen(true)}
-              className="gap-2"
-            >
-              <Pencil className="h-4 w-4" />
-              Edit Applicant
-            </Button>
+            canUpdate(MODULES.LOAN_APPLICATION) ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setEditOpen(true)}
+                className="gap-2"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Applicant
+              </Button>
+            ) : null
           }
         />
 
