@@ -1,3 +1,4 @@
+// lib\rbac.ts
 import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { verifyToken } from "@/lib/jwt";

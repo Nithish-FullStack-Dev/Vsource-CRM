@@ -359,7 +359,7 @@ export default function Dashboard() {
         label: "Conversion Rate",
         value: formatPercentage(data.kpis.conversionRate.value),
         icon: UserRoundCheck,
-        description: "Walk-ins to students",
+        description: "Walk-ins to visa approvals",
       },
     ];
   }, [data, selectedPeriodLabel]);

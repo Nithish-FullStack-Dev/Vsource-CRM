@@ -1,29 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import db from "@/lib/prisma";
+
 import { getAuthorizedUser } from "@/lib/rbac";
+
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
-import { resolvePerformanceReportAccessScope } from "@/lib/performance-report-access";
+
+import {
+  getLeadAccessWhere,
+  getStudentAccessWhere,
+  getStudentApplicationAccessWhere,
+  getStudentTimelineAccessWhere,
+  resolveDataAccessScope,
+} from "@/lib/data-access-scope";
+
 import { getPerformanceReport } from "@/lib/performance-reports";
+
 import { StudentStage } from "@/generated/prisma/enums";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type DashboardPeriod = "today" | "week" | "month" | "year";
-type PerformanceAccessScope =
-  | {
-      kind: "all";
-    }
-  | {
-      kind: "branches";
-      branchIds: string[];
-    }
-  | {
-      kind: "user";
-      userId: string;
-      userName: string;
-    };
 
 type DashboardDateRange = {
   startDate: Date;
@@ -157,93 +155,6 @@ function calculateChange(current: number, previous: number): number {
   return Number((((current - previous) / previous) * 100).toFixed(1));
 }
 
-function getLeadAccessWhere(scope: PerformanceAccessScope) {
-  if (scope.kind === "all") {
-    return {};
-  }
-
-  if (scope.kind === "branches") {
-    return {
-      branchId: {
-        in: scope.branchIds,
-      },
-    };
-  }
-
-  return {
-    OR: [
-      {
-        assignedCounselorId: scope.userId,
-      },
-      {
-        createdById: scope.userId,
-      },
-    ],
-  };
-}
-
-function getStudentAccessWhere(scope: PerformanceAccessScope) {
-  if (scope.kind === "all") {
-    return {};
-  }
-
-  if (scope.kind === "branches") {
-    return {
-      branchId: {
-        in: scope.branchIds,
-      },
-    };
-  }
-
-  return {
-    counselorId: scope.userId,
-  };
-}
-
-function getApplicationAccessWhere(scope: PerformanceAccessScope) {
-  if (scope.kind === "all") {
-    return {};
-  }
-
-  if (scope.kind === "branches") {
-    return {
-      student: {
-        branchId: {
-          in: scope.branchIds,
-        },
-      },
-    };
-  }
-
-  return {
-    student: {
-      counselorId: scope.userId,
-    },
-  };
-}
-
-function getTimelineAccessWhere(scope: PerformanceAccessScope) {
-  if (scope.kind === "all") {
-    return {};
-  }
-
-  if (scope.kind === "branches") {
-    return {
-      student: {
-        branchId: {
-          in: scope.branchIds,
-        },
-      },
-    };
-  }
-
-  return {
-    student: {
-      counselorId: scope.userId,
-    },
-  };
-}
-
 function getStageName(currentStage: StudentStage | null): string {
   const stage = MASTER_TRACKER_STAGES.find((item) =>
     item.stages.some((value) => value === currentStage),
@@ -278,9 +189,7 @@ export async function GET(request: NextRequest) {
       PERMISSIONS.READ,
     );
 
-    const scope = resolvePerformanceReportAccessScope(
-      currentUser,
-    ) as PerformanceAccessScope;
+    const scope = resolveDataAccessScope(currentUser);
 
     const requestedPeriod = request.nextUrl.searchParams.get("period");
 
@@ -295,8 +204,8 @@ export async function GET(request: NextRequest) {
 
     const leadAccessWhere = getLeadAccessWhere(scope);
     const studentAccessWhere = getStudentAccessWhere(scope);
-    const applicationAccessWhere = getApplicationAccessWhere(scope);
-    const timelineAccessWhere = getTimelineAccessWhere(scope);
+    const applicationAccessWhere = getStudentApplicationAccessWhere(scope);
+    const timelineAccessWhere = getStudentTimelineAccessWhere(scope);
     const performanceDateFilters = getPerformanceReportDateFilters(dateRange);
     const performanceReport = await getPerformanceReport(
       {
