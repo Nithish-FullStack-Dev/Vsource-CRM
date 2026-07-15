@@ -187,17 +187,40 @@ async function getTargetForUser(
   return rows.reduce((sum, row) => sum + row.target, 0);
 }
 
-export async function queryMasters(): Promise<MastersResponse> {
-  const branches = await db.branch.findMany({
-    where: { status: true },
-    include: {
-      users: {
-        include: { role: true },
-        orderBy: { name: "asc" },
+export async function queryMasters(
+  currentUserId: string,
+): Promise<MastersResponse> {
+ const currentUser = await db.user.findUnique({
+  where: {
+    id: currentUserId,
+  },
+  include: {
+    branches: {
+      where: {
+        status: true,
+      },
+      include: {
+        users: {
+          include: {
+            role: true,
+          },
+          orderBy: {
+            name: "asc",
+          },
+        },
+      },
+      orderBy: {
+        name: "asc",
       },
     },
-    orderBy: { name: "asc" },
-  });
+  },
+});
+
+if (!currentUser) {
+  throw new Error("User not found");
+}
+
+const branches = currentUser.branches;
 
   const intakesRaw = await db.intake.findMany({
     where: { status: true },

@@ -3,6 +3,8 @@
 import React, { useEffect } from "react";
 import { BranchOption, IntakeOption, UserOption } from "@/lib/crmTypes";
 import { Filter, Calendar, MapPin, Users, Hash } from "lucide-react";
+import { useAuth } from "@/store";
+import { ROLES } from "@/config/roles";
 
 interface PerformanceFiltersProps {
   branches: BranchOption[];
@@ -39,6 +41,8 @@ export default function PerformanceFilters({
   endDate,
   setEndDate,
 }: PerformanceFiltersProps) {
+  const { user } = useAuth();
+
   const filteredUsers =
     selectedBranch === "all"
       ? users
@@ -90,27 +94,30 @@ export default function PerformanceFilters({
           </select>
         </div>
 
-        <div id="user-filter-group" className="flex flex-col gap-1">
-          <label className="flex items-center gap-1 text-[10px] font-bold uppercase text-muted-foreground">
-            <Users size={10} className="text-red-600" />
-            User
-          </label>
+        {(user?.role?.name === ROLES.SUPER_ADMIN ||
+          user?.role?.name === ROLES.DIRECTOR) && (
+          <div id="user-filter-group" className="flex flex-col gap-1">
+            <label className="flex items-center gap-1 text-[10px] font-bold uppercase text-muted-foreground">
+              <Users size={10} className="text-red-600" />
+              User
+            </label>
 
-          <select
-            id="user-select"
-            value={selectedUser}
-            onChange={(e) => setSelectedUser(e.target.value)}
-            className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs font-medium text-foreground outline-none transition-colors focus:ring-2 focus:ring-red-600"
-          >
-            <option value="all">All Users</option>
+            <select
+              id="user-select"
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs font-medium text-foreground outline-none transition-colors focus:ring-2 focus:ring-red-600"
+            >
+              <option value="all">All Users</option>
 
-            {filteredUsers.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({u.role})
-              </option>
-            ))}
-          </select>
-        </div>
+              {filteredUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.role})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div id="intake-filter-group" className="flex flex-col gap-1">
           <label className="flex items-center gap-1 text-[10px] font-bold uppercase text-muted-foreground">
