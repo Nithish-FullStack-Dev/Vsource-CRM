@@ -217,6 +217,7 @@ export default function Home() {
       ) ?? null
     );
   }, [students, selectedStudentId]);
+
   const complianceProgress = useMemo(() => {
     if (!selectedStudent) {
       return {
@@ -829,7 +830,7 @@ export default function Home() {
                     {detailTab === "loan" && (
                       <StudentLoanProfileSection
                         key={`${selectedStudent.id}-loan`}
-                        studentId={selectedStudent.id}
+                        leadId={selectedStudent.leadId}
                         isDarkMode={isDarkMode}
                       />
                     )}
