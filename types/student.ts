@@ -91,6 +91,8 @@ export interface StudentRecord {
 
   lead?: Lead;
 
+  leadId: string;
+
   moduleProgress?: StudentModuleProgressRecord[];
 
   timeline?: StudentTimeline[];

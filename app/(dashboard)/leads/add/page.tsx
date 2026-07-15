@@ -71,6 +71,7 @@ import { useAuth } from "@/store";
 import { RoutePermission } from "@/components/guards/RoutePermission";
 import { MODULES } from "@/lib/module-codes";
 import { Badge } from "@/components/ui/badge";
+import { api } from "@/lib/api";
 const englishTestOptions = ["IELTS", "TOEFL", "DUOLINGO", "PTE"] as const;
 
 type EnglishTestType = (typeof englishTestOptions)[number];
@@ -436,15 +437,8 @@ export default function AddLeadPage() {
     queryKey: ["counselors", selectedBranchId],
 
     queryFn: async () => {
-      const { data } = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/users`,
-        {
-          params: {
-            branchId: selectedBranchId,
-            role: "counsellor",
-          },
-          withCredentials: true,
-        },
+      const { data } = await api.get(
+        `/users/branch-dropdown/${selectedBranchId}`,
       );
 
       return data?.data ?? [];
