@@ -7,17 +7,17 @@ export type StudentVisaProfile = {
 
   depositDeadlineDate: string;
 
-  depositStatus: "" | "PENDING" | "PAID";
+  depositStatus: "PENDING" | "PAID";
 
-  ihsPaidStatus: "" | "PENDING" | "PAID" | "PAID_PARTIALLY";
+  ihsPaidStatus: "PENDING" | "PAID" | "PAID_PARTIALLY";
 
   visaPaidStatus: string;
 
   casDeadlineDate: string;
 
-  casStatus: "" | "PENDING" | "APPLIED" | "RECEIVED";
+  casStatus: "PENDING" | "APPLIED" | "RECEIVED";
 
-  visaStatus: "" | "DECISION_PENDING" | "APPROVED" | "REJECTED";
+  visaStatus: "DECISION_PENDING" | "APPROVED" | "REJECTED";
 
   visaDecisionDate: string;
 
@@ -25,7 +25,7 @@ export type StudentVisaProfile = {
 
   universityEndDate: string;
 
-  interviewStatus: "" | "PASSED" | "FAILED" | "NO_INTERVIEW";
+  interviewStatus: "PASSED" | "FAILED" | "NO_INTERVIEW";
 
   createdAt?: string;
   updatedAt?: string;

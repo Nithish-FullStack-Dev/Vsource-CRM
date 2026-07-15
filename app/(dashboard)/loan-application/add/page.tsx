@@ -90,6 +90,7 @@ import {
   optionalInteger,
   optionalPositiveNumber,
 } from "@/schemas/loan-application/loan-application.schema";
+import { api } from "@/lib/api";
 /* -------------------------------------------------------------------------- */
 /*                                   CONSTANTS                                */
 /* -------------------------------------------------------------------------- */
@@ -1040,13 +1041,9 @@ export default function AddLoanApplicationPage() {
     enabled: Boolean(selectedBranchId),
 
     queryFn: async () => {
-      const { data } = await axios.get("/api/users", {
-        params: {
-          branchId: selectedBranchId,
-          role: "fintech",
-        },
-        withCredentials: true,
-      });
+      const { data } = await api.get(
+        `/users/branch-dropdown/${selectedBranchId}`,
+      );
 
       return data?.data ?? [];
     },

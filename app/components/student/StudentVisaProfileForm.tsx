@@ -37,45 +37,43 @@ type StudentVisaProfileSectionProps = {
 
 type FormState = {
   depositDeadlineDate: string;
-  depositStatus: "" | "PENDING" | "PAID";
+  depositStatus: "PENDING" | "PAID";
 
-  ihsPaidStatus: "" | "PENDING" | "PAID" | "PAID_PARTIALLY";
+  ihsPaidStatus: "PENDING" | "PAID" | "PAID_PARTIALLY";
 
   visaPaidStatus: string;
 
   casDeadlineDate: string;
+  casStatus: "PENDING" | "APPLIED" | "RECEIVED";
 
-  casStatus: "" | "PENDING" | "APPLIED" | "RECEIVED";
-
-  visaStatus: "" | "DECISION_PENDING" | "APPROVED" | "REJECTED";
+  visaStatus: "DECISION_PENDING" | "APPROVED" | "REJECTED";
 
   visaDecisionDate: string;
 
   universityStartDate: string;
-
   universityEndDate: string;
 
-  interviewStatus: "" | "PASSED" | "FAILED" | "NO_INTERVIEW";
+  interviewStatus: "NO_INTERVIEW" | "PASSED" | "FAILED";
 };
 
 const initialFormState: FormState = {
   depositDeadlineDate: "",
-  depositStatus: "",
+  depositStatus: "PENDING",
 
-  ihsPaidStatus: "",
+  ihsPaidStatus: "PENDING",
   visaPaidStatus: "",
 
   casDeadlineDate: "",
-  casStatus: "",
+  casStatus: "PENDING",
 
-  visaStatus: "",
+  visaStatus: "DECISION_PENDING",
 
   visaDecisionDate: "",
 
   universityStartDate: "",
   universityEndDate: "",
 
-  interviewStatus: "",
+  interviewStatus: "NO_INTERVIEW",
 };
 
 const getDateTimeLocalValue = (value?: string | null) => {
@@ -130,15 +128,15 @@ const createFormState = (profile?: StudentVisaProfile | null): FormState => {
 
   return {
     depositDeadlineDate: getDateTimeLocalValue(profile.depositDeadlineDate),
-    depositStatus: profile.depositStatus ?? "",
+    depositStatus: profile.depositStatus ?? "PENDING",
 
-    ihsPaidStatus: profile.ihsPaidStatus ?? "",
+    ihsPaidStatus: profile.ihsPaidStatus ?? "PENDING",
     visaPaidStatus: profile.visaPaidStatus ?? "",
 
     casDeadlineDate: getDateTimeLocalValue(profile.casDeadlineDate),
-    casStatus: profile.casStatus ?? "",
+    casStatus: profile.casStatus ?? "PENDING",
 
-    visaStatus: profile.visaStatus ?? "",
+    visaStatus: profile.visaStatus ?? "DECISION_PENDING",
 
     visaDecisionDate: getDateTimeLocalValue(profile.visaDecisionDate),
 
@@ -146,7 +144,7 @@ const createFormState = (profile?: StudentVisaProfile | null): FormState => {
 
     universityEndDate: getDateTimeLocalValue(profile.universityEndDate),
 
-    interviewStatus: profile.interviewStatus ?? "",
+    interviewStatus: profile.interviewStatus ?? "NO_INTERVIEW",
   };
 };
 
@@ -234,15 +232,15 @@ export function StudentVisaProfileSection({
 
     const payload: StudentVisaProfilePayload = {
       depositDeadlineDate: getNullableDateTime(form.depositDeadlineDate),
-      depositStatus: form.depositStatus || null,
+      depositStatus: form.depositStatus || "PENDING",
 
-      ihsPaidStatus: form.ihsPaidStatus || null,
+      ihsPaidStatus: form.ihsPaidStatus || "PENDING",
       visaPaidStatus: form.visaPaidStatus || null,
 
       casDeadlineDate: getNullableDateTime(form.casDeadlineDate),
-      casStatus: form.casStatus || null,
+      casStatus: form.casStatus || "PENDING",
 
-      visaStatus: form.visaStatus || null,
+      visaStatus: form.visaStatus || "DECISION_PENDING",
 
       visaDecisionDate: getNullableDateTime(form.visaDecisionDate),
 
@@ -250,7 +248,7 @@ export function StudentVisaProfileSection({
 
       universityEndDate: getNullableDateTime(form.universityEndDate),
 
-      interviewStatus: form.interviewStatus || null,
+      interviewStatus: form.interviewStatus || "NO_INTERVIEW",
     };
 
     try {
@@ -574,7 +572,6 @@ export function StudentVisaProfileSection({
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select Deposit Status</option>
                     <option value="PENDING">Pending</option>
                     <option value="PAID">Paid</option>
                   </select>
@@ -595,7 +592,6 @@ export function StudentVisaProfileSection({
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select Visa Status</option>
                     <option value="DECISION_PENDING">Decision Pending</option>
                     <option value="APPROVED">Approved</option>
                     <option value="REJECTED">Rejected</option>
@@ -632,7 +628,6 @@ export function StudentVisaProfileSection({
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select IHS Status</option>
                     <option value="PENDING">Pending</option>
                     <option value="PAID">Paid</option>
                     <option value="PAID_PARTIALLY">Paid Partially</option>
@@ -654,7 +649,6 @@ export function StudentVisaProfileSection({
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select Visa Fee Status</option>
                     <option value="PENDING">Pending</option>
                     <option value="PAID">Paid</option>
                   </select>
@@ -690,7 +684,6 @@ export function StudentVisaProfileSection({
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select CAS Status</option>
                     <option value="PENDING">Pending</option>
                     <option value="APPLIED">Applied</option>
                     <option value="RECEIVED">Received</option>
@@ -712,7 +705,6 @@ export function StudentVisaProfileSection({
                     }
                     className={inputClassName}
                   >
-                    <option value="">Select Interview Status</option>
                     <option value="NO_INTERVIEW">No Interview</option>
                     <option value="PASSED">Passed</option>
                     <option value="FAILED">Failed</option>
