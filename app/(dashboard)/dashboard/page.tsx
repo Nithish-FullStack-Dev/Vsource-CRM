@@ -460,9 +460,7 @@ export default function Dashboard() {
             <CardHeader className="border-b px-4 py-4 sm:px-5 lg:px-6">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <CardTitle className="text-base">
-                    Counselor Performance
-                  </CardTitle>
+                  <CardTitle className="text-base">Users Performance</CardTitle>
 
                   <p className="mt-1 text-xs text-muted-foreground">
                     {selectedPeriodLabel} performance based on role and branch
