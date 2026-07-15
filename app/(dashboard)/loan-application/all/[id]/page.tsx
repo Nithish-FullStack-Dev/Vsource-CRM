@@ -1,7 +1,7 @@
 // app\(dashboard)\loan-application\all\[id]\page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -57,6 +57,7 @@ import {
 import { DepositTab } from "./_components/DepositTab";
 import { useAuth } from "@/store";
 import { MODULES } from "@/lib/module-codes";
+import { usePageTitle } from "@/store/page-title";
 
 const icons: Record<string, React.ElementType> = {
   basic: User,
@@ -85,10 +86,20 @@ const initials = (name?: string) =>
 export default function LoanApplicationProfilePage() {
   const { canCreate, canUpdate, canDelete } = useAuth();
   const router = useRouter();
+  const { setTitle } = usePageTitle();
   const params = useParams();
   const id = params.id as string;
   const [tab, setTab] = useState("basic");
   const { data: a, isLoading, isError, error } = useLoanApplication(id);
+  useEffect(() => {
+    if (a?.fullName) {
+      setTitle(a.fullName);
+    }
+
+    return () => {
+      setTitle("");
+    };
+  }, [a?.fullName, setTitle]);
   const update = useLoanStatus(id);
   const tabs = useMemo(
     () => (a ? getLoanTabs(a.applicantCategory, a.loanCategory) : []),
