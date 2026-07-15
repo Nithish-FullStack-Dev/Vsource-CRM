@@ -218,7 +218,7 @@ export default function LoanApplicationsPage() {
 
         <div className="rounded-2xl border bg-card shadow-sm">
           <div className="flex flex-wrap items-center gap-2 border-b p-4">
-            <div className="flex h-9 min-w-[240px] flex-1 items-center gap-2 rounded-md border bg-background px-3">
+            <div className="flex h-9 min-w-60 flex-1 items-center gap-2 rounded-md border bg-background px-3">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
                 value={q}
@@ -269,7 +269,7 @@ export default function LoanApplicationsPage() {
           {/* TABLE WRAPPER - Added styling for horizontal scrolling */}
           <div className="w-full overflow-x-auto pb-4">
             {/* Added min-w-[1400px] to force proper one-line alignment */}
-            <table className="w-full min-w-[1400px] text-sm">
+            <table className="w-full min-w-350 text-sm">
               <thead>
                 <tr className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                   {[
@@ -315,14 +315,14 @@ export default function LoanApplicationsPage() {
                         {a.applicationId}
                       </td>
                       {/* Using min-w-[180px] to give the applicant cell some breathing room */}
-                      <td className="px-4 py-3 min-w-[180px] whitespace-nowrap">
+                      <td className="px-4 py-3 min-w-45 whitespace-nowrap">
                         <Link
                           href={`/loan-application/all/${a.id}`}
                           className="font-medium text-foreground hover:text-primary block"
                         >
                           {a.fullName}
                         </Link>
-                        <div className="text-xs text-muted-foreground truncate max-w-[180px]">
+                        <div className="text-xs text-muted-foreground truncate max-w-45">
                           {a.email || "—"}
                         </div>
                       </td>
@@ -345,10 +345,14 @@ export default function LoanApplicationsPage() {
                         {formatINR(a.requiredLoanAmount)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        {formatINR(a.sanctionedAmount)}
+                        {a?.sanction?.sanctionedAmount
+                          ? `₹${a?.sanction?.sanctionedAmount}`
+                          : "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        {formatINR(a.disbursedAmount)}
+                        {a?.disbursement?.disbursedAmount
+                          ? `₹${a?.disbursement?.disbursedAmount}`
+                          : "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <StatusBadge
@@ -533,6 +537,7 @@ export default function LoanApplicationsPage() {
     </PageTransition>
   );
 }
+
 function FilterSelect({
   value,
   onChange,
@@ -546,7 +551,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-9 w-auto min-w-[160px]">
+      <SelectTrigger className="h-9 w-auto min-w-40">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

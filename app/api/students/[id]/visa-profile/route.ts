@@ -1,3 +1,5 @@
+// app\api\students\[id]\visa-profile\route.ts
+
 import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
@@ -31,22 +33,25 @@ async function saveVisaProfile(
       },
 
       create: {
-        studentId,
+        student: {
+          connect: {
+            id: studentId,
+          },
+        },
 
         depositDeadlineDate: parseNullableDate(body.depositDeadlineDate),
         depositStatus: body.depositStatus as DepositStatus | undefined,
 
         ihsPaidStatus: body.ihsPaidStatus as IhsPaidStatus | undefined,
-
         visaPaidStatus: body.visaPaidStatus ?? null,
 
         casDeadlineDate: parseNullableDate(body.casDeadlineDate),
         casStatus: body.casStatus as CasStatus | undefined,
 
         visaStatus: body.visaStatus as VisaStatus | undefined,
+        visaDecisionDate: parseNullableDate(body.visaDecisionDate),
 
         universityStartDate: parseNullableDate(body.universityStartDate),
-
         universityEndDate: parseNullableDate(body.universityEndDate),
 
         interviewStatus: body.interviewStatus as InterviewStatus | undefined,
