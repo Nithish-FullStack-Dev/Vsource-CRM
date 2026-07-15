@@ -355,11 +355,14 @@ function EditBasicInformationDialog({
         role: "fintech",
       });
 
-      const response = await fetch(`/api/users?${params.toString()}`, {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-      });
+      const response = await fetch(
+        `/api/users/branch-dropdown/${selectedBranchId}`,
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        },
+      );
 
       if (!response.ok) {
         throw new Error("Failed to load fintech users");

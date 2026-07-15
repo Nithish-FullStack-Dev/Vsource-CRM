@@ -22,6 +22,7 @@ export const LOAN_STATUSES = [
   "Sanctioned",
   "Disbursed",
   "Deposit Received",
+  "Approved",
   "Rejected",
 ] as const;
 
@@ -168,7 +169,6 @@ export const getLoanTabs = (
   /**
    * CIBIL consultation
    */
-
 
   /**
    * Complete bank processing workflow
