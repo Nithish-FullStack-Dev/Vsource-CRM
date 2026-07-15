@@ -193,14 +193,14 @@ function getRecordBadge(row: PerformanceReportRow) {
       variant="outline"
       className="border-amber-300 bg-amber-50 text-amber-700"
     >
-      Lead
+      Walk-in
     </Badge>
   ) : (
     <Badge
       variant="outline"
       className="border-emerald-300 bg-emerald-50 text-emerald-700"
     >
-      Student
+      Application
     </Badge>
   );
 }
@@ -211,7 +211,9 @@ function getLifecycleBadgeClass(status: string) {
   if (["converted", "admitted", "enrolled", "completed"].includes(normalized)) {
     return "border-success/20 bg-success/15 text-success";
   }
-  if (["qualified", "visa_process", "loan_process", "active"].includes(normalized)) {
+  if (
+    ["qualified", "visa_process", "loan_process", "active"].includes(normalized)
+  ) {
     return "border-primary/20 bg-primary/10 text-primary";
   }
   if (["lost", "drop", "dropped", "rejected"].includes(normalized)) {
@@ -232,12 +234,21 @@ function MetricHeaderCells() {
       <th className="px-4 py-3 text-right font-medium">Drop Walk-ins</th>
       <th className="px-4 py-3 text-right font-medium">Applications</th>
       <th className="px-4 py-3 text-right font-medium">Dropped Applications</th>
+      <th className="px-4 py-3 text-right font-medium">Loan Logins</th>
+      <th className="px-4 py-3 text-right font-medium">Loan Approved</th>
+      <th className="px-4 py-3 text-right font-medium">
+        Application Conversions (No. / %)
+      </th>
+      <th className="px-4 py-3 text-right font-medium">
+        Visa Conversions (No. / %)
+      </th>
       <th className="px-4 py-3 text-right font-medium">Target</th>
-      <th className="px-4 py-3 text-right font-medium">Achieved</th>
-      <th className="px-4 py-3 text-right font-medium">Target %</th>
-      <th className="px-4 py-3 text-right font-medium">Conversion</th>
+      <th className="px-4 py-3 text-right font-medium">Target Achieved</th>
+      <th className="px-4 py-3 text-right font-medium">Target Achieved %</th>
+      <th className="px-4 py-3 text-right font-medium">
+        University Applications
+      </th>
       <th className="px-4 py-3 text-right font-medium">CAS Received</th>
-      <th className="px-4 py-3 text-right font-medium">Visa Approved</th>
     </>
   );
 }
@@ -252,16 +263,28 @@ function MetricCells({ row }: { row: PerformanceReportMetricRow }) {
       <td className="px-4 py-3 text-right text-destructive">
         {row.droppedStudents}
       </td>
+      <td className="px-4 py-3 text-right">{row.loanLogins}</td>
+      <td className="px-4 py-3 text-right font-semibold">{row.loanApproved}</td>
+      <td className="px-4 py-3 text-right font-semibold">
+        <div>{row.applicationConversions}</div>
+        <div className="text-xs font-normal text-muted-foreground">
+          {row.applicationConversionRate}%
+        </div>
+      </td>
+
+      <td className="px-4 py-3 text-right font-semibold">
+        <div>{row.visaConversions}</div>
+        <div className="text-xs font-normal text-muted-foreground">
+          {row.visaConversionRate}%
+        </div>
+      </td>
       <td className="px-4 py-3 text-right">{row.target}</td>
       <td className="px-4 py-3 text-right font-semibold">{row.achieved}</td>
       <td className="px-4 py-3 text-right font-semibold">
         {row.targetCompletionPercentage}%
       </td>
-      <td className="px-4 py-3 text-right font-semibold">
-        {row.conversionRate}%
-      </td>
+      <td className="px-4 py-3 text-right">{row.applications}</td>
       <td className="px-4 py-3 text-right">{row.casReceived}</td>
-      <td className="px-4 py-3 text-right">{row.visaApproved}</td>
     </>
   );
 }
@@ -442,7 +465,7 @@ export default function PerformanceReportsPage() {
       <ReportAccordion
         value="report-summary"
         title="Performance Summary"
-        description="High-level lead, student, target, application, offer, CAS, and visa totals."
+        description="Role-secured walk-in, application, loan, target, CAS, and visa conversion totals."
         icon={LayoutDashboard}
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
@@ -455,25 +478,25 @@ export default function PerformanceReportsPage() {
               <SummaryCard
                 title="Active Walk-ins"
                 value={report.summary.totalLeads.toLocaleString("en-IN")}
-                description="Unconverted lead records"
+                description="Unconverted walk-in records"
                 icon={BriefcaseBusiness}
               />
               <SummaryCard
                 title="Drop Walk-ins"
                 value={report.summary.lostLeads.toLocaleString("en-IN")}
-                description="Walkin status marked as Dropped or Lost"
+                description="Walk-ins marked dropped or lost"
                 icon={ArrowRightLeft}
               />
               <SummaryCard
-                title="Visa Applications"
+                title="Applications"
                 value={report.summary.totalStudents.toLocaleString("en-IN")}
-                description={`${report.summary.conversionRate}% walk-in conversion`}
+                description={`${report.summary.applicationConversionRate}% application conversion`}
                 icon={GraduationCap}
               />
               <SummaryCard
-                title="Dropped Visa Applications"
+                title="Dropped Applications"
                 value={report.summary.droppedStudents.toLocaleString("en-IN")}
-                description="Student status marked as dropped"
+                description="Applications marked dropped"
                 icon={GraduationCap}
               />
               <SummaryCard
@@ -483,7 +506,33 @@ export default function PerformanceReportsPage() {
                 icon={BriefcaseBusiness}
               />
               <SummaryCard
-                title="Application Target"
+                title="Loan Logins"
+                value={report.summary.loanLogins.toLocaleString("en-IN")}
+                description="New-form and walk-in loan applications"
+                icon={Landmark}
+              />
+              <SummaryCard
+                title="Loan Approved"
+                value={report.summary.loanApproved.toLocaleString("en-IN")}
+                description="Approved or later loan lifecycle statuses"
+                icon={CheckCircle2}
+              />
+              <SummaryCard
+                title="Application Conversions"
+                value={report.summary.applicationConversions.toLocaleString(
+                  "en-IN",
+                )}
+                description={`${report.summary.applicationConversionRate}% of walk-ins`}
+                icon={ArrowRightLeft}
+              />
+              <SummaryCard
+                title="Visa Conversions"
+                value={report.summary.visaConversions.toLocaleString("en-IN")}
+                description={`${report.summary.visaConversionRate}% of applications`}
+                icon={CheckCircle2}
+              />
+              <SummaryCard
+                title="Visa Approval Target"
                 value={report.summary.totalTarget.toLocaleString("en-IN")}
                 description={`${report.summary.targetAssignments.toLocaleString("en-IN")} target assignments`}
                 icon={Landmark}
@@ -491,37 +540,21 @@ export default function PerformanceReportsPage() {
               <SummaryCard
                 title="Target Achieved"
                 value={report.summary.totalAchieved.toLocaleString("en-IN")}
-                description={`${report.summary.targetCompletionPercentage}% of target`}
+                description={`${report.summary.targetCompletionPercentage}% — counted on visa approval`}
                 icon={CheckCircle2}
               />
               <SummaryCard
                 title="University Applications"
                 value={report.summary.totalApplications.toLocaleString("en-IN")}
-                description="Applications matching the selected filters"
+                description="University applications matching the filters"
                 icon={FileText}
-              />
-              <SummaryCard
-                title="Uni Offers"
-                value={report.summary.offerApplications.toLocaleString("en-IN")}
-                description="Applications with an offer status"
-                icon={FileText}
-              />
-              <SummaryCard
-                title="All Walk-in Records"
-                value={report.summary.totalPipelineRecords.toLocaleString("en-IN")}
-                description="Active leads and converted students"
-                icon={ArrowRightLeft}
               />
               <SummaryCard
                 title="CAS Received"
-                value={report.summary.casReceivedStudents.toLocaleString("en-IN")}
-                description="Students with CAS received"
-                icon={CheckCircle2}
-              />
-              <SummaryCard
-                title="Visa Approved"
-                value={report.summary.visaApprovedStudents.toLocaleString("en-IN")}
-                description="Students with approved visas"
+                value={report.summary.casReceivedStudents.toLocaleString(
+                  "en-IN",
+                )}
+                description="Applications with CAS received"
                 icon={CheckCircle2}
               />
             </>
@@ -534,12 +567,11 @@ export default function PerformanceReportsPage() {
         title="Branch-wise Performance"
         description="Every branch row is followed by a final all-branch calculation row."
         icon={TableProperties}
-
       >
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[2160px] text-sm">
+              <table className="w-full min-w-[2480px] text-sm">
                 <thead>
                   <tr className="border-b bg-secondary/30 text-xs text-muted-foreground">
                     <th className="px-4 py-3 text-left font-medium">Branch</th>
@@ -550,7 +582,7 @@ export default function PerformanceReportsPage() {
                   {reportQuery.isLoading ? (
                     Array.from({ length: 5 }).map((_, index) => (
                       <tr key={index} className="border-b">
-                        <td colSpan={16} className="px-4 py-3">
+                        <td colSpan={15} className="px-4 py-3">
                           <Skeleton className="h-8 w-full" />
                         </td>
                       </tr>
@@ -576,7 +608,7 @@ export default function PerformanceReportsPage() {
                   ) : (
                     <tr>
                       <td
-                        colSpan={16}
+                        colSpan={15}
                         className="px-4 py-12 text-center text-muted-foreground"
                       >
                         No branch performance data found.
@@ -603,9 +635,7 @@ export default function PerformanceReportsPage() {
               <table className="w-full min-w-[2320px] border-collapse text-sm">
                 <thead>
                   <tr className="border-b bg-secondary/30 text-xs text-muted-foreground">
-                    <th className="px-4 py-3 text-left font-medium">
-                      Branch
-                    </th>
+                    <th className="px-4 py-3 text-left font-medium">Branch</th>
 
                     <th className="px-4 py-3 text-left font-medium">
                       Counsellor / Associate
@@ -619,7 +649,7 @@ export default function PerformanceReportsPage() {
                   {reportQuery.isLoading ? (
                     Array.from({ length: 6 }).map((_, index) => (
                       <tr key={index} className="border-b">
-                        <td colSpan={17} className="px-4 py-3">
+                        <td colSpan={16} className="px-4 py-3">
                           <Skeleton className="h-9 w-full" />
                         </td>
                       </tr>
@@ -653,10 +683,7 @@ export default function PerformanceReportsPage() {
                           ))}
 
                           <tr className="border-b-2 bg-muted/40 font-semibold">
-                            <td
-                              colSpan={2}
-                              className="px-4 py-3 text-left"
-                            >
+                            <td colSpan={2} className="px-4 py-3 text-left">
                               {group.branch} Total
                             </td>
 
@@ -666,10 +693,7 @@ export default function PerformanceReportsPage() {
                       ))}
 
                       <tr className="border-t-2 bg-muted/70 font-semibold">
-                        <td
-                          colSpan={2}
-                          className="px-4 py-3 text-left"
-                        >
+                        <td colSpan={2} className="px-4 py-3 text-left">
                           Grand Total — All Branches
                         </td>
 
@@ -679,7 +703,7 @@ export default function PerformanceReportsPage() {
                   ) : (
                     <tr>
                       <td
-                        colSpan={17}
+                        colSpan={16}
                         className="px-4 py-12 text-center text-muted-foreground"
                       >
                         No counsellor performance data found.
@@ -701,7 +725,7 @@ export default function PerformanceReportsPage() {
       >
         <div className="grid gap-4 xl:grid-cols-2">
           <SimpleBreakdownTable
-            title="Lead Lifecycle"
+            title="Walk-in Lifecycle"
             label="Status"
             rows={(report?.leadStatusBreakdown ?? []).map((row) => ({
               label: row.status,
@@ -718,7 +742,7 @@ export default function PerformanceReportsPage() {
           />
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Lead Source Numbers</CardTitle>
+              <CardTitle className="text-base">Walk-in Source Numbers</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="max-h-80 overflow-auto">
@@ -726,8 +750,8 @@ export default function PerformanceReportsPage() {
                   <thead className="sticky top-0 bg-card">
                     <tr className="border-y bg-secondary/30 text-xs text-muted-foreground">
                       <th className="px-4 py-3 text-left font-medium">Source</th>
-                      <th className="px-4 py-3 text-right font-medium">Leads</th>
-                      <th className="px-4 py-3 text-right font-medium">Students</th>
+                      <th className="px-4 py-3 text-right font-medium">Walk-ins</th>
+                      <th className="px-4 py-3 text-right font-medium">Applications</th>
                       <th className="px-4 py-3 text-right font-medium">Total</th>
                     </tr>
                   </thead>
@@ -757,8 +781,8 @@ export default function PerformanceReportsPage() {
                   <thead className="sticky top-0 bg-card">
                     <tr className="border-y bg-secondary/30 text-xs text-muted-foreground">
                       <th className="px-4 py-3 text-left font-medium">Country</th>
-                      <th className="px-4 py-3 text-right font-medium">Leads</th>
-                      <th className="px-4 py-3 text-right font-medium">Students</th>
+                      <th className="px-4 py-3 text-right font-medium">Walk-ins</th>
+                      <th className="px-4 py-3 text-right font-medium">Applications</th>
                       <th className="px-4 py-3 text-right font-medium">
                         Applications
                       </th>
@@ -802,7 +826,9 @@ export default function PerformanceReportsPage() {
                 <thead>
                   <tr className="border-b bg-secondary/30 text-xs text-muted-foreground">
                     <th className="px-4 py-3 text-left font-medium">Type</th>
-                    <th className="px-4 py-3 text-left font-medium">Walk-in No.</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Walk-in No.
+                    </th>
                     <th className="px-4 py-3 text-left font-medium">Person</th>
                     <th className="px-4 py-3 text-left font-medium">Contact</th>
                     <th className="px-4 py-3 text-left font-medium">
@@ -906,8 +932,8 @@ export default function PerformanceReportsPage() {
                             <>
                               <p>CAS: {humanizeReportStatus(row.casStatus)}</p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                Visa: {humanizeReportStatus(row.visaStatus)} · Loan:{" "}
-                                {humanizeReportStatus(row.loanStatus)}
+                                Visa: {humanizeReportStatus(row.visaStatus)} ·
+                                Loan: {humanizeReportStatus(row.loanStatus)}
                               </p>
                             </>
                           ) : (
@@ -942,8 +968,8 @@ export default function PerformanceReportsPage() {
 
         <div className="mt-4 flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>
-            Showing {report?.rows.length ?? 0} of {report?.pagination.total ?? 0}{" "}
-            records
+            Showing {report?.rows.length ?? 0} of{" "}
+            {report?.pagination.total ?? 0} records
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -967,7 +993,10 @@ export default function PerformanceReportsPage() {
               }
               onClick={() =>
                 setPage((current) =>
-                  Math.min(report?.pagination.totalPages ?? current, current + 1),
+                  Math.min(
+                    report?.pagination.totalPages ?? current,
+                    current + 1,
+                  ),
                 )
               }
             >
@@ -1029,7 +1058,7 @@ export default function PerformanceReportsPage() {
                       <Line
                         type="monotone"
                         dataKey="leads"
-                        name="New Leads"
+                        name="New Walk-ins"
                         stroke={CHART_COLORS[0]}
                         strokeWidth={2.5}
                         dot={{ r: 3 }}
@@ -1037,7 +1066,7 @@ export default function PerformanceReportsPage() {
                       <Line
                         type="monotone"
                         dataKey="students"
-                        name="Converted Students"
+                        name="Applications"
                         stroke={CHART_COLORS[2]}
                         strokeWidth={2.5}
                         dot={{ r: 3 }}
@@ -1106,13 +1135,13 @@ export default function PerformanceReportsPage() {
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Bar
                         dataKey="leads"
-                        name="Leads"
+                        name="Walk-ins"
                         fill={CHART_COLORS[0]}
                         radius={[5, 5, 0, 0]}
                       />
                       <Bar
                         dataKey="students"
-                        name="Students"
+                        name="Applications"
                         fill={CHART_COLORS[2]}
                         radius={[5, 5, 0, 0]}
                       />
@@ -1177,7 +1206,9 @@ export default function PerformanceReportsPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Walk-in Lifecycle Status</CardTitle>
+              <CardTitle className="text-base">
+                Walk-in Lifecycle Status
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {reportQuery.isLoading ? (

@@ -1,4 +1,3 @@
-// app\api\reports\performance\route.ts
 import { NextRequest } from "next/server";
 import { handleError, ok } from "@/lib/api-helpers";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
@@ -15,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const currentUser = await getAuthorizedUser(
+    const user = await getAuthorizedUser(
       req,
       MODULES.STUDENT_PROFILES,
       PERMISSIONS.READ,
@@ -29,9 +28,8 @@ export async function GET(req: NextRequest) {
       page,
       limit,
       false,
-      resolvePerformanceReportAccessScope(currentUser),
+      resolvePerformanceReportAccessScope(user),
     );
-
     return ok(report, "Performance report fetched successfully");
   } catch (error) {
     return handleError(error);

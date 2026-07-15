@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const currentUser = await getAuthorizedUser(
+    const user = await getAuthorizedUser(
       req,
       MODULES.STUDENT_PROFILES,
       PERMISSIONS.READ,
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const filters = parsePerformanceReportFilters(req.nextUrl.searchParams);
     const report = await getPerformanceReportForExport(
       filters,
-      resolvePerformanceReportAccessScope(currentUser),
+      resolvePerformanceReportAccessScope(user),
     );
     const workbook = await buildPerformanceReportWorkbook(report, filters);
     const date = new Date().toISOString().slice(0, 10);

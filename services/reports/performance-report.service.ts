@@ -3,22 +3,18 @@ import { api } from "@/lib/api";
 import type {
   ApiResponse,
   PerformanceReportData,
-  PerformanceReportFilters,
   PerformanceReportFilterOptions,
+  PerformanceReportFilters,
 } from "@/types/performance-report";
 
-type ErrorPayload = {
-  message?: string;
-  error?: string;
-};
-
+type ErrorPayload = { message?: string; error?: string };
 const endpoints = {
   report: "/reports/performance",
   filters: "/reports/filters",
   export: "/reports/performance/export",
 } as const;
 
-function buildParams(
+function params(
   filters: PerformanceReportFilters,
   pagination?: { page: number; limit: number },
 ): Record<string, string | number> {
@@ -29,36 +25,34 @@ function buildParams(
   ) as Record<string, string | number>;
 }
 
-function getErrorMessage(error: unknown, fallback: string): string {
+function errorMessage(error: unknown, fallback: string) {
   if (!axios.isAxiosError(error)) {
     return error instanceof Error ? error.message : fallback;
   }
-
   const data = error.response?.data as ErrorPayload | string | undefined;
-
   if (typeof data === "string") {
-    const message = data
-      .replace(/<[^>]*>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    return message.slice(0, 180) || error.message || fallback;
+    return (
+      data
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 180) ||
+      error.message ||
+      fallback
+    );
   }
-
   return data?.message || data?.error || error.message || fallback;
 }
 
-async function unwrap<T>(request: Promise<{ data: ApiResponse<T> }>): Promise<T> {
+async function unwrap<T>(
+  request: Promise<{ data: ApiResponse<T> }>,
+): Promise<T> {
   try {
     const { data } = await request;
-
-    if (!data.success) {
-      throw new Error(data.message || "Request failed");
-    }
-
+    if (!data.success) throw new Error(data.message || "Request failed");
     return data.data;
   } catch (error) {
-    throw new Error(getErrorMessage(error, "Request failed"));
+    throw new Error(errorMessage(error, "Request failed"));
   }
 }
 
@@ -69,7 +63,7 @@ export function getPerformanceReport(
 ): Promise<PerformanceReportData> {
   return unwrap(
     api.get<ApiResponse<PerformanceReportData>>(endpoints.report, {
-      params: buildParams(filters, { page, limit }),
+      params: params(filters, { page, limit }),
     }),
   );
 }
@@ -85,10 +79,9 @@ export async function exportPerformanceReport(
 ): Promise<Blob> {
   try {
     const { data } = await api.get<Blob>(endpoints.export, {
-      params: buildParams(filters),
+      params: params(filters),
       responseType: "blob",
     });
-
     return data;
   } catch (error) {
     if (
@@ -99,14 +92,10 @@ export async function exportPerformanceReport(
       const payload = JSON.parse(
         await error.response.data.text(),
       ) as ErrorPayload;
-
       throw new Error(
         payload.message || payload.error || "Unable to export report",
       );
     }
-
-    throw new Error(
-      getErrorMessage(error, "Unable to export performance report"),
-    );
+    throw new Error(errorMessage(error, "Unable to export performance report"));
   }
 }

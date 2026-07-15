@@ -6,6 +6,6 @@ export function usePerformanceReportFilters() {
   return useQuery({
     queryKey: performanceReportQueryKeys.filters(),
     queryFn: getPerformanceReportFilterOptions,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60_000,
   });
 }

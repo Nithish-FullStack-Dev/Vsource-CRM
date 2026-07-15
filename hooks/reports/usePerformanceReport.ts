@@ -12,6 +12,6 @@ export function usePerformanceReport(
     queryKey: performanceReportQueryKeys.report(filters, page, limit),
     queryFn: () => getPerformanceReport(filters, page, limit),
     placeholderData: keepPreviousData,
-    staleTime: 30 * 1000,
+    staleTime: 30_000,
   });
 }
