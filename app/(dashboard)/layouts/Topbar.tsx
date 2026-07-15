@@ -45,8 +45,19 @@ export function Topbar() {
     return () => window.removeEventListener("keydown", handler);
   }, [setCommandOpen]);
 
-  const crumbs = pathname.split("/").filter(Boolean);
+  const crumbs = pathname
+    .split("/")
+    .filter(Boolean)
+    .filter((c) => {
+      if (/^[0-9a-fA-F-]{36}$/.test(c)) return false;
 
+      // Hide "all" only for loan application details
+      if (pathname.startsWith("/loan-application/") && c === "all") {
+        return false;
+      }
+
+      return true;
+    });
   return (
     <>
       <header className="sticky top-0 z-42 h-16 border-b border-border bg-background/80 backdrop-blur-xl">
@@ -79,13 +90,14 @@ export function Topbar() {
                   )}
                 </span>
               ))}
-
-            {title && pathname.startsWith("/student-profiles/") && (
-              <>
-                <span className="text-muted-foreground/50">/</span>
-                <span className="font-medium text-foreground">{title}</span>
-              </>
-            )}
+            {title &&
+              (pathname.startsWith("/student-profiles/") ||
+                pathname.startsWith("/loan-application/")) && (
+                <>
+                  <span className="text-muted-foreground/50">/</span>
+                  <span className="font-medium text-foreground">{title}</span>
+                </>
+              )}
           </div>
 
           <div className="flex-1" />
