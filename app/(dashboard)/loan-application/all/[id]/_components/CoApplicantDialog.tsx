@@ -583,6 +583,7 @@ export function CoApplicantDialog({
               <FormField label="CIBIL Score" error={errors.cibilScore?.message}>
                 <Input
                   type="number"
+                  onKeyDown={preventNegativeInput}
                   min="300"
                   max="900"
                   step="1"
@@ -689,12 +690,18 @@ function CurrencyInput({
   disabled,
   registration,
 }: CurrencyInputProps) {
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
   return (
     <div className="relative">
       <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
       <Input
         type="number"
+        onKeyDown={preventNegativeInput}
         min="0"
         step="0.01"
         inputMode="decimal"
