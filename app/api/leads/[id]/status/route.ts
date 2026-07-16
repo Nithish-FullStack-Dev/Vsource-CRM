@@ -1,3 +1,4 @@
+// app\api\leads\[id]\status\route.ts
 import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { handleError, ok } from "@/lib/api-helpers";
