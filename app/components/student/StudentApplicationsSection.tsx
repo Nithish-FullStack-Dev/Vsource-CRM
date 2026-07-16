@@ -130,16 +130,7 @@ export default function StudentApplicationsSection({
       } else {
         await onCreate(payload);
       }
-
-      setSelectedUniversityId("");
-      setSelectedCourseId("");
-      setPortal("");
-      setApplicationDate("");
-      setFollowUpDate("");
-      setStatus("on_hold");
-      setOfferStatus("PENDING");
-      setEditingId(null);
-      setShowForm(false);
+      resetForm();
     } catch (error) {
       console.error(error);
     } finally {
@@ -200,6 +191,17 @@ export default function StudentApplicationsSection({
     } finally {
       setDeletingId(null);
     }
+  };
+  const resetForm = () => {
+    setSelectedUniversityId("");
+    setSelectedCourseId("");
+    setPortal("");
+    setApplicationDate("");
+    setFollowUpDate("");
+    setStatus("on_hold");
+    setOfferStatus("PENDING");
+    setEditingId(null);
+    setShowForm(false);
   };
   return (
     <div className="space-y-6">
@@ -404,11 +406,22 @@ export default function StudentApplicationsSection({
               </div>
             </div>
 
-            <div className="flex justify-end mt-6">
+            <div className="mt-6 flex justify-end gap-3">
               <Button
+                type="button"
+                variant="outline"
+                onClick={resetForm}
+                disabled={isSaving}
+                className="rounded-2xl px-8"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
                 onClick={handleSaveApplication}
                 disabled={isSaving}
-                className="rounded-2xl px-8 bg-red-600 hover:bg-red-700"
+                className="rounded-2xl bg-red-600 px-8 hover:bg-red-700"
               >
                 {isSaving
                   ? "Saving..."

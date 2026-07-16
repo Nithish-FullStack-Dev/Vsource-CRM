@@ -136,7 +136,7 @@ const STUDY_DESTINATION_OPTIONS = ["Abroad", "Domestic"] as const;
 
 const COURSE_LEVEL_OPTIONS = [
   "Undergraduate",
-  "Postgraduate",
+  "Masters",
   "PhD",
   "Diploma",
   "MBBS",

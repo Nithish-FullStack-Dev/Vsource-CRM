@@ -55,7 +55,42 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
     const { courseId } = await params;
-    await db.universityCourse.delete({ where: { id: courseId } });
+
+    const course = await db.universityCourse.findUnique({
+      where: {
+        id: courseId,
+      },
+    });
+
+    if (!course) {
+      return notFound("Course");
+    }
+
+    const applicationCount = await db.studentApplication.count({
+      where: {
+        courseId,
+      },
+    });
+
+    if (applicationCount > 0) {
+      return Response.json(
+        {
+          success: false,
+          message:
+            "This course is already assigned to student applications and cannot be deleted.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    await db.universityCourse.delete({
+      where: {
+        id: courseId,
+      },
+    });
+
     return noContent();
   } catch (err) {
     return handleError(err);

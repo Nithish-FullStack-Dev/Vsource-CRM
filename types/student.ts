@@ -83,8 +83,6 @@ export interface StudentRecord {
 
   visaProfile?: StudentVisaProfile | null;
 
-  loanProfile?: StudentLoanProfile | null;
-
   remarks?: Remarks[];
 
   documents?: StudentDocumentRecord[];

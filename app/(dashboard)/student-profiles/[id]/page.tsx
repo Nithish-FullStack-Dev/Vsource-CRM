@@ -230,125 +230,95 @@ export default function Home() {
 
     const applications = selectedStudent.applications ?? [];
     const visa = selectedStudent.visaProfile;
-    const loan = selectedStudent.loanProfile;
-    const stageIndexMap: Partial<
-      Record<NonNullable<StudentRecord["currentStage"]>, number>
-    > = {
-      application_started: 0,
-      application_submitted: 1,
-      offer_received: 2,
+    const loan = selectedStudent.lead?.loanApplication;
 
-      enrolled: 4,
-
-      deposit_pending: 5,
-      deposit_paid: 5,
-
-      cas_pending: 5,
-      cas_received: 5,
-
-      visa_filing: 5,
-
-      visa_approved: 9,
-      visa_rejected: 9,
-    };
-
-    const kanbanCurrentIndex =
-      stageIndexMap[selectedStudent.currentStage ?? "application_started"] ?? 0;
     let currentIndex = 0;
-    if (kanbanCurrentIndex < 1) {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
-    }
+
+    // STEP 0 - Walkin
     completedIndexes.add(0);
     currentIndex = 1;
-    if (kanbanCurrentIndex < 2) {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
+
+    // STEP 1 - Documents
+    if (
+      !selectedStudent.moduleProgress?.some(
+        (m) => m.module === "documents" && m.progress === 100,
+      )
+    ) {
+      return { currentIndex, completedIndexes };
     }
+
     completedIndexes.add(1);
     currentIndex = 2;
-    const hasAppliedApplication = applications.some(
-      (application) => application.status === "applied",
-    );
 
-    if (!hasAppliedApplication) {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
+    // STEP 2 - Applications
+    const hasApplied = applications.some((app) => app.status === "applied");
+
+    if (!hasApplied) {
+      return { currentIndex, completedIndexes };
     }
+
     completedIndexes.add(2);
     currentIndex = 3;
-    const hasReceivedOffer = applications.some(
-      (application) =>
-        application.offerStatus === "UCOL" ||
-        application.offerStatus === "CCOL",
+
+    // STEP 3 - Offer
+    const hasOffer = applications.some((app) =>
+      ["PRIORITY_UCOL", "PRIORITY_COL", "COL", "UCOL"].includes(
+        app.offerStatus ?? "",
+      ),
     );
 
-    if (!hasReceivedOffer) {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
+    if (!hasOffer) {
+      return { currentIndex, completedIndexes };
     }
+
     completedIndexes.add(3);
     currentIndex = 4;
-    if (kanbanCurrentIndex < 4) {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
-    }
-    if (kanbanCurrentIndex < 5) {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
+
+    // STEP 4 - Loan
+    if (!loan) {
+      return { currentIndex, completedIndexes };
     }
 
     completedIndexes.add(4);
     currentIndex = 5;
-    if (visa?.ihsPaidStatus !== "PAID") {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
+
+    // STEP 5 - Disbursed
+    if (loan.disbursement?.disbursementStatus !== "Yes") {
+      return { currentIndex, completedIndexes };
     }
 
     completedIndexes.add(5);
     currentIndex = 6;
-    if (visa?.casStatus !== "RECEIVED") {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
+
+    // STEP 6 - Deposit
+    if (loan.depositStatus !== "Paid") {
+      return { currentIndex, completedIndexes };
     }
 
     completedIndexes.add(6);
     currentIndex = 7;
-    if (loan?.disbursed !== true) {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
+
+    // STEP 7 - IHS
+    if (visa?.ihsPaidStatus !== "PAID") {
+      return { currentIndex, completedIndexes };
     }
+
     completedIndexes.add(7);
     currentIndex = 8;
-    if (visa?.depositStatus !== "PAID") {
-      return {
-        currentIndex,
-        completedIndexes,
-      };
+
+    // STEP 8 - CAS
+    if (visa?.casStatus !== "RECEIVED") {
+      return { currentIndex, completedIndexes };
     }
+
     completedIndexes.add(8);
     currentIndex = 9;
+
+    // STEP 9 - Visa
     if (visa?.visaStatus === "APPROVED") {
       completedIndexes.add(9);
     }
+
     return {
       currentIndex,
       completedIndexes,

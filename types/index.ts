@@ -122,7 +122,24 @@ export interface Lead {
   status: LeadStatus;
 
   isConverted?: boolean;
+  loanApplication?: {
+    loanStatus?: string | null;
+    loanCategory?: string | null;
 
+    depositStatus?: string | null;
+    depositDate?: string | null;
+
+    sanction?: {
+      bank?: {
+        name?: string;
+      } | null;
+    } | null;
+
+    disbursement?: {
+      disbursementStatus?: string | null;
+      disbursementDate?: string | null;
+    } | null;
+  } | null;
   createdAt: string;
 }
 

@@ -294,6 +294,7 @@ export function SanctionEditDialog({
                 id="sanctionedAmount"
                 type="number"
                 step="0.01"
+                min={0}
                 placeholder="0.00"
                 {...register("sanctionedAmount", { valueAsNumber: true })}
               />
