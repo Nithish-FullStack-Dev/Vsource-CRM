@@ -269,10 +269,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const selectedCounselorIds =
-      currentUser.role.name === ROLES.COUNSELLOR
-        ? [currentUser.id]
-        : (counselorIds ?? []);
+    const selectedCounselorIds = Array.from(
+      new Set([currentUser.id, ...(counselorIds ?? [])]),
+    );
 
     const lead = await db.lead.create({
       data: {

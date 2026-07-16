@@ -182,7 +182,7 @@ export function StudentLoanProfileSection({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <DetailItem
                 label="Fintech Assignee"
-                value={profile.fintechAssignee?.name || "-"}
+                value={profile?.fintechAssignee?.name || "-"}
                 icon={UserRound}
                 isDarkMode={isDarkMode}
               />
@@ -196,28 +196,28 @@ export function StudentLoanProfileSection({
 
               <DetailItem
                 label="Loan Status"
-                value={formatStatus(profile.loanStatus)}
+                value={formatStatus(profile?.loanStatus)}
                 icon={FileCheck2}
                 isDarkMode={isDarkMode}
               />
 
               <DetailItem
                 label="Deposit Status"
-                value={formatStatus(profile.depositStatus)}
+                value={formatStatus(profile?.depositStatus)}
                 icon={CreditCard}
                 isDarkMode={isDarkMode}
               />
 
               <DetailItem
                 label="Loan Category"
-                value={formatStatus(profile.loanCategory)}
+                value={formatStatus(profile?.loanCategory)}
                 icon={CreditCard}
                 isDarkMode={isDarkMode}
               />
 
               <DetailItem
                 label="Loan Category"
-                value={formatStatus(profile.disbursement.disbursementStatus)}
+                value={formatStatus(profile?.disbursement?.disbursementStatus)}
                 icon={CreditCard}
                 isDarkMode={isDarkMode}
               />
@@ -225,8 +225,8 @@ export function StudentLoanProfileSection({
               <DetailItem
                 label="Deposit Date"
                 value={
-                  profile.depositDate
-                    ? new Date(profile.depositDate).toLocaleString()
+                  profile?.depositDate
+                    ? new Date(profile?.depositDate).toLocaleString()
                     : "-"
                 }
                 icon={CreditCard}
