@@ -531,7 +531,46 @@ export async function GET(request: NextRequest) {
         })),
       };
     });
+    const currentLoanApproved = await db.loanApplication.count({
+      where: {
+        loanStatus: "Approved",
+        ...(scope.kind === "branches"
+          ? {
+              branchId: {
+                in: scope.branchIds,
+              },
+            }
+          : scope.kind === "user"
+            ? {
+                counselorId: currentUser.id,
+              }
+            : {}),
 
+        updatedAt: {
+          gte: dateRange.startDate,
+          lte: dateRange.endDate,
+        },
+      },
+    });
+
+    const previousLoanApproved = await db.loanApplication.count({
+      where: {
+        loanStatus: "Approved",
+
+        ...(scope.kind === "branches"
+          ? {
+              branchId: {
+                in: scope.branchIds,
+              },
+            }
+          : {}),
+
+        updatedAt: {
+          gte: dateRange.previousStartDate,
+          lte: dateRange.previousEndDate,
+        },
+      },
+    });
     const counselors = performanceReport.counselorPerformance
       .slice()
       .sort((a, b) => {
@@ -588,6 +627,10 @@ export async function GET(request: NextRequest) {
           applications: {
             value: currentApplications,
             change: calculateChange(currentApplications, previousApplications),
+          },
+          loanApproved: {
+            value: currentLoanApproved,
+            change: calculateChange(currentLoanApproved, previousLoanApproved),
           },
           offers: {
             value: performanceReport.summary.offerApplications,
