@@ -278,8 +278,8 @@ export default function TargetPerformancePage() {
 
         rows.push([
           `${branch.branchName} TOTAL`,
-          "—",
-          "—",
+          "-",
+          "-",
           branch.totals.target.toString(),
           branch.totals.walkIns.toString(),
           branch.totals.applications.toString(),
@@ -290,8 +290,8 @@ export default function TargetPerformancePage() {
 
       rows.push([
         "GRAND GLOBAL TOTAL",
-        "—",
-        "—",
+        "-",
+        "-",
         data.grandTotal.target.toString(),
         data.grandTotal.walkIns.toString(),
         data.grandTotal.applications.toString(),
@@ -306,7 +306,9 @@ export default function TargetPerformancePage() {
         ),
       ].join("\n");
 
-      const blob = new Blob([csvContent], {
+      const BOM = "\uFEFF";
+
+      const blob = new Blob([BOM + csvContent], {
         type: "text/csv;charset=utf-8;",
       });
       const url = URL.createObjectURL(blob);

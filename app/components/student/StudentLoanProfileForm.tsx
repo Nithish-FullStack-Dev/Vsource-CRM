@@ -188,7 +188,7 @@ export function StudentLoanProfileSection({
               />
 
               <DetailItem
-                label="NBFC"
+                label="Sanctioned Bank / NBFC"
                 value={profile.sanction?.bank?.name || "-"}
                 icon={Landmark}
                 isDarkMode={isDarkMode}

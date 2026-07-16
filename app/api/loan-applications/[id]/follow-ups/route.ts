@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/prisma';
-import { followUpSchema } from '@/schemas/loan-application/loan-application.schema';
+import { NextRequest, NextResponse } from "next/server";
+import db from "@/lib/prisma";
+import { followUpSchema } from "@/schemas/loan-application/loan-application.schema";
+import { handleError } from "@/lib/api-helpers";
+import { getAuthorizedUser } from "@/lib/rbac";
+import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 
 type Ctx = {
   params: Promise<{
@@ -16,10 +19,15 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
 
+    const user = await getAuthorizedUser(
+      req,
+      MODULES.LOAN_APPLICATION,
+      PERMISSIONS.CREATE,
+    );
+
     const body = await req.json();
     const validatedData = followUpSchema.parse(body);
 
-    // Check whether the loan application exists
     const application = await db.loanApplication.findUnique({
       where: {
         id,
@@ -32,67 +40,39 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     if (!application) {
       return NextResponse.json(
         {
-          message: 'Loan application not found',
+          message: "Loan application not found",
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
-    // Create follow-up and activity log together
-    const created = await db.$transaction(async (tx) => {
-      const followUp = await tx.loanFollowUp.create({
-        data: {
-          id: crypto.randomUUID(),
-          applicationId: id,
-
-          type: validatedData.type ?? null,
-          note: validatedData.note,
-
-          followUpDate: toDate(validatedData.followUpDate),
-          nextFollowUp: toDate(validatedData.nextFollowUp),
-
-          // Required by current Prisma schema
-          updatedAt: new Date(),
-        },
-      });
-
-      await tx.loanActivity.create({
-        data: {
-          id: crypto.randomUUID(),
-          applicationId: id,
-          type: 'follow-ups',
-          title: 'Follow-up added',
-          description: validatedData.note || 'Follow-up added.',
-        },
-      });
-
-      return followUp;
+    const followUp = await db.loanFollowUp.create({
+      data: {
+        id: crypto.randomUUID(),
+        applicationId: id,
+        type: validatedData.type ?? null,
+        note: validatedData.note,
+        followUpDate: toDate(validatedData.followUpDate),
+        nextFollowUp: toDate(validatedData.nextFollowUp),
+        updatedAt: new Date(),
+        createdById: user?.id,
+      },
     });
 
     return NextResponse.json(
       {
-        message: 'Follow-up added successfully',
-        data: created,
+        message: "Follow-up added successfully",
+        data: followUp,
       },
       {
         status: 201,
-      }
+      },
     );
   } catch (error: any) {
-    console.error('POST loan follow-up error:', error);
+    console.error("POST loan follow-up error:", error);
 
-    return NextResponse.json(
-      {
-        message:
-          error?.issues?.[0]?.message ||
-          error?.message ||
-          'Failed to add follow-up',
-      },
-      {
-        status: 400,
-      }
-    );
+    return handleError(error);
   }
 }

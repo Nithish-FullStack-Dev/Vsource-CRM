@@ -181,6 +181,12 @@ export function FinancialEditDialog({
     }
   };
 
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogContent className="flex max-h-[80vh] w-[calc(100%-1rem)] max-w-5xl flex-col overflow-y-scroll p-4 sm:w-full">
@@ -219,6 +225,7 @@ export function FinancialEditDialog({
                   inputMode="decimal"
                   className="pl-9"
                   placeholder="Enter tuition fee"
+                  onKeyDown={preventNegativeInput}
                   disabled={isPending}
                   {...register("tuitionFee")}
                 />
@@ -243,6 +250,7 @@ export function FinancialEditDialog({
                   placeholder="Enter living expenses"
                   disabled={isPending}
                   {...register("livingExpenses")}
+                  onKeyDown={preventNegativeInput}
                 />
               </div>
 
@@ -265,6 +273,7 @@ export function FinancialEditDialog({
                   placeholder="Enter other expenses"
                   disabled={isPending}
                   {...register("otherExpenses")}
+                  onKeyDown={preventNegativeInput}
                 />
               </div>
 
@@ -289,6 +298,7 @@ export function FinancialEditDialog({
                   placeholder="Enter total course cost"
                   disabled={isPending}
                   {...register("totalCourseCost")}
+                  onKeyDown={preventNegativeInput}
                 />
               </div>
 
@@ -313,6 +323,7 @@ export function FinancialEditDialog({
                   placeholder="Enter own contribution"
                   disabled={isPending}
                   {...register("ownContribution")}
+                  onKeyDown={preventNegativeInput}
                 />
               </div>
 
@@ -336,6 +347,7 @@ export function FinancialEditDialog({
                   className="pl-9"
                   placeholder="Enter required amount"
                   disabled={isPending}
+                  onKeyDown={preventNegativeInput}
                   {...register("requiredLoanAmount", {
                     setValueAs: parseOptionalNumber,
                     onChange: () => {
@@ -423,6 +435,7 @@ export function FinancialEditDialog({
                 placeholder="Enter tenure in months"
                 disabled={isPending}
                 {...register("preferredTenure")}
+                onKeyDown={preventNegativeInput}
               />
 
               <ErrorMessage message={errors.preferredTenure?.message} />
@@ -440,6 +453,7 @@ export function FinancialEditDialog({
                 placeholder="Enter CIBIL score"
                 disabled={isPending}
                 {...register("cibilScore")}
+                onKeyDown={preventNegativeInput}
               />
 
               <ErrorMessage message={errors.cibilScore?.message} />
@@ -474,6 +488,7 @@ export function FinancialEditDialog({
                   placeholder="Enter property value"
                   disabled={isPending}
                   {...register("propertyValue")}
+                  onKeyDown={preventNegativeInput}
                 />
               </div>
 
@@ -496,6 +511,7 @@ export function FinancialEditDialog({
                   placeholder="Enter down payment"
                   disabled={isPending}
                   {...register("downPayment")}
+                  onKeyDown={preventNegativeInput}
                 />
               </div>
 

@@ -786,7 +786,7 @@ export default function ApplicationsTrackerPage() {
       );
     }
     if (stage === "Loan Process") {
-      const loan = student.loanProfile;
+      const loan = student.lead?.loanApplication;
 
       return (
         <>
@@ -795,13 +795,17 @@ export default function ApplicationsTrackerPage() {
             value={loan?.fintechAssignee?.name || "Unassigned"}
           />
 
-          <InfoRow label="NBFC" value={loan?.nbfc || "-"} />
+          <InfoRow
+            label="SANCTIONED BANK / NBFC"
+            value={loan?.sanction?.bank?.name || "-"}
+          />
 
           <InfoRow label="Loan Status" value={formatStatus(loan?.loanStatus)} />
 
-          <InfoRow label="PF Status" value={formatStatus(loan?.pfStatus)} />
-
-          <InfoRow label="Disbursed" value={loan?.disbursed ? "Yes" : "No"} />
+          <InfoRow
+            label="Disbursed"
+            value={loan?.disbursement?.disbursementStatus ? "Yes" : "No"}
+          />
         </>
       );
     }

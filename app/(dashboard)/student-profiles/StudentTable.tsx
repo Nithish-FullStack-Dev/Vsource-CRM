@@ -362,17 +362,12 @@ export function StudentTable({
               <th
                 className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
               >
-                NBFC
+                SANCTIONED BANK / NBFC
               </th>
               <th
                 className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
               >
                 LOAN STATUS
-              </th>
-              <th
-                className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
-              >
-                PF STATUS
               </th>
               <th
                 className={`sticky top-0 z-40 border-b border-r px-4 py-3 align-middle ${thBgClass}`}
@@ -415,7 +410,6 @@ export function StudentTable({
             ) : (
               students.map((student: StudentRecord, index: number) => {
                 const visaProfile = student?.visaProfile ?? null;
-                const loanProfile = student?.loanProfile ?? null;
                 const lead = student?.lead ?? null;
                 const counselor = student?.counselor ?? null;
                 const remarks = Array.isArray(student?.remarks)
@@ -443,15 +437,17 @@ export function StudentTable({
                   ? new Date(latestTimeline).toLocaleDateString("en-IN")
                   : "No timeline added";
 
-                const depositDate = loanProfile?.depositDate
-                  ? new Date(loanProfile.depositDate).toLocaleDateString(
-                      "en-IN",
-                    )
+                const depositDate = student?.lead?.loanApplication?.depositDate
+                  ? new Date(
+                      student?.lead?.loanApplication?.depositDate,
+                    ).toLocaleDateString("en-IN")
                   : "Not set";
-                const disbursedDate = loanProfile?.disbursedDate
-                  ? new Date(loanProfile.disbursedDate).toLocaleDateString(
-                      "en-IN",
-                    )
+                const disbursedDate = student?.lead?.loanApplication
+                  ?.disbursement?.disbursementDate
+                  ? new Date(
+                      student?.lead?.loanApplication?.disbursement
+                        ?.disbursementDate,
+                    ).toLocaleDateString("en-IN")
                   : "Not set";
 
                 return (
@@ -657,7 +653,7 @@ export function StudentTable({
                     >
                       <div className="truncate">
                         {getText(
-                          loanProfile?.fintechAssignee?.name,
+                          student?.lead?.loanApplication?.fintechAssignee?.name,
                           "Not assigned",
                         )}
                       </div>
@@ -666,26 +662,22 @@ export function StudentTable({
                     <td
                       className={`${normalCellClass} font-bold text-slate-600 dark:text-slate-300`}
                     >
-                      {getText(loanProfile?.nbfc, "Not selected")}
+                      {getText(
+                        student?.lead?.loanApplication?.sanction?.bank?.name,
+                        "Not selected",
+                      )}
                     </td>
 
                     <td className={`${normalCellClass} text-center`}>
                       <span
                         className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
-                          loanProfile?.loanStatus,
+                          student?.lead?.loanApplication?.loanStatus,
                         )}`}
                       >
-                        {getText(loanProfile?.loanStatus, "Not updated")}
-                      </span>
-                    </td>
-
-                    <td className={`${normalCellClass} text-center`}>
-                      <span
-                        className={`inline-flex max-w-full rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
-                          loanProfile?.pfStatus,
-                        )}`}
-                      >
-                        {getText(loanProfile?.pfStatus, "Not updated")}
+                        {getText(
+                          student?.lead?.loanApplication?.loanStatus,
+                          "Not updated",
+                        )}
                       </span>
                     </td>
 

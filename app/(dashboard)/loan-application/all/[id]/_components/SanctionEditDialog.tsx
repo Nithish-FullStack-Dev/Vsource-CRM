@@ -185,6 +185,12 @@ export function SanctionEditDialog({
     mutation.mutate(values);
   };
 
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -297,6 +303,7 @@ export function SanctionEditDialog({
                 min={0}
                 placeholder="0.00"
                 {...register("sanctionedAmount", { valueAsNumber: true })}
+                onKeyDown={preventNegativeInput}
               />
             </div>
 
@@ -312,6 +319,7 @@ export function SanctionEditDialog({
                 step="0.01"
                 placeholder="0.00"
                 {...register("roi", { valueAsNumber: true })}
+                onKeyDown={preventNegativeInput}
               />
             </div>
 
@@ -326,6 +334,7 @@ export function SanctionEditDialog({
                 type="number"
                 placeholder="e.g. 60"
                 {...register("tenure", { valueAsNumber: true })}
+                onKeyDown={preventNegativeInput}
               />
             </div>
 
@@ -354,6 +363,7 @@ export function SanctionEditDialog({
                 step="0.01"
                 placeholder="0.00"
                 {...register("processingFee", { valueAsNumber: true })}
+                onKeyDown={preventNegativeInput}
               />
             </div>
 
@@ -372,6 +382,7 @@ export function SanctionEditDialog({
                 step="0.01"
                 placeholder="0.00"
                 {...register("insuranceAmount", { valueAsNumber: true })}
+                onKeyDown={preventNegativeInput}
               />
             </div>
 

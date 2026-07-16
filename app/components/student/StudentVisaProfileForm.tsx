@@ -634,7 +634,7 @@ export function StudentVisaProfileSection({
                   </select>
                 </div>
 
-                <div>
+                {/* <div>
                   <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">
                     Visa Fee Paid Status
                   </label>
@@ -652,7 +652,7 @@ export function StudentVisaProfileSection({
                     <option value="PENDING">Pending</option>
                     <option value="PAID">Paid</option>
                   </select>
-                </div>
+                </div> */}
 
                 <div>
                   <label className="mb-1.5 block text-[9px] font-bold uppercase text-slate-400">

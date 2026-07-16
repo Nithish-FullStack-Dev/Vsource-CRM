@@ -96,6 +96,13 @@ const loanApplicationInclude = {
   },
 
   followUps: {
+    include: {
+      createdBy: {
+        select: {
+          name: true,
+        },
+      },
+    },
     orderBy: {
       createdAt: "desc",
     },

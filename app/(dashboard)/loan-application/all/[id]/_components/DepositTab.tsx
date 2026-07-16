@@ -111,6 +111,12 @@ export function DepositTab({
     mutation.mutate(data);
   };
 
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -165,6 +171,7 @@ export function DepositTab({
                     step="0.01"
                     placeholder="0.00"
                     {...register("depositAmount")}
+                    onKeyDown={preventNegativeInput}
                   />
                 </div>
               </div>
