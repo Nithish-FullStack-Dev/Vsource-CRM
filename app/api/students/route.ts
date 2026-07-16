@@ -148,6 +148,40 @@ export async function GET(req: NextRequest) {
               twelfthPercentage: true,
               twelfthYearOfPassing: true,
               emailId: true,
+
+              loanApplication: {
+                select: {
+                  loanStatus: true,
+                  loanCategory: true,
+                  depositStatus: true,
+                  depositDate: true,
+
+                  fintechAssignee: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+
+                  sanction: {
+                    select: {
+                      bank: {
+                        select: {
+                          id: true,
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+
+                  disbursement: {
+                    select: {
+                      disbursementDate: true,
+                      disbursementStatus: true,
+                    },
+                  },
+                },
+              },
             },
           },
 
@@ -232,16 +266,7 @@ export async function GET(req: NextRequest) {
 
           visaProfile: true,
 
-          loanProfile: {
-            include: {
-              fintechAssignee: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
+        
           moduleProgress: true,
 
           documents: {

@@ -66,16 +66,50 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 export async function POST(req: NextRequest, { params }: Ctx) {
   try {
     const { id: universityId } = await params;
+
     const university = await db.university.findUnique({
       where: { id: universityId },
     });
-    if (!university) return notFound("University");
+
+    if (!university) {
+      return notFound("University");
+    }
 
     const body = UniversityCourseCreateSchema.parse(await req.json());
-    const course = await db.universityCourse.create({
-      data: { ...body, universityId },
-      include: { intake: true },
+
+    const existingCourse = await db.universityCourse.findFirst({
+      where: {
+        universityId,
+        name: {
+          equals: body.name.trim(),
+          mode: "insensitive",
+        },
+      },
     });
+
+    if (existingCourse) {
+      return Response.json(
+        {
+          success: false,
+          message: "Course already exists for this university.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    const course = await db.universityCourse.create({
+      data: {
+        ...body,
+        name: body.name.trim(),
+        universityId,
+      },
+      include: {
+        intake: true,
+      },
+    });
+
     return created(course, "Course created successfully");
   } catch (err) {
     return handleError(err);

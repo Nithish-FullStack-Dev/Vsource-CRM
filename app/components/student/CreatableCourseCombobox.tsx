@@ -19,6 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { toast } from "sonner";
 
 export interface CourseOption {
   id: string;
@@ -78,6 +79,8 @@ export function CreatableCourseCombobox({
 
       setSearch("");
       setOpen(false);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Unable to create course.");
     } finally {
       setIsCreating(false);
     }

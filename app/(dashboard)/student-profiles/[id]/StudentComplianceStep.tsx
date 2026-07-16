@@ -1,3 +1,4 @@
+// app\(dashboard)\student-profiles\[id]\StudentComplianceStep.tsx
 "use client";
 import {
   FileText,
@@ -83,20 +84,20 @@ const COMPLIANCE_STEPS: ComplianceStep[] = [
     label: "Loan",
   },
   {
-    key: "ihs",
-    label: "IHS",
-  },
-  {
-    key: "cas",
-    label: "CAS",
-  },
-  {
     key: "disbursed",
     label: "Disbursed",
   },
   {
     key: "deposit",
     label: "Deposit",
+  },
+  {
+    key: "ihs",
+    label: "IHS",
+  },
+  {
+    key: "cas",
+    label: "CAS",
   },
   {
     key: "visa_approved",

@@ -305,9 +305,7 @@ export function UniversityFormDialog({
       const cleanedData = {
         ...data,
 
-        courses: (data.courses ?? []).map(
-          ({ id: _temporaryId, ...course }) => course,
-        ),
+        courses: data.courses ?? [],
 
         scholarships: (data.scholarships ?? []).map(
           ({ id: _temporaryId, ...scholarship }) => scholarship,

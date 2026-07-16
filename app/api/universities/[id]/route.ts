@@ -89,13 +89,12 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
           },
         });
 
-        const incomingCourseNames = new Set(
-          courses.map((course) => course.name.trim()),
+        const incomingCourseIds = new Set(
+          courses.filter((course) => course.id).map((course) => course.id),
         );
 
         const removedCourses = existingCourses.filter(
-          (existingCourse) =>
-            !incomingCourseNames.has(existingCourse.name.trim()),
+          (course) => !incomingCourseIds.has(course.id),
         );
 
         const removedCourseIds = removedCourses.map((course) => course.id);
@@ -120,10 +119,22 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
             (courseId) => !usedCourseIds.has(courseId),
           );
 
+          if (usedCourseIds.size > 0) {
+            return Response.json(
+              {
+                success: false,
+                message:
+                  "One or more courses are already assigned to student applications and cannot be removed.",
+              },
+              {
+                status: 400,
+              },
+            );
+          }
+
           if (safeCourseIdsToDelete.length > 0) {
             await tx.universityCourse.deleteMany({
               where: {
-                universityId: id,
                 id: {
                   in: safeCourseIdsToDelete,
                 },
@@ -132,11 +143,9 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
           }
         }
         for (const course of courses) {
-          const existingCourse = existingCourses.find(
-            (item) =>
-              item.name.trim().toLowerCase() ===
-              course.name.trim().toLowerCase(),
-          );
+          const existingCourse = course.id
+            ? existingCourses.find((item) => item.id === course.id)
+            : undefined;
 
           if (existingCourse) {
             await tx.universityCourse.update({

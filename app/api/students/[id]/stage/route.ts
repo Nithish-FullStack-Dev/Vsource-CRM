@@ -166,6 +166,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
       select: {
         id: true,
+        leadId: true,
         currentStage: true,
 
         moduleProgress: {
@@ -228,24 +229,48 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (isForwardMove) {
       const currentModule = STAGE_MODULE_MAP[currentKanbanStage];
 
-      const currentModuleProgress = student.moduleProgress.find(
-        (item) => item.module === currentModule,
-      );
+      if (currentKanbanStage === "Applied" && nextStage === "Loan Process") {
+        const loanApplication = await db.loanApplication.findUnique({
+          where: {
+            leadId: student.leadId,
+          },
+          select: {
+            id: true,
+          },
+        });
 
-      if (
-        currentModuleProgress?.status !== StudentModuleStatus.completed ||
-        currentModuleProgress.progress !== 100
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              "Current module must be completed with 100% progress before moving forward",
-          },
-          {
-            status: 400,
-          },
+        if (!loanApplication) {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "Please create a Loan Application before moving to Loan Process.",
+            },
+            {
+              status: 400,
+            },
+          );
+        }
+      } else {
+        const currentModuleProgress = student.moduleProgress.find(
+          (item) => item.module === currentModule,
         );
+
+        if (
+          currentModuleProgress?.status !== StudentModuleStatus.completed ||
+          currentModuleProgress.progress !== 100
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "Current module must be completed with 100% progress before moving forward",
+            },
+            {
+              status: 400,
+            },
+          );
+        }
       }
     }
     const currentModule = STAGE_MODULE_MAP[currentKanbanStage];
