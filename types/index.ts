@@ -128,7 +128,9 @@ export interface Lead {
 
     depositStatus?: string | null;
     depositDate?: string | null;
-
+    fintechAssignee?: {
+      name: string;
+    };
     sanction?: {
       bank?: {
         name?: string;

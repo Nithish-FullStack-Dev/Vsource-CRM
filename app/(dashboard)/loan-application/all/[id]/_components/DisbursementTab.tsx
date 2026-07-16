@@ -123,6 +123,12 @@ export function DisbursementTab({
     mutation.mutate(data);
   };
 
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -170,6 +176,7 @@ export function DisbursementTab({
                     step="0.01"
                     placeholder="0.00"
                     {...register("disbursedAmount")}
+                    onKeyDown={preventNegativeInput}
                   />
                 </div>
               </div>
@@ -196,8 +203,31 @@ export function DisbursementTab({
                   <Label htmlFor="accountNumber">Account Number</Label>
                   <Input
                     id="accountNumber"
-                    placeholder="Destination account"
-                    {...register("accountNumber")}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={18}
+                    placeholder="Enter account number"
+                    {...register("accountNumber", {
+                      required: "Account number is required",
+                      pattern: {
+                        value: /^[0-9]{9,18}$/,
+                        message: "Account number must be 9 to 18 digits",
+                      },
+                    })}
+                    onKeyDown={(e) => {
+                      if (
+                        !/[0-9]/.test(e.key) &&
+                        ![
+                          "Backspace",
+                          "Delete",
+                          "ArrowLeft",
+                          "ArrowRight",
+                          "Tab",
+                        ].includes(e.key)
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
                   />
                 </div>
               </div>

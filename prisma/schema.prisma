@@ -32,6 +32,8 @@ model User {
 
   studentTimelines StudentTimeline[] @relation("StudentTimelineCreatedBy")
 
+  LoanFollowUp LoanFollowUp[] @relation("LoanFollowUpCreatedBy")
+
   studentRemarks StudentRemark[] @relation("StudentRemark")
 
   leadTimelinesCreated LeadTimeline[] @relation("LeadTimelineCreatedBy")
@@ -1375,6 +1377,10 @@ model LoanFollowUp {
   nextFollowUp  DateTime?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+
+  createdById String?
+
+  createdBy User? @relation("LoanFollowUpCreatedBy", fields: [createdById], references: [id])
 
   @@index([applicationId])
   @@index([nextFollowUp])
