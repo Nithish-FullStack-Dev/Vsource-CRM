@@ -426,6 +426,8 @@ export function DocumentsTab({
     activeDocument?.originalFileName?.trim() ||
     `${selectedItem?.name?.trim() || "Document"} file pending`;
 
+  const remark = activeDocument?.remarks ?? "No Remarks";
+
   const activeFileMeta = activeDocument
     ? `${activeDocument.documentType?.trim() || getDocumentType(activeFileName)} | ${formatBytes(
         activeDocument.fileSize,
@@ -594,6 +596,10 @@ export function DocumentsTab({
               <div className="min-w-0">
                 <h3 className="mt-3 truncate text-[16px] font-black text-slate-800 dark:text-white">
                   {activeFileName}
+                </h3>
+
+                <h3 className="truncate text-[16px] font-black text-slate-500 dark:text-white">
+                  {remark}
                 </h3>
 
                 <p className="mt-1 text-[11px] text-slate-400">
