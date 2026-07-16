@@ -50,6 +50,8 @@ export async function PATCH(
 
           disbursementReference: body.disbursementReference,
 
+          disbursementStatus: body.disbursementStatus,
+
           accountNumber: body.accountNumber,
 
           transactionId: body.transactionId,
@@ -69,6 +71,8 @@ export async function PATCH(
           disbursedAmount: body.disbursedAmount,
 
           disbursementReference: body.disbursementReference,
+
+          disbursementStatus: body.disbursementStatus,
 
           accountNumber: body.accountNumber,
 

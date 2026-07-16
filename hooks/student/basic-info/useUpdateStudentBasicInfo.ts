@@ -32,15 +32,13 @@ export const useUpdateStudentBasicInfo = () => {
   });
 };
 
-export const useUpdateStudentStatus = () => {
+export const useUpdateStudentStatus = (id: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
-      id,
       status,
     }: {
-      id: string;
       status: "active" | "inactive" | "drop";
     }) => {
       const { data } = await api.patch(`/students/${id}/status`, {
@@ -53,6 +51,9 @@ export const useUpdateStudentStatus = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: STUDENTKEY.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: [...STUDENTKEY.all, id],
       });
 
       toast.success("Student status updated");

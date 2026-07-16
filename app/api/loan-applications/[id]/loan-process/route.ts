@@ -38,6 +38,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         disbursement: {
           select: {
             disbursementDate: true,
+            disbursementStatus: true,
           },
         },
       },

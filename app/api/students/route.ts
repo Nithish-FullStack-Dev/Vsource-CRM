@@ -147,6 +147,7 @@ export async function GET(req: NextRequest) {
               bachelorsCourse: true,
               twelfthPercentage: true,
               twelfthYearOfPassing: true,
+              emailId: true,
             },
           },
 

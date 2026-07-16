@@ -59,6 +59,7 @@ type FormValues = {
   beneficiary: string;
   paymentMode: string;
   remarks: string;
+  disbursementStatus: string;
 };
 
 export function DisbursementTab({
@@ -81,6 +82,7 @@ export function DisbursementTab({
         disbursedAmount: disbursement?.disbursedAmount?.toString() ?? "",
         disbursementReference: disbursement?.disbursementReference ?? "",
         accountNumber: disbursement?.accountNumber ?? "",
+        disbursementStatus: disbursement?.disbursementStatus ?? "Yes",
         transactionId: disbursement?.transactionId ?? "",
         beneficiary: disbursement?.beneficiary ?? "",
         paymentMode: disbursement?.paymentMode ?? "",
@@ -90,6 +92,7 @@ export function DisbursementTab({
 
   const selectedDate = watch("disbursementDate");
   const currentPaymentMode = watch("paymentMode");
+  const currentDisbursementStatus = watch("disbursementStatus");
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -100,6 +103,7 @@ export function DisbursementTab({
           disbursedAmount: values.disbursedAmount
             ? parseFloat(values.disbursedAmount)
             : null,
+          disbursementStatus: values.disbursementStatus,
         },
       );
       return response.data;
@@ -217,13 +221,33 @@ export function DisbursementTab({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="beneficiary">Beneficiary Name</Label>
-                <Input
-                  id="beneficiary"
-                  placeholder="Receiver full name"
-                  {...register("beneficiary")}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="paymentMode">Disbursement Status</Label>
+                  <Select
+                    value={currentDisbursementStatus}
+                    onValueChange={(value) =>
+                      setValue("disbursementStatus", value)
+                    }
+                  >
+                    <SelectTrigger id="disbursementStatus">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="Yes">Yes</SelectItem>
+                      <SelectItem value="No">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="beneficiary">Beneficiary Name</Label>
+                  <Input
+                    id="beneficiary"
+                    placeholder="Receiver full name"
+                    {...register("beneficiary")}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -277,7 +301,7 @@ export function DisbursementTab({
         <InfoCard
           icon={CreditCard}
           label="Status"
-          value={applicant.loanStatus}
+          value={disbursement?.disbursementStatus}
         />
 
         <InfoCard
