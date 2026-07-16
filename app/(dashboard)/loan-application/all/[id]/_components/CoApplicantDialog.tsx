@@ -251,7 +251,11 @@ export function CoApplicantDialog({
       );
     }
   };
-
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogContent className="flex max-h-[94vh] w-[calc(100%-1rem)] max-w-5xl flex-col overflow-hidden p-0 sm:w-full">
@@ -368,6 +372,8 @@ export function CoApplicantDialog({
                 <Input
                   inputMode="numeric"
                   maxLength={10}
+                  type="number"
+                  onKeyDown={preventNegativeInput}
                   placeholder="Enter mobile number"
                   disabled={saveMutation.isPending}
                   {...register("mobile")}
@@ -380,6 +386,8 @@ export function CoApplicantDialog({
               >
                 <Input
                   inputMode="numeric"
+                  type="number"
+                  onKeyDown={preventNegativeInput}
                   maxLength={10}
                   placeholder="Enter alternate mobile"
                   disabled={saveMutation.isPending}
@@ -412,10 +420,16 @@ export function CoApplicantDialog({
 
               <FormField label="Aadhaar Number" error={errors.aadhaar?.message}>
                 <Input
+                  type="text"
                   inputMode="numeric"
                   maxLength={12}
                   placeholder="Enter 12-digit Aadhaar"
                   disabled={saveMutation.isPending}
+                  onKeyDown={preventNegativeInput}
+                  onInput={(e) => {
+                    const input = e.currentTarget;
+                    input.value = input.value.replace(/\D/g, "").slice(0, 12);
+                  }}
                   {...register("aadhaar")}
                 />
               </FormField>
@@ -450,11 +464,19 @@ export function CoApplicantDialog({
 
               <FormField label="PIN Code" error={errors.pin?.message}>
                 <Input
+                  type="text"
                   inputMode="numeric"
                   maxLength={6}
                   placeholder="Enter PIN code"
                   disabled={saveMutation.isPending}
-                  {...register("pin")}
+                  onKeyDown={preventNegativeInput}
+                  {...register("pin", {
+                    onChange: (e) => {
+                      e.target.value = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 6);
+                    },
+                  })}
                 />
               </FormField>
             </FormSection>

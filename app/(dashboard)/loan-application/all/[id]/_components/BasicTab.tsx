@@ -296,6 +296,11 @@ function EditBasicInformationDialog({
 
     void loadFintechUsers(branchId);
   }, [open, branchId]);
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
   async function loadMasterData() {
     try {
       setIsLoadingMasterData(true);
@@ -544,14 +549,12 @@ function EditBasicInformationDialog({
               description="Applicant phone and email information."
               icon={Phone}
             >
-              <FormField
-                label="Mobile Number"
-                error={errors.mobile?.message}
-                required
-              >
+              <FormField label="Mobile Number" error={errors.mobile?.message}>
                 <Input
                   {...register("mobile")}
+                  type="number"
                   inputMode="numeric"
+                  onKeyDown={preventNegativeInput}
                   maxLength={10}
                   placeholder="Enter 10-digit mobile number"
                   disabled={update.isPending}
@@ -565,6 +568,8 @@ function EditBasicInformationDialog({
                 <Input
                   {...register("altMobile")}
                   inputMode="numeric"
+                  type="number"
+                  onKeyDown={preventNegativeInput}
                   maxLength={10}
                   placeholder="Enter alternate mobile"
                   disabled={update.isPending}
@@ -572,11 +577,7 @@ function EditBasicInformationDialog({
               </FormField>
 
               <div className="md:col-span-2">
-                <FormField
-                  label="Email Address"
-                  error={errors.email?.message}
-                  required
-                >
+                <FormField label="Email Address" error={errors.email?.message}>
                   <Input
                     type="email"
                     {...register("email")}
@@ -595,10 +596,16 @@ function EditBasicInformationDialog({
               <FormField label="Aadhaar Number" error={errors.aadhaar?.message}>
                 <Input
                   {...register("aadhaar")}
+                  type="text"
                   inputMode="numeric"
                   maxLength={12}
                   placeholder="Enter 12-digit Aadhaar"
                   disabled={update.isPending}
+                  onKeyDown={preventNegativeInput}
+                  onInput={(e) => {
+                    const input = e.currentTarget;
+                    input.value = input.value.replace(/\D/g, "").slice(0, 12);
+                  }}
                 />
               </FormField>
 
@@ -687,10 +694,16 @@ function EditBasicInformationDialog({
               <FormField label="PIN Code" error={errors.pin?.message}>
                 <Input
                   {...register("pin")}
+                  type="text"
                   inputMode="numeric"
                   maxLength={6}
                   placeholder="Enter 6-digit PIN code"
                   disabled={update.isPending}
+                  onKeyDown={preventNegativeInput}
+                  onInput={(e) => {
+                    const input = e.currentTarget;
+                    input.value = input.value.replace(/\D/g, "").slice(0, 6);
+                  }}
                 />
               </FormField>
             </FormSection>
@@ -748,11 +761,7 @@ function EditBasicInformationDialog({
                 </Select>
               </FormField>
 
-              <FormField
-                label="Branch"
-                error={errors.branchId?.message}
-                required
-              >
+              <FormField label="Branch" error={errors.branchId?.message}>
                 <Select
                   value={toSelectValue(branchId)}
                   onValueChange={(value) => {

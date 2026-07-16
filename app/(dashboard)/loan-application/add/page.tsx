@@ -91,9 +91,6 @@ import {
   optionalPositiveNumber,
 } from "@/schemas/loan-application/loan-application.schema";
 import { api } from "@/lib/api";
-/* -------------------------------------------------------------------------- */
-/*                                   CONSTANTS                                */
-/* -------------------------------------------------------------------------- */
 type AbroadUniversity = {
   id: string;
   name: string;
@@ -201,11 +198,6 @@ export const LOAN_PREFERENCE_OPTIONS = [
 ] as const;
 
 export const YES_NO_OPTIONS = ["Yes", "No"] as const;
-
-/* -------------------------------------------------------------------------- */
-/*                                     TYPES                                  */
-/* -------------------------------------------------------------------------- */
-
 type Option = {
   value: string;
   label: string;
@@ -221,11 +213,6 @@ type MasterItem = {
   id: string;
   name: string;
 };
-
-/* -------------------------------------------------------------------------- */
-/*                              HELPER FUNCTIONS                              */
-/* -------------------------------------------------------------------------- */
-
 const isEducationLoan = (loan?: string) =>
   Boolean(
     loan && EDUCATION_LOANS.includes(loan as (typeof EDUCATION_LOANS)[number]),
@@ -334,11 +321,6 @@ const getTodayString = () => {
 };
 
 const getCurrentYear = () => new Date().getFullYear();
-
-/* -------------------------------------------------------------------------- */
-/*                              VALIDATION SCHEMA                             */
-/* -------------------------------------------------------------------------- */
-
 const loanFormSchema = z
   .object({
     fullName: z
@@ -570,9 +552,6 @@ const loanFormSchema = z
         addIssue(path, message);
       }
     };
-
-    /* ----------------------------- DATE CHECKS ----------------------------- */
-
     const today = new Date();
     today.setHours(23, 59, 59, 999);
 
@@ -608,18 +587,12 @@ const loanFormSchema = z
         addIssue("nextFollowUp", "Next follow-up date cannot be in the past");
       }
     }
-
-    /* --------------------------- MOBILE VALIDATION ------------------------- */
-
     if (data.altMobile && data.mobile === data.altMobile) {
       addIssue(
         "altMobile",
         "Alternate mobile number must be different from mobile number",
       );
     }
-
-    /* ----------------------- YEAR OF PASSING CHECK ------------------------- */
-
     if (data.yearOfPassing) {
       const year = Number(data.yearOfPassing);
       const maximumYear = getCurrentYear() + 10;
@@ -631,17 +604,11 @@ const loanFormSchema = z
         );
       }
     }
-
-    /* -------------------------- STUDENT VALIDATION ------------------------- */
-
     if (data.applicantCategory === "Student") {
       requireField("qualification", "Highest qualification is required");
 
       requireField("graduationStatus", "Graduation status is required");
     }
-
-    /* ------------------------- SALARIED VALIDATION ------------------------- */
-
     if (isSalariedCategory(data.applicantCategory)) {
       requireField("company", "Company name is required");
 
@@ -652,9 +619,6 @@ const loanFormSchema = z
         "Monthly salary must be greater than 0",
       );
     }
-
-    /* ------------------------- BUSINESS VALIDATION ------------------------- */
-
     if (isBusinessCategory(data.applicantCategory)) {
       requireField("businessName", "Business name is required");
 
@@ -665,9 +629,6 @@ const loanFormSchema = z
         "Annual turnover must be greater than 0",
       );
     }
-
-    /* ---------------------- EDUCATION LOAN VALIDATION ---------------------- */
-
     if (isEducationLoan(data.loanCategory)) {
       requireField("studyDestination", "Study destination is required");
 
@@ -706,9 +667,6 @@ const loanFormSchema = z
         );
       }
     }
-
-    /* ----------------------- PERSONAL LOAN VALIDATION ---------------------- */
-
     if (data.loanCategory === "Personal Loan") {
       requireField("loanPurpose", "Loan purpose is required");
 
@@ -722,9 +680,6 @@ const loanFormSchema = z
         "Monthly income must be greater than 0",
       );
     }
-
-    /* ------------------------- HOME LOAN VALIDATION ------------------------ */
-
     if (data.loanCategory === "Home Loan") {
       requireField("propertyType", "Property type is required");
 
@@ -759,9 +714,6 @@ const loanFormSchema = z
         addIssue("downPayment", "Down payment cannot exceed property value");
       }
     }
-
-    /* ----------------------- BUSINESS LOAN VALIDATION ---------------------- */
-
     if (data.loanCategory === "Business Loan") {
       requireField("businessName", "Business name is required");
 
@@ -772,9 +724,6 @@ const loanFormSchema = z
         "Required loan amount must be greater than 0",
       );
     }
-
-    /* ------------------------ CO-APPLICANT CHECKS -------------------------- */
-
     if (data.coApplicantName || data.coApplicantMobile || data.relationship) {
       requireField("coApplicantName", "Co-applicant name is required");
 
@@ -796,11 +745,6 @@ const loanFormSchema = z
 
 type LoanFormValues = z.input<typeof loanFormSchema>;
 type LoanFormOutput = z.output<typeof loanFormSchema>;
-
-/* -------------------------------------------------------------------------- */
-/*                                  DEFAULTS                                  */
-/* -------------------------------------------------------------------------- */
-
 const getCurrentDateTimeLocal = () => {
   const now = new Date();
 
@@ -889,11 +833,6 @@ const getDefaults = (): LoanFormValues => ({
   propertyValue: undefined,
   downPayment: undefined,
 });
-
-/* -------------------------------------------------------------------------- */
-/*                              SHARED COMPONENTS                             */
-/* -------------------------------------------------------------------------- */
-
 function sectionValue(title: string) {
   return title
     .toLowerCase()
@@ -974,11 +913,6 @@ function Field({
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/*                                  MAIN PAGE                                 */
-/* -------------------------------------------------------------------------- */
-
 export default function AddLoanApplicationPage() {
   const router = useRouter();
 
@@ -1029,10 +963,6 @@ export default function AddLoanApplicationPage() {
     loanCategory === "Home Loan" ||
     loanCategory === "Business Loan";
 
-  /* ------------------------------------------------------------------------ */
-  /*                                  QUERIES                                 */
-  /* ------------------------------------------------------------------------ */
-
   const { data: fintechUsers = [], isLoading: fintechLoading } = useQuery<
     UserOption[]
   >({
@@ -1048,6 +978,11 @@ export default function AddLoanApplicationPage() {
       return data?.data ?? [];
     },
   });
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
   const selectedCountry = useMemo(
     () => countries.find((country) => country.name === selectedCountryName),
     [countries, selectedCountryName],
@@ -1171,11 +1106,6 @@ export default function AddLoanApplicationPage() {
       return data?.data ?? [];
     },
   });
-
-  /* ------------------------------------------------------------------------ */
-  /*                                  EFFECTS                                 */
-  /* ------------------------------------------------------------------------ */
-
   useEffect(() => {
     let mounted = true;
 
@@ -1233,11 +1163,6 @@ export default function AddLoanApplicationPage() {
       "requiredLoanAmount",
     ]);
   }, [loanCategory, clearErrors]);
-
-  /* ------------------------------------------------------------------------ */
-  /*                              INPUT HELPERS                               */
-  /* ------------------------------------------------------------------------ */
-
   const getError = useCallback(
     (name: FieldPath<LoanFormValues>) => {
       const fieldError = errors[name as keyof FieldErrors<LoanFormValues>];
@@ -1299,11 +1224,6 @@ export default function AddLoanApplicationPage() {
     reset(getDefaults());
     clearErrors();
   }, [reset, clearErrors]);
-
-  /* ------------------------------------------------------------------------ */
-  /*                              FIELD COMPONENTS                            */
-  /* ------------------------------------------------------------------------ */
-
   const Text = ({
     name,
     label,
@@ -1456,11 +1376,6 @@ export default function AddLoanApplicationPage() {
       />
     </Field>
   );
-
-  /* ------------------------------------------------------------------------ */
-  /*                                  SUBMIT                                  */
-  /* ------------------------------------------------------------------------ */
-
   const onSubmit = async (values: LoanFormValues) => {
     setIsSaving(true);
 
@@ -1503,11 +1418,6 @@ export default function AddLoanApplicationPage() {
       setIsSaving(false);
     }
   };
-
-  /* ------------------------------------------------------------------------ */
-  /*                                    UI                                    */
-  /* ------------------------------------------------------------------------ */
-
   return (
     <PageTransition>
       <div className="mx-auto max-w-6xl space-y-6 pb-12">
@@ -1715,7 +1625,6 @@ export default function AddLoanApplicationPage() {
                 <SelectField
                   name="applicantCategory"
                   label="Applicant Category"
-                  required
                   options={toOptions(APPLICANT_CATEGORIES)}
                   placeholder="Select Applicant Category"
                 />
@@ -1723,7 +1632,6 @@ export default function AddLoanApplicationPage() {
                 <SelectField
                   name="loanCategory"
                   label="Loan Category"
-                  required
                   options={toOptions(LOAN_CATEGORIES)}
                   placeholder="Select Loan Category"
                 />
@@ -1736,9 +1644,9 @@ export default function AddLoanApplicationPage() {
                   title="Employment Details"
                   icon={<Briefcase className="h-5 w-5 text-blue-500" />}
                 >
-                  <Text name="company" label="Company Name" required />
+                  <Text name="company" label="Company Name" />
 
-                  <Text name="designation" label="Designation" required />
+                  <Text name="designation" label="Designation" />
 
                   <SelectField
                     name="employmentType"
@@ -1763,7 +1671,6 @@ export default function AddLoanApplicationPage() {
                   <Text
                     name="monthlySalary"
                     label="Monthly Salary (₹)"
-                    required
                     type="number"
                     inputMode="decimal"
                     min={0}
@@ -1791,17 +1698,15 @@ export default function AddLoanApplicationPage() {
                   <Area name="employerAddress" label="Employer Address" />
                 </Section>
               )}
-
               {/* SELF EMPLOYED */}
-
               {showBusiness && (
                 <Section
                   title="Business Details"
                   icon={<Building2 className="h-5 w-5 text-blue-500" />}
                 >
-                  <Text name="businessName" label="Business Name" required />
+                  <Text name="businessName" label="Business Name" />
 
-                  <Text name="businessType" label="Business Type" required />
+                  <Text name="businessType" label="Business Type" />
 
                   <SelectField
                     name="registrationType"
@@ -1816,7 +1721,6 @@ export default function AddLoanApplicationPage() {
                   <Text
                     name="annualTurnover"
                     label="Annual Turnover (₹)"
-                    required
                     type="number"
                     inputMode="decimal"
                     min={0}
@@ -1844,9 +1748,7 @@ export default function AddLoanApplicationPage() {
                   <Area name="businessAddress" label="Business Address" />
                 </Section>
               )}
-
               {/* STUDENT */}
-
               {showStudent && (
                 <Section
                   title="Student / Education Background"
@@ -1855,7 +1757,6 @@ export default function AddLoanApplicationPage() {
                   <SelectField
                     name="qualification"
                     label="Highest Qualification"
-                    required
                     disabled={coursesLoading}
                     options={toOptions(courses)}
                     placeholder={
@@ -1865,7 +1766,6 @@ export default function AddLoanApplicationPage() {
 
                   <Field
                     label="University / College Name"
-                    required
                     error={getError("university")}
                   >
                     <Controller
@@ -2047,7 +1947,6 @@ export default function AddLoanApplicationPage() {
                   <SelectField
                     name="graduationStatus"
                     label="Graduation Status"
-                    required
                     options={toOptions(GRADUATION_STATUS_OPTIONS)}
                     placeholder="Select Graduation Status"
                   />
@@ -2075,7 +1974,6 @@ export default function AddLoanApplicationPage() {
                   />
                 </Section>
               )}
-
               {/* EDUCATION LOAN */}
               {showEducationLoan && (
                 <>
@@ -2086,14 +1984,12 @@ export default function AddLoanApplicationPage() {
                     <SelectField
                       name="studyDestination"
                       label="Study Destination"
-                      required
                       options={toOptions(STUDY_DESTINATION_OPTIONS)}
                     />
 
                     <SelectField
                       name="country"
                       label="Destination Country"
-                      required
                       options={toOptions(countries)}
                       placeholder="Select Country"
                     />
@@ -2101,7 +1997,6 @@ export default function AddLoanApplicationPage() {
                     <SelectField
                       name="university"
                       label="Abroad University Name"
-                      required
                       disabled={
                         !selectedCountry?.id ||
                         abroadUniversitiesLoading ||
@@ -2127,7 +2022,6 @@ export default function AddLoanApplicationPage() {
                     <SelectField
                       name="courseName"
                       label="Course Name"
-                      required
                       disabled={
                         !selectedAbroadUniversity?.id ||
                         universityCoursesLoading ||
@@ -2165,7 +2059,6 @@ export default function AddLoanApplicationPage() {
                     <SelectField
                       name="intake"
                       label="Intake"
-                      required
                       options={toOptions(intakes)}
                       placeholder="Select Intake"
                     />
@@ -2257,18 +2150,16 @@ export default function AddLoanApplicationPage() {
                 </>
               )}
               {/* PERSONAL LOAN */}
-
               {loanCategory === "Personal Loan" && (
                 <Section
                   title="Personal Loan Requirement"
                   icon={<CreditCard className="h-5 w-5 text-purple-500" />}
                 >
-                  <Text name="loanPurpose" label="Loan Purpose" required />
+                  <Text name="loanPurpose" label="Loan Purpose" />
 
                   <Text
                     name="requiredLoanAmount"
                     label="Required Loan Amount (₹)"
-                    required
                     type="number"
                     min={0}
                     step="0.01"
@@ -2277,7 +2168,6 @@ export default function AddLoanApplicationPage() {
                   <Text
                     name="monthlySalary"
                     label="Monthly Income (₹)"
-                    required
                     type="number"
                     min={0}
                     step="0.01"
@@ -2309,26 +2199,19 @@ export default function AddLoanApplicationPage() {
                   />
                 </Section>
               )}
-
               {/* HOME LOAN */}
-
               {loanCategory === "Home Loan" && (
                 <Section
                   title="Home Loan Requirement"
                   icon={<Home className="h-5 w-5 text-emerald-500" />}
                 >
-                  <Text name="propertyType" label="Property Type" required />
+                  <Text name="propertyType" label="Property Type" />
 
-                  <Text
-                    name="propertyLocation"
-                    label="Property Location"
-                    required
-                  />
+                  <Text name="propertyLocation" label="Property Location" />
 
                   <Text
                     name="propertyValue"
                     label="Property Value (₹)"
-                    required
                     type="number"
                     min={0}
                     step="0.01"
@@ -2337,7 +2220,6 @@ export default function AddLoanApplicationPage() {
                   <Text
                     name="requiredLoanAmount"
                     label="Required Loan Amount (₹)"
-                    required
                     type="number"
                     min={0}
                     step="0.01"
@@ -2377,15 +2259,13 @@ export default function AddLoanApplicationPage() {
                   />
                 </Section>
               )}
-
               {/* BUSINESS LOAN */}
-
               {loanCategory === "Business Loan" && (
                 <Section
                   title="Business Loan Requirement"
                   icon={<Building2 className="h-5 w-5 text-blue-500" />}
                 >
-                  <Text name="businessName" label="Business Name" required />
+                  <Text name="businessName" label="Business Name" />
 
                   <Text name="businessType" label="Business Type" />
 
@@ -2402,13 +2282,12 @@ export default function AddLoanApplicationPage() {
                   <Text
                     name="requiredLoanAmount"
                     label="Required Loan Amount (₹)"
-                    required
                     type="number"
                     min={0}
                     step="0.01"
                   />
 
-                  <Text name="loanPurpose" label="Loan Purpose" required />
+                  <Text name="loanPurpose" label="Loan Purpose" />
 
                   <Text
                     name="cibilScore"
@@ -2420,9 +2299,7 @@ export default function AddLoanApplicationPage() {
                   />
                 </Section>
               )}
-
               {/* CO APPLICANT */}
-
               {showCoApplicant && (
                 <Section
                   title="Co-Applicant (Optional at enquiry stage)"
@@ -2453,9 +2330,7 @@ export default function AddLoanApplicationPage() {
                   />
                 </Section>
               )}
-
               {/* ACTIONS */}
-
               <div className="sticky bottom-4 z-10 flex flex-col-reverse gap-3 rounded-2xl border bg-background/90 p-4 shadow-lg backdrop-blur-md sm:flex-row sm:justify-end">
                 <Button
                   type="button"

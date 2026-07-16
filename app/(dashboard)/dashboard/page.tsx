@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Calendar,
+  CheckCircle2,
   FileCheck2,
   FileText,
   GraduationCap,
@@ -130,6 +131,7 @@ interface DashboardResponse {
     totalWalkins: DashboardKpi;
     activeStudents: DashboardKpi;
     applications: DashboardKpi;
+    loanApproved: DashboardKpi;
     offers: DashboardKpi;
     casReceived: DashboardKpi;
     visaApproved: DashboardKpi;
@@ -325,10 +327,10 @@ export default function Dashboard() {
         description: selectedPeriodLabel,
       },
       {
-        label: "Applications",
-        value: formatNumber(data.kpis.applications.value),
-        change: data.kpis.applications.change,
-        icon: FileText,
+        label: "Loan Approved",
+        value: formatNumber(data.kpis.loanApproved.value),
+        change: data.kpis.loanApproved.change,
+        icon: CheckCircle2,
         description: selectedPeriodLabel,
       },
       {
