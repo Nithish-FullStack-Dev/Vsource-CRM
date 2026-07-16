@@ -26,6 +26,8 @@ import {
   useMasters,
   useUpdateTarget,
 } from "@/hooks/assign-target/useAssignTarget";
+import { useAuth } from "@/store";
+import { MODULES } from "@/lib/module-codes";
 
 function getDateValue(date: Date) {
   const yyyy = date.getFullYear();
@@ -49,6 +51,8 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function TargetPerformancePage() {
+  const { canCreate, canUpdate } = useAuth();
+
   const currentMonthRange = getCurrentMonthRange();
 
   const [isMastersInitialized, setIsMastersInitialized] =
@@ -361,35 +365,37 @@ export default function TargetPerformancePage() {
               <span>Export Report</span>
             </button>
 
-            <button
-              onClick={() => {
-                if (selectedBranch !== "all") {
-                  setModalBranch(selectedBranch);
+            {canCreate(MODULES.ASSIGN_TARGET) && (
+              <button
+                onClick={() => {
+                  if (selectedBranch !== "all") {
+                    setModalBranch(selectedBranch);
 
-                  const branchUsers = users.filter((u) =>
-                    u.branchIds.includes(selectedBranch),
-                  );
+                    const branchUsers = users.filter((u) =>
+                      u.branchIds.includes(selectedBranch),
+                    );
 
-                  if (branchUsers.length > 0) {
-                    setModalUser(branchUsers[0].id);
+                    if (branchUsers.length > 0) {
+                      setModalUser(branchUsers[0].id);
+                    }
+                  } else if (!modalBranch && branches.length > 0) {
+                    setModalBranch(branches[0].id);
                   }
-                } else if (!modalBranch && branches.length > 0) {
-                  setModalBranch(branches[0].id);
-                }
 
-                if (selectedIntake !== "all") {
-                  setModalIntake(selectedIntake);
-                } else if (!modalIntake && intakes.length > 0) {
-                  setModalIntake(intakes[0].name);
-                }
+                  if (selectedIntake !== "all") {
+                    setModalIntake(selectedIntake);
+                  } else if (!modalIntake && intakes.length > 0) {
+                    setModalIntake(intakes[0].name);
+                  }
 
-                setIsAssignModalOpen(true);
-              }}
-              className="px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all flex items-center gap-2 shadow-sm shadow-red-600/10 active:scale-[0.98] cursor-pointer"
-            >
-              <Target size={13} />
-              <span>Assign Target</span>
-            </button>
+                  setIsAssignModalOpen(true);
+                }}
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all flex items-center gap-2 shadow-sm shadow-red-600/10 active:scale-[0.98] cursor-pointer"
+              >
+                <Target size={13} />
+                <span>Assign Target</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -638,13 +644,25 @@ export default function TargetPerformancePage() {
 
                 <input
                   type="number"
+                  min={1}
+                  step={1}
                   placeholder="e.g. 20"
                   value={modalTarget}
                   onChange={(e) => {
                     const val = e.target.value;
+                    if (val === "") {
+                      setModalTarget("");
+                      return;
+                    }
 
-                    if (val === "" || /^\d+$/.test(val)) {
+                    const num = Number(val);
+                    if (Number.isInteger(num) && num > 0) {
                       setModalTarget(val);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (["-", "+", "e", "E", "."].includes(e.key)) {
+                      e.preventDefault();
                     }
                   }}
                   className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-red-600 outline-none font-medium text-foreground"

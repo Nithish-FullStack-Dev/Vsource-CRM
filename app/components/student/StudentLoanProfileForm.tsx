@@ -216,6 +216,13 @@ export function StudentLoanProfileSection({
               />
 
               <DetailItem
+                label="Loan Category"
+                value={formatStatus(profile.disbursement.disbursementStatus)}
+                icon={CreditCard}
+                isDarkMode={isDarkMode}
+              />
+
+              <DetailItem
                 label="Deposit Date"
                 value={
                   profile.depositDate

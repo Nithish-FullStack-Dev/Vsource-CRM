@@ -27,7 +27,7 @@ import {
 } from "@/schemas/student/updateStudentBasicInfoSchema";
 
 import { StudentRecord } from "@/types/student";
-import { useUpdateStudentBasicInfo } from "@/hooks/student/basic-info/useUpdateStudentBasicInfo";
+import { useUpdateStudentStatus } from "@/hooks/student/basic-info/useUpdateStudentBasicInfo";
 
 interface Props {
   open: boolean;
@@ -36,7 +36,7 @@ interface Props {
 }
 
 export function StudentStatusDialog({ open, onClose, student }: Props) {
-  const mutation = useUpdateStudentBasicInfo();
+  const mutation = useUpdateStudentStatus(student.id);
 
   const form = useForm<UpdateStudentStatusForm>({
     resolver: zodResolver(updateStudentStatusSchema),
@@ -55,8 +55,7 @@ export function StudentStatusDialog({ open, onClose, student }: Props) {
 
   const onSubmit = async (values: UpdateStudentStatusForm) => {
     await mutation.mutateAsync({
-      id: student.id,
-      payload: values,
+      status: values.status,
     });
 
     onClose();

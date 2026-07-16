@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { BranchPerformanceGroup } from "@/lib/crmTypes";
 import { Edit3, HelpCircle } from "lucide-react";
+import { useAuth } from "@/store";
+import { MODULES } from "@/lib/module-codes";
 
 interface PerformanceTableProps {
   branches: BranchPerformanceGroup[];
@@ -27,6 +29,8 @@ export default function PerformanceTable({
   savingUserId,
 }: PerformanceTableProps) {
   const isIntakeSelected = selectedIntake !== "all";
+
+  const { canUpdate } = useAuth();
 
   const [editedTargets, setEditedTargets] = useState<{
     [rowKey: string]: string;
@@ -213,11 +217,21 @@ export default function PerformanceTable({
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
+                                min={1}
                                 value={targetVal}
                                 onChange={(e) =>
                                   handleInputChange(rowKey, e.target.value)
                                 }
-                                className="w-16 bg-background  border border-red-600 rounded px-1.5 py-0.5 text-xs outline-none text-foreground  font-mono font-bold focus:ring-1 focus:ring-red-600"
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key === "-" ||
+                                    e.key === "e" ||
+                                    e.key === "E"
+                                  ) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                className="w-20 px-1.5 py-0.5 rounded border text-xs font-bold text-center focus:ring-1 focus:ring-red-600 outline-none bg-background border-red-600 text-foreground font-mono"
                                 autoFocus
                               />
                             </div>
@@ -226,7 +240,8 @@ export default function PerformanceTable({
                               <span className="font-bold text-xs text-foreground  font-mono">
                                 {user.target.toLocaleString()}
                               </span>
-                              {isIntakeSelected ? (
+                              {isIntakeSelected &&
+                              canUpdate(MODULES.ASSIGN_TARGET) ? (
                                 <button
                                   type="button"
                                   onClick={() => setEditingRowKey(rowKey)}
@@ -297,7 +312,7 @@ export default function PerformanceTable({
                                   Cancel
                                 </button>
                               </div>
-                            ) : (
+                            ) : canUpdate(MODULES.ASSIGN_TARGET) ? (
                               <button
                                 type="button"
                                 onClick={() => setEditingRowKey(rowKey)}
@@ -305,7 +320,7 @@ export default function PerformanceTable({
                               >
                                 Edit Target
                               </button>
-                            )
+                            ) : null
                           ) : (
                             <span className="text-muted-foreground text-xs">
                               —
@@ -423,11 +438,29 @@ export default function PerformanceTable({
                         {isEditing ? (
                           <input
                             type="number"
+                            min={1}
+                            step={1}
                             value={targetVal}
-                            onChange={(e) =>
-                              handleInputChange(rowKey, e.target.value)
-                            }
-                            className="w-20 px-1.5 py-0.5 rounded border text-xs font-bold text-center focus:ring-1 focus:ring-red-600 outline-none bg-background  border-red-600 text-foreground  font-mono"
+                            onChange={(e) => {
+                              const val = e.target.value;
+
+                              if (val === "") {
+                                handleInputChange(rowKey, "");
+                                return;
+                              }
+
+                              const num = Number(val);
+
+                              if (Number.isInteger(num) && num > 0) {
+                                handleInputChange(rowKey, val);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (["-", "+", "e", "E", "."].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }}
+                            className="w-20 px-1.5 py-0.5 rounded border text-xs font-bold text-center focus:ring-1 focus:ring-red-600 outline-none bg-background border-red-600 text-foreground font-mono"
                             autoFocus
                           />
                         ) : (

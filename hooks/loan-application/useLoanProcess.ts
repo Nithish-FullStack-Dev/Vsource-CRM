@@ -16,6 +16,7 @@ interface LoanProcess {
   };
   disbursement: {
     disbursementDate?: Date | null;
+    disbursementStatus: string;
   };
 }
 

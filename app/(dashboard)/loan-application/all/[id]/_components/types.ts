@@ -145,6 +145,8 @@ export type LoanDisbursement = {
 
   disbursementReference?: string | null;
 
+  disbursementStatus: string;
+
   accountNumber?: string | null;
 
   transactionId?: string | null;

@@ -123,7 +123,7 @@ function DocumentPreview({ record }: { record: StudentDocumentRecord }) {
 
   if (!fileUrl) {
     return (
-      <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-slate-50 px-6 text-center dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex h-full min-h-75 flex-col items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-slate-50 px-6 text-center dark:border-slate-700 dark:bg-slate-900">
         <FileText className="h-10 w-10 text-slate-300" />
         <p className="mt-3 text-sm font-black text-slate-700 dark:text-slate-200">
           Preview unavailable
@@ -138,11 +138,11 @@ function DocumentPreview({ record }: { record: StudentDocumentRecord }) {
 
   if (isImage) {
     return (
-      <div className="flex h-full min-h-[300px] items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex h-full min-h-75 items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
         <img
           src={fileUrl}
           alt={fileName}
-          className="max-h-[430px] w-full object-contain"
+          className="max-h-107 w-full object-contain"
         />
       </div>
     );
@@ -153,13 +153,13 @@ function DocumentPreview({ record }: { record: StudentDocumentRecord }) {
       <iframe
         src={fileUrl}
         title={fileName}
-        className="h-[430px] w-full rounded-[20px] border border-slate-200 bg-white dark:border-slate-800"
+        className="h-104 w-full rounded-[20px] border border-slate-200 bg-white dark:border-slate-800"
       />
     );
   }
 
   return (
-    <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-slate-50 px-6 text-center dark:border-slate-700 dark:bg-slate-900">
+    <div className="flex h-full min-h-75 flex-col items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-slate-50 px-6 text-center dark:border-slate-700 dark:bg-slate-900">
       <FileText className="h-12 w-12 text-slate-300" />
       <p className="mt-3 text-sm font-black text-slate-700 dark:text-slate-200">
         In-browser preview is not available for {getDocumentType(fileName)}
@@ -370,6 +370,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
   const activeFileName =
     activeDocument?.originalFileName?.trim() ||
     `${selectedItem?.name?.trim() || "Document"} file pending`;
+  const remark = activeDocument?.remarks || "No Remarks";
   const activeFileMeta = activeDocument
     ? `${activeDocument.documentType?.trim() || getDocumentType(activeFileName)} | ${formatBytes(activeDocument.fileSize)}`
     : `${selectedItem?.name?.trim() || "Document"} | Not uploaded`;
@@ -531,6 +532,9 @@ export function DMSSection({ studentId }: DMSSectionProps) {
               <div className="min-w-0">
                 <h3 className="mt-3 truncate text-[16px] font-black text-slate-800 dark:text-white">
                   {activeFileName}
+                </h3>
+                <h3 className="truncate text-[16px] font-black text-slate-800 dark:text-white">
+                  {remark}
                 </h3>
                 <p className="mt-1 text-[11px] text-slate-400">
                   {activeFileMeta}
