@@ -362,6 +362,12 @@ export function BanksTab({
     deleteMutation.mutate(deletingApplication.id);
   }
 
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <TabHeader eyebrow="Bank Process" title="Bank / NBFC Applications" />
@@ -615,6 +621,7 @@ export function BanksTab({
                   placeholder="Enter applied amount"
                   disabled={isSaving}
                   {...register("appliedAmount")}
+                  onKeyDown={preventNegativeInput}
                 />
               </FormField>
 
@@ -627,6 +634,7 @@ export function BanksTab({
                   placeholder="Example: 10.50"
                   disabled={isSaving}
                   {...register("roi")}
+                  onKeyDown={preventNegativeInput}
                 />
               </FormField>
 
@@ -638,6 +646,7 @@ export function BanksTab({
                   placeholder="Example: 120"
                   disabled={isSaving}
                   {...register("tenure")}
+                  onKeyDown={preventNegativeInput}
                 />
               </FormField>
 
@@ -649,6 +658,7 @@ export function BanksTab({
                   placeholder="Enter processing fee"
                   disabled={isSaving}
                   {...register("processingFee")}
+                  onKeyDown={preventNegativeInput}
                 />
               </FormField>
 
@@ -663,6 +673,7 @@ export function BanksTab({
                   placeholder="Enter insurance amount"
                   disabled={isSaving}
                   {...register("insuranceAmount")}
+                  onKeyDown={preventNegativeInput}
                 />
               </FormField>
 
