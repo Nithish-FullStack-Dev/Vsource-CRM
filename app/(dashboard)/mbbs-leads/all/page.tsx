@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Pencil, Trash2, Eye } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import type { MbbsLeadStatus } from "@/types";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -198,10 +198,13 @@ export default function AllLeadsPage() {
     setPage(1);
   }, [query, status, branch, source]);
 
-  const pageSize = 10;
-  const start = (page - 1) * pageSize;
-  const pageLeads = filteredLeads.slice(start, start + pageSize);
-  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
+  const [perPage, setPerPage] = useState(10);
+
+  const start = (page - 1) * perPage;
+
+  const pageLeads = filteredLeads.slice(start, start + perPage);
+
+  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / perPage));
 
   useEffect(() => {
     if (page > pageCount) {
@@ -819,48 +822,66 @@ export default function AllLeadsPage() {
         </CardContent>
       </Card>
 
-      <div className="mt-4 flex flex-col gap-3 px-1 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-center sm:text-left">
+      <div className="mt-4 flex flex-col gap-4 rounded-xl border bg-background px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-muted-foreground">
           Showing{" "}
           <span className="font-semibold text-foreground">
-            {filteredLeads.length === 0 ? 0 : start + 1}
-          </span>{" "}
-          to{" "}
-          <span className="font-semibold text-foreground">
-            {Math.min(start + pageSize, filteredLeads.length)}
+            {pageLeads.length}
           </span>{" "}
           of{" "}
           <span className="font-semibold text-foreground">
             {filteredLeads.length}
           </span>{" "}
-          result{filteredLeads.length === 1 ? "" : "s"}
+          results
         </div>
 
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span>Rows per page:</span>
+
+            <Select
+              value={String(perPage)}
+              onValueChange={(value) => {
+                setPerPage(Number(value));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-9 w-20">
+                <SelectValue />
+              </SelectTrigger>
+
+              <SelectContent>
+                {[10, 25, 50, 100].map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
+            className="h-9 w-9"
             disabled={page === 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-            className="select-none"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Previous
+            <ChevronLeft className="h-4 w-4" />
           </Button>
 
-          <span className="rounded bg-secondary/40 px-2 py-1 text-xs font-medium text-foreground sm:text-sm">
+          <span className="text-sm font-medium text-foreground whitespace-nowrap">
             Page {page} of {pageCount}
           </span>
 
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
+            className="h-9 w-9"
             disabled={page === pageCount}
-            onClick={() =>
-              setPage((current) => Math.min(pageCount, current + 1))
-            }
-            className="select-none"
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
           >
-            Next
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>

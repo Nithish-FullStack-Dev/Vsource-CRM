@@ -210,6 +210,13 @@ export const LeadUpdateSchema = LeadCreateSchema.partial()
     leadNumber: true,
   })
   .extend({
+    // Remove defaults for updates
+    leadType: LeadTypeEnum.optional(),
+    preferredTiers: z.array(z.enum(["T1", "T2", "T3", "T4"])).optional(),
+    englishTests: z.array(LeadEnglishTestSchema).optional(),
+    status: LeadStatusEnum.optional(),
+    loanRequirement: z.boolean().optional(),
+
     counselorIds: z.array(z.string().uuid()).optional(),
     followupDate: z.string().trim().optional(),
     followupNote: z.string().trim().optional(),
