@@ -33,7 +33,6 @@ import type {
   StudentRecord,
 } from "@/types/student";
 import { toast } from "sonner";
-
 type KanbanStage =
   | "Inquiry"
   | "Documents"
@@ -239,7 +238,9 @@ export default function ApplicationsTrackerPage() {
           return "Visa Process";
 
         case "enrolled":
-          return "Loan Process";
+          return student.lead?.loanRequirement
+            ? "Loan Process"
+            : "Visa Process";
 
         default:
           return "Inquiry";
@@ -282,22 +283,36 @@ export default function ApplicationsTrackerPage() {
   const canMoveToStage = useCallback(
     (student: StudentRecord, destination: KanbanStage): boolean => {
       const currentStage = mapStageToKanban(student);
+      const loanRequired = !!student.lead?.loanRequirement;
+      if (!loanRequired) {
+        if (destination === "Loan Process") {
+          return false;
+        }
 
+        if (currentStage === "Applied" && destination === "Visa Process") {
+          const progress = getModuleProgress(
+            student,
+            "university_applications",
+          );
+
+          return progress?.status === "completed" && progress.progress === 100;
+        }
+
+        if (currentStage === "Visa Process" && destination === "Applied") {
+          return canMoveBackward;
+        }
+      }
       const currentStageIndex = STAGE_ORDER.indexOf(currentStage);
 
       const destinationStageIndex = STAGE_ORDER.indexOf(destination);
 
-      const stageDifference = destinationStageIndex - currentStageIndex;
+      const diff = destinationStageIndex - currentStageIndex;
 
-      const isForwardMove = stageDifference === 1;
-
-      const isBackwardMove = stageDifference === -1;
-
-      if (isBackwardMove) {
+      if (diff === -1) {
         return canMoveBackward;
       }
 
-      if (!isForwardMove) {
+      if (diff !== 1) {
         return false;
       }
 
@@ -437,8 +452,10 @@ export default function ApplicationsTrackerPage() {
         type: "active",
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to move student")
       console.error("MASTER_TRACKER_STAGE_MOVE_ERROR", error);
+      toast.error(
+        error instanceof Error ? error.message : "Unable to move student",
+      );
     } finally {
       setMovingStudentId(null);
     }
@@ -958,20 +975,37 @@ export default function ApplicationsTrackerPage() {
               if (!draggedStudent) {
                 return false;
               }
-
+              const student = students.find(
+                (s) => s.id === draggedStudent.studentId,
+              );
+              if (!student) {
+                return false;
+              }
+              const loanRequired = !!student.lead?.loanRequirement;
+              if (!loanRequired && column.id === "Loan Process") {
+                return false;
+              }
               const currentStageIndex = STAGE_ORDER.indexOf(
                 draggedStudent.fromStage,
               );
-
               const destinationStageIndex = STAGE_ORDER.indexOf(column.id);
-
-              const stageDifference = destinationStageIndex - currentStageIndex;
-
-              const isForwardMove = stageDifference === 1;
-
-              const isBackwardMove = canMoveBackward && stageDifference === -1;
-
-              return isForwardMove || isBackwardMove;
+              const diff = destinationStageIndex - currentStageIndex;
+              if (
+                !loanRequired &&
+                draggedStudent.fromStage === "Applied" &&
+                column.id === "Visa Process"
+              ) {
+                return true;
+              }
+              if (
+                !loanRequired &&
+                canMoveBackward &&
+                draggedStudent.fromStage === "Visa Process" &&
+                column.id === "Applied"
+              ) {
+                return true;
+              }
+              return diff === 1 || (canMoveBackward && diff === -1);
             })();
 
             const isDragOver = dragOverStage === column.id && isValidDropColumn;

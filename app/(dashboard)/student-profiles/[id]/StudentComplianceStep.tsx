@@ -108,26 +108,42 @@ const COMPLIANCE_STEPS: ComplianceStep[] = [
 type StudentComplianceStepperProps = {
   currentIndex: number;
   completedIndexes: Set<number>;
+  loanRequired: boolean;
 };
 export default function StudentComplianceStepper({
   currentIndex,
   completedIndexes,
+  loanRequired,
 }: StudentComplianceStepperProps) {
-  const totalSteps = COMPLIANCE_STEPS.length;
+  const complianceSteps = loanRequired
+    ? COMPLIANCE_STEPS
+    : COMPLIANCE_STEPS.filter(
+        (step) => !["loan", "disbursed", "deposit"].includes(step.key),
+      );
 
-  const progressWidth =
-    currentIndex <= 0 ? 0 : (currentIndex / (totalSteps - 1)) * 100;
-
+  const totalSteps = complianceSteps.length;
+  const progressWidth = completedIndexes.has(totalSteps - 1)
+    ? 102
+    : currentIndex <= 0
+      ? 0
+      : ((currentIndex + 0.5) / totalSteps) * 100;
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="overflow-x-auto">
-        <div className="min-w-[1050px] px-4 py-6">
+        <div className="w-full px-6 py-8">
           <div className="relative">
             {/* STEP LABELS */}
-            <div className="grid grid-cols-10">
-              {COMPLIANCE_STEPS.map((step, index) => {
+            <div
+              className="grid w-full"
+              style={{
+                gridTemplateColumns: `repeat(${complianceSteps.length}, minmax(0,1fr))`,
+              }}
+            >
+              {complianceSteps.map((step, index) => {
                 const isCompleted = completedIndexes.has(index);
-                const isCurrent = index === currentIndex;
+                const isCurrent =
+                  currentIndex < complianceSteps.length &&
+                  index === currentIndex;
 
                 return (
                   <div
@@ -151,9 +167,9 @@ export default function StudentComplianceStepper({
             </div>
 
             {/* STEPPER */}
-            <div className="relative mt-7">
+            <div className="relative mt-5">
               {/* BACKGROUND LINE */}
-              <div className="absolute left-[5%] right-[5%] top-3.5 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+              <div className="absolute left-5 right-5 top-5 h-3 -translate-y-1/2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
                 {/* ACTIVE PROGRESS LINE */}
                 <div
                   className="h-full rounded-full bg-red-600 transition-[width] duration-700 ease-in-out"
@@ -164,34 +180,43 @@ export default function StudentComplianceStepper({
               </div>
 
               {/* STEP CIRCLES */}
-              <div className="relative grid grid-cols-10">
-                {COMPLIANCE_STEPS.map((step, index) => {
+              <div
+                className="relative grid w-full"
+                style={{
+                  gridTemplateColumns: `repeat(${complianceSteps.length}, minmax(0,1fr))`,
+                }}
+              >
+                {complianceSteps.map((step, index) => {
                   const isCompleted = completedIndexes.has(index);
-                  const isCurrent = index === currentIndex;
-
+                  const isCurrent =
+                    currentIndex < complianceSteps.length &&
+                    index === currentIndex;
+                  const isLastStep = index === complianceSteps.length - 1;
+                  const isFullyCompleted = isLastStep && isCompleted;
                   return (
                     <div
                       key={step.key}
                       className="relative flex min-w-0 flex-col items-center"
                     >
                       <div
-                        className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-500 ${
-                          isCurrent
-                            ? "border-red-600 bg-white dark:bg-slate-900"
-                            : isCompleted
-                              ? "border-red-600 bg-red-600 text-white shadow-md"
-                              : "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900"
+                        className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-500 ${
+                          isFullyCompleted
+                            ? "border-red-600 bg-red-600 text-white shadow-md"
+                            : isCurrent
+                              ? "border-red-600 bg-white dark:bg-slate-900"
+                              : isCompleted
+                                ? "border-red-600 bg-red-600 text-white shadow-md"
+                                : "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900"
                         }`}
                       >
-                        {isCurrent ? (
+                        {isFullyCompleted ? (
+                          <span className="text-xs font-black">✓</span>
+                        ) : isCurrent ? (
                           <>
-                            {/* PULSING OUTER CIRCLE */}
                             <span className="absolute inset-[-8px] -z-10 animate-ping rounded-full bg-red-500/25" />
 
-                            {/* SOFT STATIC OUTER RING */}
                             <span className="absolute inset-[-7px] -z-10 rounded-full bg-red-500/15" />
 
-                            {/* INNER RED DOT */}
                             <span className="h-3 w-3 rounded-full bg-red-600" />
                           </>
                         ) : isCompleted ? (
@@ -200,7 +225,7 @@ export default function StudentComplianceStepper({
                       </div>
 
                       {/* CURRENT STAGE INDICATOR */}
-                      {isCurrent && (
+                      {isCurrent && !isFullyCompleted && (
                         <div className="absolute top-10 flex flex-col items-center whitespace-nowrap">
                           <span className="text-[10px] leading-none text-red-600">
                             ▲

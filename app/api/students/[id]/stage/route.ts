@@ -168,7 +168,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         id: true,
         leadId: true,
         currentStage: true,
-
+        lead: {
+          select: {
+            loanRequirement: true,
+          },
+        },
         moduleProgress: {
           select: {
             id: true,
@@ -191,13 +195,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         },
       );
     }
-    const currentKanbanStage: KanbanStage = student.currentStage
-      ? (STUDENT_STAGE_TO_KANBAN[student.currentStage] ?? "Inquiry")
-      : "Inquiry";
+    const currentKanbanStage: KanbanStage = (() => {
+      if (!student.currentStage) {
+        return "Inquiry";
+      }
+      if (student.currentStage === StudentStage.enrolled) {
+        return student.lead?.loanRequirement ? "Loan Process" : "Visa Process";
+      }
 
-    const currentStageIndex = STAGE_ORDER.indexOf(currentKanbanStage);
+      return STUDENT_STAGE_TO_KANBAN[student.currentStage] ?? "Inquiry";
+    })();
 
-    const destinationStageIndex = STAGE_ORDER.indexOf(nextStage);
+    const loanRequired = !!student.lead?.loanRequirement;
+
+    const stageOrder: KanbanStage[] = loanRequired
+      ? STAGE_ORDER
+      : ["Inquiry", "Documents", "Applied", "Visa Process"];
+
+    const currentStageIndex = stageOrder.indexOf(currentKanbanStage);
+
+    const destinationStageIndex = stageOrder.indexOf(nextStage);
 
     const stageDifference = destinationStageIndex - currentStageIndex;
 
@@ -229,7 +246,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (isForwardMove) {
       const currentModule = STAGE_MODULE_MAP[currentKanbanStage];
 
-      if (currentKanbanStage === "Applied" && nextStage === "Loan Process") {
+      if (
+        loanRequired &&
+        currentKanbanStage === "Applied" &&
+        nextStage === "Loan Process"
+      ) {
         const loanApplication = await db.loanApplication.findUnique({
           where: {
             leadId: student.leadId,
