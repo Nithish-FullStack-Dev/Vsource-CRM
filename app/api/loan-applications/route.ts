@@ -64,6 +64,12 @@ const loanApplicationInclude = {
     },
   },
 
+  disbursement: {
+    select: {
+      disbursedAmount: true,
+    },
+  },
+
   bankApplications: {
     include: {
       bank: {
