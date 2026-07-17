@@ -1,9 +1,9 @@
 // lib\loan-application\server.ts
-import db from '@/lib/prisma';
-import type { LoanApplicationPayload } from '@/schemas/loan-application/loan-application.schema';
-import { LOAN_DOCUMENT_CHECKLIST } from '@/lib/loan-application/constants';
+import db from "@/lib/prisma";
+import type { LoanApplicationPayload } from "@/schemas/loan-application/loan-application.schema";
+import { LOAN_DOCUMENT_CHECKLIST } from "@/lib/loan-application/constants";
 const toDate = (v?: string | Date | null) => (v ? new Date(v) : null);
-const money = (v?: number | null) => (typeof v === 'number' ? v : null);
+const money = (v?: number | null) => (typeof v === "number" ? v : null);
 const num = (v: unknown) => {
   if (v === null || v === undefined) return null;
   const n = Number(v);
@@ -19,7 +19,7 @@ export async function generateLoanApplicationId() {
       },
     },
   });
-  return `LA-${y}-${String(count + 1).padStart(5, '0')}`;
+  return `LA-${y}-${String(count + 1).padStart(5, "0")}`;
 }
 export function toLoanApplicationData(v: Partial<LoanApplicationPayload>) {
   return {
@@ -49,7 +49,7 @@ export function toLoanApplicationData(v: Partial<LoanApplicationPayload>) {
     remarks: v.remarks,
     applicantCategory: v.applicantCategory,
     loanCategory: v.loanCategory,
-    loanStatus: v.loanStatus || 'New Enquiry',
+    // loanStatus: v.loanStatus || 'New Enquiry',
     qualification: v.qualification,
     graduationStatus: v.graduationStatus,
     percentage: v.percentage,
@@ -92,8 +92,8 @@ export function toLoanApplicationData(v: Partial<LoanApplicationPayload>) {
     collateralAvailable: v.collateralAvailable,
     loanPurpose: v.loanPurpose,
     preferredTenure:
-      typeof v.preferredTenure === 'number' ? v.preferredTenure : null,
-    cibilScore: typeof v.cibilScore === 'number' ? v.cibilScore : null,
+      typeof v.preferredTenure === "number" ? v.preferredTenure : null,
+    cibilScore: typeof v.cibilScore === "number" ? v.cibilScore : null,
     propertyType: v.propertyType,
     propertyLocation: v.propertyLocation,
     propertyValue: money(v.propertyValue),
@@ -111,11 +111,11 @@ export const loanApplicationInclude = {
   branch: { select: { id: true, name: true, code: true } },
   counselor: { select: { id: true, name: true, email: true } },
   fintechAssignee: { select: { id: true, name: true, email: true } },
-  bankApplications: { orderBy: { createdAt: 'desc' as const } },
-  coApplicants: { orderBy: { createdAt: 'desc' as const } },
-  followUps: { orderBy: { createdAt: 'desc' as const } },
-  activities: { orderBy: { createdAt: 'desc' as const } },
-  documents: { orderBy: { uploadedAt: 'desc' as const } },
+  bankApplications: { orderBy: { createdAt: "desc" as const } },
+  coApplicants: { orderBy: { createdAt: "desc" as const } },
+  followUps: { orderBy: { createdAt: "desc" as const } },
+  activities: { orderBy: { createdAt: "desc" as const } },
+  documents: { orderBy: { uploadedAt: "desc" as const } },
 };
 export function serializeLoanApplication(r: any) {
   if (!r) return null;
@@ -126,21 +126,21 @@ export function serializeLoanApplication(r: any) {
     fintechAssigneeName: r.fintechAssignee?.name ?? null,
   };
   for (const k of [
-    'monthlySalary',
-    'annualIncome',
-    'existingEmi',
-    'annualTurnover',
-    'tuitionFee',
-    'livingExpenses',
-    'otherExpenses',
-    'totalCourseCost',
-    'ownContribution',
-    'requiredLoanAmount',
-    'propertyValue',
-    'downPayment',
-    'sanctionedAmount',
-    'disbursedAmount',
-    'depositAmount',
+    "monthlySalary",
+    "annualIncome",
+    "existingEmi",
+    "annualTurnover",
+    "tuitionFee",
+    "livingExpenses",
+    "otherExpenses",
+    "totalCourseCost",
+    "ownContribution",
+    "requiredLoanAmount",
+    "propertyValue",
+    "downPayment",
+    "sanctionedAmount",
+    "disbursedAmount",
+    "depositAmount",
   ])
     b[k] = num(b[k]);
   b.bankApplications = (r.bankApplications ?? []).map((i: any) => ({

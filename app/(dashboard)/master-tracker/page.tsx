@@ -32,6 +32,7 @@ import type {
   StudentModuleType,
   StudentRecord,
 } from "@/types/student";
+import { toast } from "sonner";
 
 type KanbanStage =
   | "Inquiry"
@@ -436,6 +437,7 @@ export default function ApplicationsTrackerPage() {
         type: "active",
       });
     } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to move student")
       console.error("MASTER_TRACKER_STAGE_MOVE_ERROR", error);
     } finally {
       setMovingStudentId(null);
