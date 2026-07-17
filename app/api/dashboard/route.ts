@@ -342,8 +342,13 @@ export async function GET(request: NextRequest) {
             },
           },
           applications: {
+            where: {
+              offerStatus: {
+                not: "PENDING",
+              },
+            },
             orderBy: {
-              createdAt: "desc",
+              updatedAt: "desc",
             },
             take: 1,
             select: {
