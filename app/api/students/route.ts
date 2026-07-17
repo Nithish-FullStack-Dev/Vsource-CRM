@@ -139,6 +139,7 @@ export async function GET(req: NextRequest) {
         include: {
           lead: {
             select: {
+              loanRequirement: true,
               passport: true,
               preferredCountry: true,
               preferredIntake: true,
@@ -266,7 +267,6 @@ export async function GET(req: NextRequest) {
 
           visaProfile: true,
 
-        
           moduleProgress: true,
 
           documents: {

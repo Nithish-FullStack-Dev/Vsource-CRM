@@ -54,7 +54,7 @@ import { Badge } from "@/components/ui/badge";
 import StudentRemarksTimelineTab from "@/components/student/StudentRemarksTimelineTab";
 import StudentComplianceStepper from "./StudentComplianceStep";
 
-const tabs = [
+const ALL_TABS = [
   {
     key: "info",
     label: "Basic",
@@ -93,7 +93,7 @@ const tabs = [
   },
 ] as const;
 
-type StudentDetailTab = (typeof tabs)[number]["key"];
+type StudentDetailTab = (typeof ALL_TABS)[number]["key"];
 
 export default function Home() {
   const queryClient = useQueryClient();
@@ -105,10 +105,22 @@ export default function Home() {
   const router = useRouter();
   const studentId = params.id as string;
   const { data, isLoading, isError, error } = useStudents();
+  const selectedStudentId = studentId;
+  const students = useMemo<StudentRecord[]>(() => {
+    return Array.isArray(data?.data) ? data.data : [];
+  }, [data]);
+
+  const selectedStudent = useMemo<StudentRecord | null>(() => {
+    return (
+      students.find(
+        (student: StudentRecord) => student.id === selectedStudentId,
+      ) ?? null
+    );
+  }, [students, selectedStudentId]);
   const [basicInfoOpen, setBasicInfoOpen] = useState(false);
   const [progressDialogOpen, setProgressDialogOpen] = useState(false);
   const [currentView] = useState<"students">("students");
-  const selectedStudentId = studentId;
+
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [detailTab, setDetailTab] = useState<StudentDetailTab>("info");
   const { setTitle, clearTitle } = usePageTitle();
@@ -150,6 +162,14 @@ export default function Home() {
     loan: "loan_process",
   };
 
+  const tabProgressMap: Partial<Record<StudentDetailTab, StudentModuleKey>> = {
+    info: "basic_information",
+    documents: "documents",
+    applications: "university_applications",
+    visa: "visa_process",
+    loan: "loan_process",
+  };
+
   const activeModule = tabModuleMap[detailTab];
   const safeModuleProgress = Array.isArray(moduleProgress)
     ? moduleProgress
@@ -164,12 +184,18 @@ export default function Home() {
     Math.max(0, Number(activeModuleProgress?.progress) || 0),
   );
 
+  const tabs = useMemo(() => {
+    return ALL_TABS.filter((tab) => {
+      if (tab.key === "loan") {
+        return selectedStudent?.lead?.loanRequirement;
+      }
+
+      return true;
+    });
+  }, [selectedStudent]);
+
   const activeTabLabel =
     tabs.find((tab) => tab.key === detailTab)?.label ?? "Module";
-
-  const students = useMemo<StudentRecord[]>(() => {
-    return Array.isArray(data?.data) ? data.data : [];
-  }, [data]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -210,14 +236,15 @@ export default function Home() {
     return fallback;
   };
 
-  const selectedStudent = useMemo<StudentRecord | null>(() => {
-    return (
-      students.find(
-        (student: StudentRecord) => student.id === selectedStudentId,
-      ) ?? null
-    );
-  }, [students, selectedStudentId]);
-
+  useEffect(() => {
+    if (
+      detailTab === "loan" &&
+      selectedStudent &&
+      !selectedStudent.lead?.loanRequirement
+    ) {
+      setDetailTab("info");
+    }
+  }, [detailTab, selectedStudent]);
   const complianceProgress = useMemo(() => {
     if (!selectedStudent) {
       return {
@@ -274,50 +301,102 @@ export default function Home() {
     completedIndexes.add(3);
     currentIndex = 4;
 
-    // STEP 4 - Loan
-    if (!loan) {
+    /**
+     * Loan Required?
+     */
+    const loanRequired = !!selectedStudent.lead?.loanRequirement;
+
+    if (loanRequired) {
+      // STEP 4 - Loan
+      if (!loan) {
+        return { currentIndex, completedIndexes };
+      }
+
+      completedIndexes.add(4);
+      currentIndex = 5;
+
+      // STEP 5 - Disbursed
+      if (loan.disbursement?.disbursementStatus !== "Yes") {
+        return { currentIndex, completedIndexes };
+      }
+
+      completedIndexes.add(5);
+      currentIndex = 6;
+
+      // STEP 6 - Deposit
+      if (loan.depositStatus !== "Paid") {
+        return { currentIndex, completedIndexes };
+      }
+
+      completedIndexes.add(6);
+      currentIndex = 7;
+
+      // STEP 7 - IHS
+      if (visa?.ihsPaidStatus !== "PAID") {
+        return { currentIndex, completedIndexes };
+      }
+
+      completedIndexes.add(7);
+      currentIndex = 8;
+
+      // STEP 8 - CAS
+      if (visa?.casStatus !== "RECEIVED") {
+        return { currentIndex, completedIndexes };
+      }
+
+      completedIndexes.add(8);
+      currentIndex = 9;
+      // STEP 9 - Visa
+      if (visa?.visaStatus !== "APPROVED") {
+        return {
+          currentIndex,
+          completedIndexes,
+        };
+      }
+
+      completedIndexes.add(9);
+
+      // Workflow finished
+      currentIndex = 10;
+
+      return {
+        currentIndex,
+        completedIndexes,
+      };
+    }
+
+    // ------------------------------
+    // NON LOAN STUDENT
+    // ------------------------------
+
+    // STEP 4 - IHS
+    if (visa?.ihsPaidStatus !== "PAID") {
       return { currentIndex, completedIndexes };
     }
 
     completedIndexes.add(4);
     currentIndex = 5;
 
-    // STEP 5 - Disbursed
-    if (loan.disbursement?.disbursementStatus !== "Yes") {
+    // STEP 5 - CAS
+    if (visa?.casStatus !== "RECEIVED") {
       return { currentIndex, completedIndexes };
     }
 
     completedIndexes.add(5);
     currentIndex = 6;
 
-    // STEP 6 - Deposit
-    if (loan.depositStatus !== "Paid") {
-      return { currentIndex, completedIndexes };
+    // STEP 6 - Visa
+    if (visa?.visaStatus !== "APPROVED") {
+      return {
+        currentIndex,
+        completedIndexes,
+      };
     }
 
     completedIndexes.add(6);
+
+    // Workflow finished
     currentIndex = 7;
-
-    // STEP 7 - IHS
-    if (visa?.ihsPaidStatus !== "PAID") {
-      return { currentIndex, completedIndexes };
-    }
-
-    completedIndexes.add(7);
-    currentIndex = 8;
-
-    // STEP 8 - CAS
-    if (visa?.casStatus !== "RECEIVED") {
-      return { currentIndex, completedIndexes };
-    }
-
-    completedIndexes.add(8);
-    currentIndex = 9;
-
-    // STEP 9 - Visa
-    if (visa?.visaStatus === "APPROVED") {
-      completedIndexes.add(9);
-    }
 
     return {
       currentIndex,
@@ -376,14 +455,6 @@ export default function Home() {
     } catch (caughtError) {
       toast.error(getErrorMessage(caughtError, "Failed to add remark"));
     }
-  };
-
-  const tabProgressMap: Partial<Record<StudentDetailTab, StudentModuleKey>> = {
-    info: "basic_information",
-    documents: "documents",
-    applications: "university_applications",
-    visa: "visa_process",
-    loan: "loan_process",
   };
 
   const getTabProgress = (tabKey: StudentDetailTab) => {
@@ -510,6 +581,7 @@ export default function Home() {
                 <StudentComplianceStepper
                   currentIndex={complianceProgress.currentIndex}
                   completedIndexes={complianceProgress.completedIndexes}
+                  loanRequired={!!selectedStudent?.lead?.loanRequirement}
                 />
                 <div className="space-y-6">
                   <div className="overflow-x-auto">
