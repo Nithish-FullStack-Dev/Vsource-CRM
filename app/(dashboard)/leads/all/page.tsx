@@ -364,7 +364,7 @@ export default function AllLeadsPage() {
   return (
     <PageTransition>
       <PageHeader
-        title="All Leads"
+        title="All WalkIns"
         description="Manage every enquiry in the CRM with search, filters, export and status-driven navigation."
         actions={
           <div className="flex items-center gap-2">
