@@ -16,7 +16,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Pencil, Trash2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Pencil,
+  Trash2,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import type { MbbsLeadStatus } from "@/types";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -281,7 +289,7 @@ export default function AllLeadsPage() {
   return (
     <PageTransition>
       <PageHeader
-        title="All Leads"
+        title="All Walkins"
         description="Manage every enquiry in the CRM with search, filters, export and status-driven navigation."
         actions={
           <div className="flex items-center gap-2">
