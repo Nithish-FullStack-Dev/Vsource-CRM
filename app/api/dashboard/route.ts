@@ -537,54 +537,7 @@ export async function GET(request: NextRequest) {
         })),
       };
     });
-    const currentLoanApproved = await db.loanApplication.count({
-      where: {
-        loanStatus: {
-          in: ["Approved", "Sanctioned", "Disbursed", "Deposit Received"],
-        },
-        ...(scope.kind === "branches"
-          ? {
-              branchId: {
-                in: scope.branchIds,
-              },
-            }
-          : scope.kind === "user"
-            ? {
-                counselorId: currentUser.id,
-              }
-            : {}),
 
-        updatedAt: {
-          gte: dateRange.startDate,
-          lte: dateRange.endDate,
-        },
-      },
-    });
-
-    const previousLoanApproved = await db.loanApplication.count({
-      where: {
-        loanStatus: {
-          in: ["Approved", "Sanctioned", "Disbursed", "Deposit Received"],
-        },
-
-        ...(scope.kind === "branches"
-          ? {
-              branchId: {
-                in: scope.branchIds,
-              },
-            }
-          : scope.kind === "user"
-            ? {
-                counselorId: currentUser.id,
-              }
-            : {}),
-
-        updatedAt: {
-          gte: dateRange.previousStartDate,
-          lte: dateRange.previousEndDate,
-        },
-      },
-    });
     const counselors = performanceReport.counselorPerformance
       .slice()
       .sort((a, b) => {
@@ -643,8 +596,8 @@ export async function GET(request: NextRequest) {
             change: calculateChange(currentApplications, previousApplications),
           },
           loanApproved: {
-            value: currentLoanApproved,
-            change: calculateChange(currentLoanApproved, previousLoanApproved),
+            value: performanceReport.summary.loanApproved,
+            change: 0,
           },
           offers: {
             value: performanceReport.summary.offerApplications,
