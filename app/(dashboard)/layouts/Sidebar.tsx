@@ -27,6 +27,7 @@ import {
   PanelLeftInactive,
   PanelLeftIcon,
   TargetIcon,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import { useAuth, useUi } from "@/store";
 import { cn } from "@/lib/utils";
@@ -103,7 +104,13 @@ const items = [
     moduleCode: "PERFORMANCES",
     to: "/performances",
     label: "Performance",
-    icon: GraduationCap,
+    icon: ChartNoAxesCombined,
+  },
+  {
+    moduleCode: "Directors_Report",
+    to: "/directors-reports",
+    label: "Directors Report",
+    icon: BarChart3,
   },
   { moduleCode: "BRANCHES", to: "/branches", label: "Branches", icon: MapPin },
   {

@@ -409,7 +409,7 @@ export default function PerformanceReportsPage() {
     <PageTransition>
       <PageHeader
         title="Performance Reports"
-        description="Role-secured walk-in, Application, target, uni application, CAS, and conversion analytics."
+        description="Role-secured analytics using one shared final owner: latest assignee for open walk-ins, converted-by user for students, and fintech assignee for loans."
         actions={
           <Button
             size="sm"
@@ -625,7 +625,7 @@ export default function PerformanceReportsPage() {
       <ReportAccordion
         value="counselor-performance"
         title="Counsellor-wise Performance"
-        description="Counsellors and associates are grouped by branch with a branch subtotal and final grand total."
+        description="All users are grouped by branch using the same final-owner attribution as the Directors Report, with branch subtotals and a final grand total."
         icon={Users}
         defaultOpen
       >

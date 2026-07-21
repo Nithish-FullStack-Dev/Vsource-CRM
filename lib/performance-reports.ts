@@ -1,6 +1,12 @@
-// lib\performance-reports.ts
 import type { Prisma } from "@/generated/prisma/client";
 import db from "@/lib/prisma";
+import {
+  reportOwnerMatches,
+  resolveFinalLeadOwner,
+  resolveFinalLoanOwner,
+  resolveFinalStudentOwner,
+  type ReportOwnerPerson,
+} from "@/lib/report-owner";
 import type {
   PerformanceApplicationExportRow,
   PerformanceReportBranchPoint,
@@ -56,6 +62,7 @@ const performanceLeadSelect = {
     select: {
       counselorId: true,
       assignedAt: true,
+      isPrimary: true,
       counselor: { select: personSelect },
     },
   },
@@ -97,6 +104,7 @@ const performanceStudentSelect = {
         select: {
           counselorId: true,
           assignedAt: true,
+          isPrimary: true,
           counselor: { select: personSelect },
         },
       },
@@ -184,6 +192,7 @@ const performanceLoanSelect = {
         select: {
           counselorId: true,
           assignedAt: true,
+          isPrimary: true,
           counselor: { select: personSelect },
         },
       },
@@ -218,7 +227,7 @@ type LoanMetric = {
   status: string;
   approved: boolean;
 };
-type Person = { id: string; name: string };
+type Person = ReportOwnerPerson;
 type DateRange = { gte?: Date; lt?: Date };
 type FilterLookup = { countryName: string; intakeName: string };
 type LeadOwnerRecord = {
@@ -230,6 +239,7 @@ type LeadOwnerRecord = {
   counselors: Array<{
     counselorId: string;
     assignedAt: Date;
+    isPrimary: boolean;
     counselor: Person;
   }>;
 };
@@ -447,57 +457,39 @@ function getDateRange(
   return { ...(start && { gte: start }), ...(end && { lt: addDays(end, 1) }) };
 }
 
-function currentLeadOwner(lead: LeadOwnerRecord): Person | null {
-  const assignment = lead.counselors[0];
-  const conversion =
-    lead.convertedById && lead.convertedBy && lead.convertedAt
-      ? { owner: lead.convertedBy, at: lead.convertedAt }
-      : null;
-
-  if (assignment && conversion) {
-    return assignment.assignedAt > conversion.at
-      ? assignment.counselor
-      : conversion.owner;
-  }
-  return assignment?.counselor ?? conversion?.owner ?? lead.createdBy ?? null;
+function currentLeadOwner(lead: LeadOwnerRecord): Person {
+  return resolveFinalLeadOwner(lead);
 }
 
 function currentStudentOwner(
   student: StudentRecord | TargetStudent,
-): Person | null {
-  return (
-    currentLeadOwner(student.lead) ??
-    (student.counselorId
-      ? (student.counselor ?? { id: student.counselorId, name: "Not Assigned" })
-      : null)
-  );
+): Person {
+  return resolveFinalStudentOwner(student);
 }
 
-function currentLoanOwner(loan: LoanRecord): Person | null {
-  if (loan.lead) {
-    return (
-      currentLeadOwner(loan.lead) ??
-      (loan.lead.student?.counselorId
-        ? (loan.lead.student.counselor ?? {
-            id: loan.lead.student.counselorId,
-            name: "Not Assigned",
-          })
-        : null) ??
-      loan.fintechAssignee ??
-      loan.counselor ??
-      loan.createdBy ??
-      null
-    );
-  }
-  return loan.fintechAssignee ?? loan.counselor ?? loan.createdBy ?? null;
+function currentLoanOwner(loan: LoanRecord): Person {
+  return resolveFinalLoanOwner({
+    fintechAssigneeId: loan.fintechAssigneeId,
+    fintechAssignee: loan.fintechAssignee,
+    counselorId: loan.counselorId,
+    counselor: loan.counselor,
+    createdById: loan.createdById,
+    createdBy: loan.createdBy,
+    lead: loan.lead
+      ? {
+          ...loan.lead,
+          student: loan.lead.student,
+        }
+      : null,
+  });
 }
 
 const ownerFilterId = (
   filters: PerformanceReportFilters,
   access: PerformanceReportAccessScope,
 ) => (access.kind === "user" ? access.userId : filters.counselorId || null);
-const belongsToOwner = (owner: Person | null, ownerId: string | null) =>
-  !ownerId || owner?.id === ownerId;
+const belongsToOwner = (owner: Person, ownerId: string | null) =>
+  reportOwnerMatches(owner, ownerId);
 
 function leadAccessWhere(
   access: PerformanceReportAccessScope,
@@ -1637,6 +1629,7 @@ async function getTargetMetrics(
                   select: {
                     counselorId: true,
                     assignedAt: true,
+                    isPrimary: true,
                     counselor: { select: personSelect },
                   },
                 },
@@ -1662,6 +1655,7 @@ async function getTargetMetrics(
           select: {
             counselorId: true,
             assignedAt: true,
+            isPrimary: true,
             counselor: { select: personSelect },
           },
         },
