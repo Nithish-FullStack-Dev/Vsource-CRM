@@ -1,3 +1,4 @@
+// lib\data-access-scope.ts
 import type { Prisma } from "@/generated/prisma/client";
 import { ROLES } from "@/lib/rbac";
 
