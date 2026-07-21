@@ -1,3 +1,4 @@
+// app\(dashboard)\dashboard\page.tsx
 "use client";
 
 import { type ComponentType, useMemo, useState } from "react";

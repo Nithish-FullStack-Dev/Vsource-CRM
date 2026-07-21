@@ -1,3 +1,4 @@
+// app\api\dashboard\route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 import db from "@/lib/prisma";
@@ -538,7 +539,9 @@ export async function GET(request: NextRequest) {
     });
     const currentLoanApproved = await db.loanApplication.count({
       where: {
-        loanStatus: "Approved",
+        loanStatus: {
+          in: ["Approved", "Sanctioned", "Disbursed", "Deposit Received"],
+        },
         ...(scope.kind === "branches"
           ? {
               branchId: {
@@ -560,7 +563,9 @@ export async function GET(request: NextRequest) {
 
     const previousLoanApproved = await db.loanApplication.count({
       where: {
-        loanStatus: "Approved",
+        loanStatus: {
+          in: ["Approved", "Sanctioned", "Disbursed", "Deposit Received"],
+        },
 
         ...(scope.kind === "branches"
           ? {
@@ -568,7 +573,11 @@ export async function GET(request: NextRequest) {
                 in: scope.branchIds,
               },
             }
-          : {}),
+          : scope.kind === "user"
+            ? {
+                counselorId: currentUser.id,
+              }
+            : {}),
 
         updatedAt: {
           gte: dateRange.previousStartDate,
