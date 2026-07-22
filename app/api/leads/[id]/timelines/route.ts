@@ -15,6 +15,9 @@ import {
   buildMeta,
 } from "@/lib/api-helpers";
 import { LeadTimelineCreateSchema } from "@/lib/schemas";
+import { getAuthorizedUser } from "@/lib/rbac";
+import { MODULES, PERMISSIONS } from "@/lib/module-codes";
+import { notifyFollowupScheduled } from "@/lib/notification.service";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -49,10 +52,19 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
 export async function POST(req: NextRequest, { params }: Ctx) {
   try {
+    const currentUser = await getAuthorizedUser(
+      req,
+      MODULES.MASTER_LEADS,
+      PERMISSIONS.UPDATE,
+    );
+
     const { id: leadId } = await params;
     const body = LeadTimelineCreateSchema.parse(await req.json());
 
-    const lead = await db.lead.findUnique({ where: { id: leadId } });
+    const lead = await db.lead.findUnique({
+      where: { id: leadId },
+      include: { counselors: { select: { counselorId: true } } },
+    });
     if (!lead) return notFound("Lead");
 
     // Update lead's nextFollowup if provided in timeline
@@ -64,11 +76,30 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     }
 
     const timeline = await db.leadTimeline.create({
-      data: { leadId, ...body },
+      data: {
+        leadId,
+        ...body,
+        createdById: currentUser.id,
+        updatedById: currentUser.id,
+      },
       include: {
         createdBy: { select: { id: true, name: true } },
       },
     });
+
+    // Fire follow-up scheduled notification
+    await notifyFollowupScheduled(
+      {
+        id: lead.id,
+        leadNumber: lead.leadNumber,
+        studentName: lead.studentName,
+        branchId: lead.branchId,
+        counselors: lead.counselors,
+      },
+      body.nextFollowup || new Date(),
+      body.description,
+      currentUser.id,
+    );
 
     return created(timeline, "Timeline entry added");
   } catch (err) {

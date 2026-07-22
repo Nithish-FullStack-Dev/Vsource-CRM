@@ -5,6 +5,7 @@ import { ok, handleError } from "@/lib/api-helpers";
 import { getAuthorizedUser } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { TimelineType } from "@/generated/prisma/browser";
+import { notifyFollowupScheduled } from "@/lib/notification.service";
 
 interface Params {
   params: Promise<{
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     await getAuthorizedUser(
       request,
       MODULES.STUDENT_PROFILES,
-      PERMISSIONS.CREATE,
+      PERMISSIONS.READ,
     );
 
     const { id } = await params;
@@ -77,8 +78,44 @@ export async function POST(request: NextRequest, { params }: Params) {
       },
     });
 
+    // Fire follow-up notification if type is followup and a date was provided
+    if (body.type === "followup" && body.followupDate) {
+      const student = await db.student.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          studentName: true,
+          branchId: true,
+          counselorId: true,
+        },
+      });
+
+      if (student) {
+        // Build a lead-compatible shape from student data for the notification service
+        const leadLike = {
+          id: student.id,
+          leadNumber: student.studentName ?? id,
+          studentName: student.studentName,
+          branchId: student.branchId ?? "",
+          counselors: student.counselorId
+            ? [{ counselorId: student.counselorId }]
+            : [],
+        };
+
+        notifyFollowupScheduled(
+          leadLike,
+          body.followupDate,
+          body.description ?? null,
+          user.id,
+        ).catch((err) =>
+          console.error("[StudentTimeline] notifyFollowupScheduled failed:", err),
+        );
+      }
+    }
+
     return ok(timeline, "Timeline added successfully");
   } catch (error) {
     return handleError(error);
   }
 }
+

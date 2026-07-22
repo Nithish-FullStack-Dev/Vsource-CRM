@@ -14,6 +14,9 @@ export function useCreateStudentTimeline(studentId: string) {
       queryClient.invalidateQueries({
         queryKey: ["student-timeline", studentId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["notifications"],
+      });
 
       toast.success("Timeline added successfully.");
     },
@@ -23,3 +26,4 @@ export function useCreateStudentTimeline(studentId: string) {
     },
   });
 }
+

@@ -18,6 +18,7 @@ import {
 } from "@/lib/api-helpers";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { getAuthorizedUser } from "@/lib/rbac";
+import { notifyLeadConverted, notifyStudentCreated } from "@/lib/notification.service";
 
 type Ctx = {
   params: Promise<{
@@ -154,6 +155,29 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         student,
       };
     });
+
+    // Notify about lead conversion + new student
+    await notifyLeadConverted(
+      {
+        id: leadId,
+        leadNumber: lead.leadNumber,
+        studentName: lead.studentName,
+        branchId: lead.branchId,
+        counselors: lead.counselors,
+      },
+      result.student.id,
+      currentUser.id,
+    );
+
+    await notifyStudentCreated(
+      {
+        id: result.student.id,
+        studentName: result.student.studentName,
+        branchId: result.student.branchId,
+        counselorId: result.student.counselorId,
+      },
+      currentUser.id,
+    );
 
     return ok(
       result,

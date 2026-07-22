@@ -276,6 +276,9 @@ export default function AllLeadsPage() {
       await queryClient.invalidateQueries({
         queryKey: LEADS.all,
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["notifications"],
+      });
 
       await loadLeads();
 
@@ -342,6 +345,9 @@ export default function AllLeadsPage() {
 
       await queryClient.invalidateQueries({
         queryKey: LEADS.all,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["notifications"],
       });
 
       await loadLeads();

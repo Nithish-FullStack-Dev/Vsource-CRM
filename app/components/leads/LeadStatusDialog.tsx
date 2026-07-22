@@ -73,6 +73,9 @@ export default function LeadStatusDialog({ lead, open, onClose }: Props) {
       queryClient.invalidateQueries({
         queryKey: LEADS.all,
       });
+      queryClient.invalidateQueries({
+        queryKey: ["notifications"],
+      });
 
       toast.success(response?.message || "Lead status updated successfully");
 

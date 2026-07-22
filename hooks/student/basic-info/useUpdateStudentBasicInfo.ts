@@ -55,6 +55,9 @@ export const useUpdateStudentStatus = (id: string) => {
       queryClient.invalidateQueries({
         queryKey: [...STUDENTKEY.all, id],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["notifications"],
+      });
 
       toast.success("Student status updated");
     },
