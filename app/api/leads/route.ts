@@ -18,6 +18,7 @@ import { LeadStatus, LeadType } from "@/generated/prisma/enums";
 import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { Prisma } from "@/generated/prisma/client";
+import { notifyLeadCreated } from "@/lib/notification.service";
 
 export async function GET(req: NextRequest) {
   try {
@@ -337,6 +338,18 @@ export async function POST(req: NextRequest) {
         },
       },
     });
+
+    // Notify all relevant users about the new lead
+    await notifyLeadCreated(
+      {
+        id: lead.id,
+        leadNumber: lead.leadNumber,
+        studentName: lead.studentName,
+        branchId: lead.branchId,
+        counselors: lead.counselors.map((c) => ({ counselorId: c.counselor.id })),
+      },
+      currentUser.id,
+    );
 
     return created(lead, "Lead created successfully");
   } catch (err) {

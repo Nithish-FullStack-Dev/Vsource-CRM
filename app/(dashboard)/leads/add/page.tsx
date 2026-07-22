@@ -494,6 +494,8 @@ export default function AddLeadPage() {
 
       toast.success("Walkin created successfully");
 
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+
       if (continueFlow) {
         router.push("/leads/all");
         return;

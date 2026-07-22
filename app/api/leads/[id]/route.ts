@@ -12,6 +12,11 @@ import { LeadUpdateSchema } from "@/lib/schemas";
 import { getAuthorizedUser } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { Prisma } from "@/generated/prisma/client";
+import {
+  notifyLeadStatusChanged,
+  notifyLeadAssigned,
+  notifyFollowupScheduled,
+} from "@/lib/notification.service";
 
 type Ctx = {
   params: Promise<{
@@ -132,6 +137,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       select: {
         id: true,
         status: true,
+        studentName: true,
+        leadNumber: true,
+        branchId: true,
+        counselors: {
+          select: { counselorId: true },
+        },
       },
     });
 
@@ -320,6 +331,37 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         },
       });
     });
+
+    // Fire-and-forget notifications after transaction succeeds
+    const leadForNotify = {
+      id,
+      leadNumber: existingLead.leadNumber,
+      studentName: existingLead.studentName,
+      branchId: existingLead.branchId,
+      counselors: existingLead.counselors,
+    };
+
+    if (body.status !== undefined && body.status !== existingLead.status) {
+      await notifyLeadStatusChanged(
+        leadForNotify,
+        existingLead.status,
+        body.status,
+        currentUser.id,
+      );
+    }
+
+    if (counselorIds !== undefined && counselorIds.length > 0) {
+      await notifyLeadAssigned(leadForNotify, counselorIds, currentUser.id);
+    }
+
+    if (followupDate || followupNote) {
+      await notifyFollowupScheduled(
+        leadForNotify,
+        followupDate || new Date(),
+        followupNote,
+        currentUser.id,
+      );
+    }
 
     return ok(lead, "Lead updated successfully");
   } catch (err) {

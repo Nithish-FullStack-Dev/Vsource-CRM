@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CommandPalette } from "@/components/common/CommandPalette";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { usePathname, useRouter } from "next/navigation";
 import { usePageTitle } from "@/store/page-title";
 
@@ -101,7 +102,7 @@ export function Topbar() {
           </div>
 
           <div className="flex-1" />
-
+          <NotificationBell />
           <Button
             variant="ghost"
             size="icon"
