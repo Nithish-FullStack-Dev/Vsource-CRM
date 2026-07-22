@@ -389,7 +389,7 @@ export default function PageActions(props: PageActionsProps) {
           }
         }}
       >
-        <SheetContent className="w-full overflow-y-auto sm:max-w-4xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <SheetContent className="w-full z-102 overflow-y-auto sm:max-w-4xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {selected && (
             <>
               {/* HEADER */}
