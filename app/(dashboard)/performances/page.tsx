@@ -1,10 +1,11 @@
 // app\(dashboard)\performances\page.tsx
 "use client";
 
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRightLeft,
+  ArrowUp,
   BarChart3,
   BriefcaseBusiness,
   CheckCircle2,
@@ -404,6 +405,16 @@ export default function PerformanceReportsPage() {
       setIsExporting(false);
     }
   };
+   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  useEffect(() => {
+      const handleScroll = () => setShowScrollToTop(window.scrollY > 500);
+  
+      handleScroll();
+      window.addEventListener("scroll", handleScroll, { passive: true });
+  
+      return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+  
 
   return (
     <PageTransition>
@@ -1308,6 +1319,18 @@ export default function PerformanceReportsPage() {
           </Card>
         </div>
       </ReportAccordion>
+      {showScrollToTop && (
+              <Button
+                type="button"
+                size="icon"
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                className="fixed bottom-6 right-0 z-[100] rounded-full shadow-lg"
+                aria-label="Scroll to top"
+                title="Scroll to top"
+              >
+                <ArrowUp className="size-5" />
+              </Button>
+            )}
     </PageTransition>
   );
 }

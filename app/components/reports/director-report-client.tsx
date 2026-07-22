@@ -1,9 +1,11 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowUp,
   BarChart3,
+  ChevronDown,
   Download,
   FileSpreadsheet,
   RefreshCw,
@@ -65,31 +67,31 @@ const currencyFormat = new Intl.NumberFormat("en-IN", {
 
 const METRIC_COLUMNS: MetricColumn[] = [
   { key: "totalWalkins", label: "Total Walk-ins", type: "number", group: "Pipeline" },
-  { key: "leadsAdded", label: "Leads Added", type: "number", group: "Pipeline" },
-  { key: "allLeads", label: "All Leads", type: "number", group: "Pipeline" },
-  { key: "activeLeads", label: "Active Leads", type: "number", group: "Pipeline" },
-  { key: "qualifiedLeads", label: "Qualified", type: "number", group: "Pipeline" },
-  { key: "lostLeads", label: "Lead Lost", type: "number", group: "Pipeline" },
-  { key: "students", label: "Students", type: "number", group: "Pipeline" },
-  { key: "droppedStudents", label: "Student Drop", type: "number", group: "Pipeline" },
+  { key: "leadsAdded", label: "Walk-ins Added", type: "number", group: "Pipeline" },
+  // { key: "allLeads", label: "All Walk-ins", type: "number", group: "Pipeline" },
+  { key: "activeLeads", label: "Active Walk-ins", type: "number", group: "Pipeline" },
+  // { key: "qualifiedLeads", label: "Qualified", type: "number", group: "Pipeline" },
+  { key: "lostLeads", label: "Walk-in Lost", type: "number", group: "Pipeline" },
+  { key: "students", label: "Applications", type: "number", group: "Pipeline" },
+  { key: "droppedStudents", label: "Application Drop", type: "number", group: "Pipeline" },
   { key: "target", label: "Target", type: "number", group: "Targets" },
   { key: "achieved", label: "Achieved", type: "number", group: "Targets" },
   { key: "targetCompletionPercentage", label: "Target %", type: "percentage", group: "Targets" },
-  { key: "applications", label: "Applications", type: "number", group: "Applications / Visa / Loan" },
-  { key: "offers", label: "Offers", type: "number", group: "Applications / Visa / Loan" },
+  { key: "applications", label: "Uni Applications", type: "number", group: "Applications / Visa / Loan" },
+  { key: "offers", label: "Uni Offers", type: "number", group: "Applications / Visa / Loan" },
   { key: "casReceived", label: "CAS", type: "number", group: "Applications / Visa / Loan" },
   { key: "visaApproved", label: "Visa Approved", type: "number", group: "Applications / Visa / Loan" },
   { key: "loanLogins", label: "Loan Logins", type: "number", group: "Applications / Visa / Loan" },
   { key: "loanApproved", label: "Loan Approved", type: "number", group: "Applications / Visa / Loan" },
   { key: "loanDisbursed", label: "Loan Disbursed", type: "number", group: "Applications / Visa / Loan" },
-  { key: "leadToStudentConversionPercentage", label: "Lead Conv %", type: "percentage", group: "Conversions" },
+  { key: "leadToStudentConversionPercentage", label: "Walk-in Conv %", type: "percentage", group: "Conversions" },
   { key: "applicationConversionPercentage", label: "App Conv %", type: "percentage", group: "Conversions" },
   { key: "visaConversionPercentage", label: "Visa Conv %", type: "percentage", group: "Conversions" },
   { key: "loanConversionPercentage", label: "Loan Approval %", type: "percentage", group: "Conversions" },
   { key: "appliedAmount", label: "Applied Amount", type: "currency", group: "Financials" },
   { key: "sanctionedAmount", label: "Sanctioned", type: "currency", group: "Financials" },
   { key: "disbursedAmount", label: "Disbursed", type: "currency", group: "Financials" },
-  { key: "leadNumbers", label: "Lead Numbers", type: "leads", group: "References" },
+  // { key: "leadNumbers", label: "Walk-in Numbers", type: "leads", group: "References" },
 ];
 
 const AVERAGE_COLUMNS: MetricColumn[] = [
@@ -181,11 +183,13 @@ function SummaryCard({
         : "border-border bg-card";
 
   return (
-    <div className={`rounded-xl border p-4 shadow-sm ${toneClass}`}>
+    <div
+      className={`flex min-h-[132px] h-full flex-col rounded-xl border p-4 shadow-sm ${toneClass}`}
+    >
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+      <p className="mt-auto pt-4 text-2xl font-bold tracking-tight text-foreground">
         {value}
       </p>
     </div>
@@ -198,30 +202,114 @@ function TableSectionHeader({
   rowCount,
   branchCount,
   grandTotal,
+  isOpen,
+  onToggle,
 }: {
   title: string;
   description: string;
   rowCount: number;
   branchCount: number;
   grandTotal: DirectorReportRow;
+  isOpen: boolean;
+  onToggle: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-border bg-muted/25 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={isOpen}
+      className="flex w-full flex-col gap-3 border-b border-border bg-muted/25 px-4 py-4 text-left transition-colors hover:bg-muted/40 sm:px-5 lg:flex-row lg:items-center lg:justify-between"
+    >
       <div className="min-w-0">
         <h2 className="text-base font-semibold text-foreground">{title}</h2>
         <p className="mt-1 max-w-4xl text-xs leading-5 text-muted-foreground sm:text-sm">
           {description}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <Badge variant="outline">{branchCount} branches</Badge>
         <Badge variant="outline">{rowCount} users</Badge>
         <Badge variant="secondary">
           {integerFormat.format(grandTotal.totalWalkins)} total walk-ins
         </Badge>
+        <span className="ml-1 inline-flex size-8 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground">
+          <ChevronDown
+            className={`size-4 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </span>
       </div>
-    </div>
+    </button>
   );
+}
+
+function AccordionHeader({
+  title,
+  description,
+  isOpen,
+  onToggle,
+  icon,
+  meta,
+}: {
+  title: string;
+  description: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  icon?: ReactNode;
+  meta?: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={isOpen}
+      className="flex w-full flex-col gap-3 border-b border-border bg-muted/25 px-5 py-4 text-left transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {meta}
+        <span className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground">
+          <ChevronDown
+            className={`size-4 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function useHashAwareAccordion(id: string, defaultOpen = false) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    const openFromHash = () => {
+      if (window.location.hash !== `#${id}`) return;
+
+      setIsOpen(true);
+      window.requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    };
+
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, [id]);
+
+  return { isOpen, setIsOpen };
 }
 
 function groupKey(
@@ -314,6 +402,7 @@ function ReportTable({
   showPeriod = false,
   showIntake = false,
   showAverages = false,
+  defaultOpen = false,
 }: {
   id: string;
   title: string;
@@ -323,7 +412,9 @@ function ReportTable({
   showPeriod?: boolean;
   showIntake?: boolean;
   showAverages?: boolean;
+  defaultOpen?: boolean;
 }) {
+  const { isOpen, setIsOpen } = useHashAwareAccordion(id, defaultOpen);
   const columns = useMemo(
     () => [...METRIC_COLUMNS, ...(showAverages ? AVERAGE_COLUMNS : [])],
     [showAverages],
@@ -378,9 +469,12 @@ function ReportTable({
         rowCount={rows.length}
         branchCount={branchCount}
         grandTotal={totals.grandTotal}
+        isOpen={isOpen}
+        onToggle={() => setIsOpen((current) => !current)}
       />
 
-      <div className="relative max-h-[700px] overflow-auto bg-background [scrollbar-gutter:stable]">
+      {isOpen && (
+        <div className="relative max-h-[700px] overflow-auto bg-background [scrollbar-gutter:stable]">
         <table
           className="border-separate border-spacing-0 text-xs text-foreground"
           style={{ width: tableWidth, minWidth: tableWidth, tableLayout: "fixed" }}
@@ -617,7 +711,8 @@ function ReportTable({
             </tfoot>
           )}
         </table>
-      </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -642,63 +737,106 @@ function ComparisonTable({
   title,
   description,
   rows,
+  defaultOpen = false,
 }: {
   id: string;
   title: string;
   description: string;
   rows: DirectorReportComparisonRow[];
+  defaultOpen?: boolean;
 }) {
+  const { isOpen, setIsOpen } = useHashAwareAccordion(id, defaultOpen);
+
   return (
     <section
       id={id}
       className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
     >
-      <div className="border-b border-border bg-muted/25 px-5 py-4">
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-sm">
-          <thead className="bg-muted text-muted-foreground">
-            <tr>
-              <th className="border-b border-border px-4 py-3 text-left font-semibold">Metric</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Current</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Previous</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Difference</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Change</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => (
-              <tr
-                key={row.rowId}
-                className={`${index % 2 === 0 ? "bg-card" : "bg-muted/20"} border-b border-border/60 last:border-b-0 hover:bg-accent/50`}
-              >
-                <td className="px-4 py-3 font-medium text-foreground">{row.metric}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                  {formatComparisonValue(row.current, row.valueType)}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                  {formatComparisonValue(row.previous, row.valueType)}
-                </td>
-                <td className={`px-4 py-3 text-right font-semibold tabular-nums ${comparisonTone(row.difference)}`}>
-                  {formatComparisonValue(row.difference, row.valueType)}
-                </td>
-                <td className={`px-4 py-3 text-right font-semibold tabular-nums ${comparisonTone(row.changePercentage)}`}>
-                  <span className="inline-flex items-center justify-end gap-1">
-                    {row.changePercentage > 0 ? (
-                      <TrendingUp className="size-3.5" />
-                    ) : row.changePercentage < 0 ? (
-                      <TrendingDown className="size-3.5" />
-                    ) : null}
-                    {numberFormat.format(row.changePercentage)}%
-                  </span>
-                </td>
+      <AccordionHeader
+        title={title}
+        description={description}
+        isOpen={isOpen}
+        onToggle={() => setIsOpen((current) => !current)}
+        meta={<Badge variant="secondary">{rows.length} metrics</Badge>}
+      />
+
+      {isOpen && (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-muted text-muted-foreground">
+              <tr>
+                <th className="border-b border-border px-4 py-3 text-left font-semibold">
+                  Metric
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Current
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Previous
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Difference
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Change
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-8 text-center text-muted-foreground"
+                  >
+                    No comparison data found.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row, index) => (
+                  <tr
+                    key={row.rowId}
+                    className={`${
+                      index % 2 === 0 ? "bg-card" : "bg-muted/20"
+                    } border-b border-border/60 last:border-b-0 hover:bg-accent/50`}
+                  >
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      {row.metric}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
+                      {formatComparisonValue(row.current, row.valueType)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
+                      {formatComparisonValue(row.previous, row.valueType)}
+                    </td>
+                    <td
+                      className={`px-4 py-3 text-right font-semibold tabular-nums ${comparisonTone(
+                        row.difference,
+                      )}`}
+                    >
+                      {formatComparisonValue(row.difference, row.valueType)}
+                    </td>
+                    <td
+                      className={`px-4 py-3 text-right font-semibold tabular-nums ${comparisonTone(
+                        row.changePercentage,
+                      )}`}
+                    >
+                      <span className="inline-flex items-center justify-end gap-1">
+                        {row.changePercentage > 0 ? (
+                          <TrendingUp className="size-3.5" />
+                        ) : row.changePercentage < 0 ? (
+                          <TrendingDown className="size-3.5" />
+                        ) : null}
+                        {numberFormat.format(row.changePercentage)}%
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
@@ -736,89 +874,165 @@ function intakeGrandTotal(rows: DirectorReportIntakeComparisonRow[]) {
 
 function IntakeComparisonTable({
   rows,
+  defaultOpen = false,
 }: {
   rows: DirectorReportIntakeComparisonRow[];
+  defaultOpen?: boolean;
 }) {
   const total = useMemo(() => intakeGrandTotal(rows), [rows]);
+  const { isOpen, setIsOpen } = useHashAwareAccordion(
+    "intake-comparison",
+    defaultOpen,
+  );
 
   return (
     <section
       id="intake-comparison"
       className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
     >
-      <div className="flex flex-col gap-2 border-b border-border bg-muted/25 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Intake Comparison</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Unique branch totals and conversion percentages across every intake in the selected period.
-          </p>
-        </div>
-        <Badge variant="secondary">{rows.length} intakes</Badge>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1280px] text-sm">
-          <thead className="bg-muted text-muted-foreground">
-            <tr>
-              <th className="border-b border-border px-4 py-3 text-left font-semibold">Intake</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Walk-ins</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Students</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Applications</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Visa Approved</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Loan Logins</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Loan Approved</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Lead Conv %</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">App Conv %</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Visa Conv %</th>
-              <th className="border-b border-border px-4 py-3 text-right font-semibold">Loan Approval %</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
+      <AccordionHeader
+        title="Intake Comparison"
+        description="Unique branch totals and conversion percentages across every intake in the selected period."
+        isOpen={isOpen}
+        onToggle={() => setIsOpen((current) => !current)}
+        meta={<Badge variant="secondary">{rows.length} intakes</Badge>}
+      />
+
+      {isOpen && (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1280px] text-sm">
+            <thead className="bg-muted text-muted-foreground">
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">
-                  No intake comparison data found.
-                </td>
+                <th className="border-b border-border px-4 py-3 text-left font-semibold">
+                  Intake
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Walk-ins
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Applications
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Uni Applications
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Visa Approved
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Loan Logins
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Loan Approved
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Walk-in Conv %
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  App Conv %
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Visa Conv %
+                </th>
+                <th className="border-b border-border px-4 py-3 text-right font-semibold">
+                  Loan Approval %
+                </th>
               </tr>
-            ) : (
-              rows.map((row, index) => (
-                <tr
-                  key={row.rowId}
-                  className={`${index % 2 === 0 ? "bg-card" : "bg-muted/20"} border-b border-border/60 hover:bg-accent/50`}
-                >
-                  <td className="px-4 py-3 font-semibold text-foreground">{row.intakeName}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(row.totalWalkins)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(row.students)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(row.applications)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(row.visaApproved)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(row.loanLogins)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(row.loanApproved)}</td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">{numberFormat.format(row.leadConversionPercentage)}%</td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">{numberFormat.format(row.applicationConversionPercentage)}%</td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">{numberFormat.format(row.visaConversionPercentage)}%</td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">{numberFormat.format(row.loanConversionPercentage)}%</td>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={11}
+                    className="px-4 py-8 text-center text-muted-foreground"
+                  >
+                    No intake comparison data found.
+                  </td>
                 </tr>
-              ))
+              ) : (
+                rows.map((row, index) => (
+                  <tr
+                    key={row.rowId}
+                    className={`${
+                      index % 2 === 0 ? "bg-card" : "bg-muted/20"
+                    } border-b border-border/60 hover:bg-accent/50`}
+                  >
+                    <td className="px-4 py-3 font-semibold text-foreground">
+                      {row.intakeName}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {integerFormat.format(row.totalWalkins)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {integerFormat.format(row.students)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {integerFormat.format(row.applications)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {integerFormat.format(row.visaApproved)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {integerFormat.format(row.loanLogins)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {integerFormat.format(row.loanApproved)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                      {numberFormat.format(row.leadConversionPercentage)}%
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                      {numberFormat.format(row.applicationConversionPercentage)}%
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                      {numberFormat.format(row.visaConversionPercentage)}%
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                      {numberFormat.format(row.loanConversionPercentage)}%
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {rows.length > 0 && (
+              <tfoot>
+                <tr className="bg-primary font-bold text-primary-foreground">
+                  <td className="px-4 py-3">Grand Total</td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {integerFormat.format(total.totalWalkins)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {integerFormat.format(total.students)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {integerFormat.format(total.applications)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {integerFormat.format(total.visaApproved)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {integerFormat.format(total.loanLogins)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {integerFormat.format(total.loanApproved)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {numberFormat.format(total.leadConversionPercentage)}%
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {numberFormat.format(total.applicationConversionPercentage)}%
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {numberFormat.format(total.visaConversionPercentage)}%
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {numberFormat.format(total.loanConversionPercentage)}%
+                  </td>
+                </tr>
+              </tfoot>
             )}
-          </tbody>
-          {rows.length > 0 && (
-            <tfoot>
-              <tr className="bg-primary font-bold text-primary-foreground">
-                <td className="px-4 py-3">Grand Total</td>
-                <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(total.totalWalkins)}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(total.students)}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(total.applications)}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(total.visaApproved)}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(total.loanLogins)}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{integerFormat.format(total.loanApproved)}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{numberFormat.format(total.leadConversionPercentage)}%</td>
-                <td className="px-4 py-3 text-right tabular-nums">{numberFormat.format(total.applicationConversionPercentage)}%</td>
-                <td className="px-4 py-3 text-right tabular-nums">{numberFormat.format(total.visaConversionPercentage)}%</td>
-                <td className="px-4 py-3 text-right tabular-nums">{numberFormat.format(total.loanConversionPercentage)}%</td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
-      </div>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
@@ -829,6 +1043,20 @@ export default function DirectorReportClient() {
   );
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const walkInDetailsAccordion = useHashAwareAccordion(
+    "walk-in-details",
+    false,
+  );
+
+  useEffect(() => {
+    const handleScroll = () => setShowScrollToTop(window.scrollY > 500);
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const reportQuery = useQuery({
     queryKey: ["director-report", appliedFilters],
@@ -955,20 +1183,20 @@ export default function DirectorReportClient() {
         <>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 2xl:grid-cols-10">
             <SummaryCard label="Walk-ins" value={integerFormat.format(data.summary.totalWalkins)} />
-            <SummaryCard label="Leads Added" value={integerFormat.format(data.summary.leadsAdded)} />
-            <SummaryCard label="Students" value={integerFormat.format(data.summary.students)} />
-            <SummaryCard label="Applications" value={integerFormat.format(data.summary.applications)} />
+            <SummaryCard label="Walk-ins Added" value={integerFormat.format(data.summary.leadsAdded)} />
+            <SummaryCard label="Applications" value={integerFormat.format(data.summary.students)} />
+            <SummaryCard label="Uni Applications" value={integerFormat.format(data.summary.applications)} />
             <SummaryCard label="Visa Approved" value={integerFormat.format(data.summary.visaApproved)} tone="success" />
             <SummaryCard label="Loan Logins" value={integerFormat.format(data.summary.loanLogins)} />
             <SummaryCard label="Loan Approved" value={integerFormat.format(data.summary.loanApproved)} tone="success" />
             <SummaryCard label="Loan Approval" value={`${numberFormat.format(data.summary.loanConversionPercentage)}%`} tone="success" />
-            <SummaryCard label="Lead Conversion" value={`${numberFormat.format(data.summary.leadToStudentConversionPercentage)}%`} />
+            <SummaryCard label="Walk-in Conversion" value={`${numberFormat.format(data.summary.leadToStudentConversionPercentage)}%`} />
             <SummaryCard label="Target Completion" value={`${numberFormat.format(data.summary.targetCompletionPercentage)}%`} tone="warning" />
           </section>
 
           <nav className="flex flex-wrap gap-2 rounded-xl border border-border bg-card p-3 text-xs shadow-sm">
             {[
-              ["#all-time-report", "All Time"],
+              ["#all-time-report", "Overall"],
               ["#today-report", "Today"],
               ["#weekly-report", "Weekly"],
               ["#month-report", "Current Month"],
@@ -976,10 +1204,16 @@ export default function DirectorReportClient() {
               ["#week-comparison", "Week Comparison"],
               ["#month-comparison", "Month Comparison"],
               ["#intake-comparison", "Intake Comparison"],
+              ["#walk-in-details", "Walk-in Details"],
             ].map(([href, label]) => (
               <a
                 key={href}
                 href={href}
+                onClick={(event) => {
+                  event.preventDefault();
+                  window.history.pushState(null, "", href);
+                  window.dispatchEvent(new Event("hashchange"));
+                }}
                 className="rounded-lg bg-muted px-3 py-2 font-medium text-foreground transition-colors hover:bg-accent"
               >
                 {label}
@@ -989,7 +1223,7 @@ export default function DirectorReportClient() {
 
           <ReportTable
             id="all-time-report"
-            title="Overall All-Time — Branch and User Performance"
+            title="Overall — Branch and User Performance"
             description="Complete historical performance using one shared ownership rule: latest assignee for open walk-ins, converted-by user for students, and fintech assignee for loan activity."
             rows={data.allTimeRows}
             totals={data.allTimeTotals}
@@ -1002,6 +1236,7 @@ export default function DirectorReportClient() {
             description="Each record is credited once to its final responsible user, followed by a unique branch total and one grand total."
             rows={data.todayRows}
             totals={data.todayTotals}
+            defaultOpen
           />
 
           <ReportTable
@@ -1047,32 +1282,35 @@ export default function DirectorReportClient() {
             <IntakeComparisonTable rows={data.intakeComparison} />
           </div>
 
-          <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-            <div className="flex flex-col gap-2 border-b border-border bg-muted/25 px-5 py-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Users className="size-4 text-primary" />
-                  <h2 className="text-base font-semibold text-foreground">
-                    Lead Attribution Details
-                  </h2>
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Shows the single owner used at each stage: latest walk-in assignee,
-                  converted-by user, or loan/fintech owner.
-                </p>
-              </div>
-              <Badge variant="secondary">{data.leadDetails.length} records</Badge>
-            </div>
+          <section
+            id="walk-in-details"
+            className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+          >
+            <AccordionHeader
+              title="Walk-in Details"
+              description="Shows the single owner used at each stage: latest walk-in assignee, converted-by user, or loan/fintech owner."
+              isOpen={walkInDetailsAccordion.isOpen}
+              onToggle={() =>
+                walkInDetailsAccordion.setIsOpen((current) => !current)
+              }
+              icon={<Users className="size-4 text-primary" />}
+              meta={
+                <Badge variant="secondary">
+                  {data.leadDetails.length} records
+                </Badge>
+              }
+            />
 
-            <div className="max-h-[560px] overflow-auto">
+            {walkInDetailsAccordion.isOpen && (
+              <div className="max-h-[560px] overflow-auto">
               <table className="min-w-[1350px] text-xs">
                 <thead className="sticky top-0 z-10 bg-primary text-left text-primary-foreground">
                   <tr>
                     {[
-                      "Lead No.",
+                      "Walk-in No.",
                       "Branch",
                       "User",
-                      "Student",
+                      "Application Name",
                       "Mobile",
                       "Source",
                       "Country",
@@ -1093,7 +1331,7 @@ export default function DirectorReportClient() {
                   {data.leadDetails.length === 0 ? (
                     <tr>
                       <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">
-                        No lead attribution details found.
+                        No walk-in details found.
                       </td>
                     </tr>
                   ) : (
@@ -1119,16 +1357,23 @@ export default function DirectorReportClient() {
                   )}
                 </tbody>
               </table>
-            </div>
+              </div>
+            )}
           </section>
-
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/25 px-4 py-3 text-xs text-muted-foreground">
-            <FileSpreadsheet className="size-4" />
-            Excel export includes All Time, Today, Current Week, Current Month,
-            Intake-wise, unique branch totals, grand totals, comparisons and lead
-            attribution using the applied filters.
-          </div>
         </>
+      )}
+
+      {showScrollToTop && (
+        <Button
+          type="button"
+          size="icon"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-0 z-[100] rounded-full shadow-lg"
+          aria-label="Scroll to top"
+          title="Scroll to top"
+        >
+          <ArrowUp className="size-5" />
+        </Button>
       )}
     </main>
   );

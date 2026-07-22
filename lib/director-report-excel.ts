@@ -23,24 +23,24 @@ const reportColumns: Array<{
   format?: string;
 }> = [
   { header: "Total Walk-ins", key: "totalWalkins", width: 14 },
-  { header: "Leads Added", key: "leadsAdded", width: 13 },
-  { header: "All Leads", key: "allLeads", width: 12 },
-  { header: "Active Leads", key: "activeLeads", width: 13 },
-  { header: "Qualified", key: "qualifiedLeads", width: 12 },
-  { header: "Lead Lost", key: "lostLeads", width: 12 },
-  { header: "Students", key: "students", width: 11 },
-  { header: "Student Drop", key: "droppedStudents", width: 13 },
+  { header: "Walk-in Added", key: "leadsAdded", width: 13 },
+  // { header: "All Leads", key: "allLeads", width: 12 },
+  { header: "Active Walk-ins", key: "activeLeads", width: 13 },
+  // { header: "Qualified", key: "qualifiedLeads", width: 12 },
+  { header: "Walk-in Lost", key: "lostLeads", width: 12 },
+  { header: "Applications", key: "students", width: 11 },
+  { header: "Applications Drop", key: "droppedStudents", width: 13 },
   { header: "Target", key: "target", width: 10 },
   { header: "Achieved", key: "achieved", width: 11 },
   { header: "Target %", key: "targetCompletionPercentage", width: 11, format: "0.0%" },
-  { header: "Applications", key: "applications", width: 13 },
-  { header: "Offers", key: "offers", width: 10 },
+  { header: "Uni Applications", key: "applications", width: 13 },
+  { header: "Uni Offers", key: "offers", width: 10 },
   { header: "CAS", key: "casReceived", width: 10 },
   { header: "Visa Approved", key: "visaApproved", width: 14 },
   { header: "Loan Logins", key: "loanLogins", width: 13 },
   { header: "Loan Approved", key: "loanApproved", width: 14 },
   { header: "Loan Disbursed", key: "loanDisbursed", width: 15 },
-  { header: "Lead Conv %", key: "leadToStudentConversionPercentage", width: 12, format: "0.0%" },
+  { header: "Walk-in Conv %", key: "leadToStudentConversionPercentage", width: 12, format: "0.0%" },
   { header: "App Conv %", key: "applicationConversionPercentage", width: 12, format: "0.0%" },
   { header: "Visa Conv %", key: "visaConversionPercentage", width: 12, format: "0.0%" },
   { header: "Loan Approval %", key: "loanConversionPercentage", width: 15, format: "0.0%" },
@@ -52,7 +52,7 @@ const reportColumns: Array<{
   { header: "Weekly Avg Loan Logins", key: "avgWeeklyLoanLogins", width: 21 },
   { header: "Weekly Avg Loan Approved", key: "avgWeeklyLoanApproved", width: 23 },
   { header: "Weekly Avg Visa", key: "avgWeeklyVisaApproved", width: 17 },
-  { header: "Lead Numbers", key: "leadNumbers", width: 34 },
+  { header: "Walk-in Numbers", key: "leadNumbers", width: 34 },
 ];
 
 function applyBorder(cell: Cell) {
@@ -297,15 +297,15 @@ function addSummarySheet(workbook: Workbook, report: DirectorReportData) {
   const summary = report.summary;
   const metrics: Array<[string, keyof DirectorReportSummary, "number" | "percentage" | "currency"]> = [
     ["Total Walk-ins", "totalWalkins", "number"],
-    ["Leads Added", "leadsAdded", "number"],
-    ["All Leads", "allLeads", "number"],
-    ["Active Leads", "activeLeads", "number"],
-    ["Qualified Leads", "qualifiedLeads", "number"],
-    ["Lost Leads", "lostLeads", "number"],
-    ["Students", "students", "number"],
-    ["Dropped Students", "droppedStudents", "number"],
-    ["Applications", "applications", "number"],
-    ["Offers", "offers", "number"],
+    ["Walk-ins Added", "leadsAdded", "number"],
+    // ["All Leads", "allLeads", "number"],
+    ["Active Walk-ins", "activeLeads", "number"],
+    // ["Qualified Leads", "qualifiedLeads", "number"],
+    ["Lost Walk-ins", "lostLeads", "number"],
+    ["Applications", "students", "number"],
+    ["Dropped Applications", "droppedStudents", "number"],
+    ["Uni Applications", "applications", "number"],
+    ["Uni Offers", "offers", "number"],
     ["CAS Received", "casReceived", "number"],
     ["Visa Approved", "visaApproved", "number"],
     ["Loan Logins", "loanLogins", "number"],
@@ -313,7 +313,7 @@ function addSummarySheet(workbook: Workbook, report: DirectorReportData) {
     ["Loan Disbursed", "loanDisbursed", "number"],
     ["Target", "target", "number"],
     ["Achieved", "achieved", "number"],
-    ["Lead Conversion", "leadToStudentConversionPercentage", "percentage"],
+    ["Walk-in Conversion", "leadToStudentConversionPercentage", "percentage"],
     ["Application Conversion", "applicationConversionPercentage", "percentage"],
     ["Visa Conversion", "visaConversionPercentage", "percentage"],
     ["Loan Approval Conversion", "loanConversionPercentage", "percentage"],
@@ -410,12 +410,12 @@ function addIntakeComparisonSheet(
   const headers = [
     "Intake",
     "Walk-ins",
-    "Students",
     "Applications",
+    "Uni Applications",
     "Visa Approved",
     "Loan Logins",
     "Loan Approved",
-    "Lead Conv %",
+    "Walk-in Conv %",
     "App Conv %",
     "Visa Conv %",
     "Loan Approval %",
@@ -494,11 +494,11 @@ function addLeadDetailsSheet(
   report: DirectorReportData,
   rows: DirectorReportLeadDetail[],
 ) {
-  const sheet = workbook.addWorksheet("Lead Attribution", {
+  const sheet = workbook.addWorksheet("Walk-ins Attribution", {
     views: [{ state: "frozen", ySplit: 4 }],
   });
   const headers = [
-    "Lead Number",
+    "Walk-ins Number",
     "Branch",
     "User",
     "Student",
@@ -510,7 +510,7 @@ function addLeadDetailsSheet(
     "Attribution",
     "Created At",
   ];
-  addTitle(sheet, "VSource Directors Report — Lead Attribution", report, headers.length);
+  addTitle(sheet, "VSource Directors Report — Walk-ins Attribution", report, headers.length);
   sheet.addRow([]);
   sheet.addRow(headers);
   styleHeaderRow(sheet, 4);
@@ -544,7 +544,7 @@ function filterEntries(filters: DirectorReportFilters): Array<[string, string]> 
     recordScope: "Record Scope",
     branchId: "Branch ID",
     counselorId: "User ID",
-    leadStatus: "Lead Status",
+    leadStatus: "Walk-in Status",
     source: "Source",
     countryId: "Country ID",
     intakeId: "Intake ID",
