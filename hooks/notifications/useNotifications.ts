@@ -1,3 +1,4 @@
+// hooks\notifications\useNotifications.ts
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import {
@@ -18,11 +19,15 @@ export const useNotifications = (params?: UseNotificationsParams) => {
   const filter = params?.filter ?? "all";
 
   return useQuery({
-    queryKey: NOTIFICATION_KEYS.list(`${filter}-${page}`),
+    queryKey: NOTIFICATION_KEYS.list({
+      filter,
+      page,
+      limit: params?.limit ?? 20,
+    }),
 
     queryFn: () => notificationService.getNotifications(params),
 
-    staleTime: 30_000,
+    staleTime: 0,
 
     placeholderData: keepPreviousData,
 

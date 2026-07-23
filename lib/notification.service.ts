@@ -34,6 +34,7 @@ export type NotificationEventKey =
   | "FOLLOWUP_SCHEDULED"
   | "FOLLOWUP_REMINDER"
   | "STUDENT_CREATED"
+  | "STUDENT_STATUS_CHANGED"
   | "APPLICATION_SUBMITTED"
   | "APPLICATION_OFFER_RECEIVED"
   | "APPLICATION_CAS_RECEIVED"
@@ -42,7 +43,6 @@ export type NotificationEventKey =
   | "LOAN_APPROVED"
   | "LOAN_REJECTED"
   | "LOAN_DISBURSED"
-  | "VISA_APPLIED"
   | "VISA_APPROVED"
   | "VISA_REJECTED";
 
@@ -417,7 +417,7 @@ export async function notifyLeadCreated(
         branchId: lead.branchId,
         actorId,
 
-        actionUrl: `/leads`,
+        actionUrl: `/leads/all`,
 
         priority: "NORMAL",
 
@@ -482,7 +482,7 @@ export async function notifyLeadAssigned(
         branchId: lead.branchId,
         actorId,
 
-        actionUrl: `/leads`,
+        actionUrl: `/leads/all`,
 
         priority: "NORMAL",
 
@@ -546,7 +546,7 @@ export async function notifyLeadStatusChanged(
         branchId: lead.branchId,
         actorId,
 
-        actionUrl: `/leads`,
+        actionUrl: `/leads/all`,
 
         priority: "NORMAL",
 
@@ -615,7 +615,7 @@ export async function notifyFollowupScheduled(
         branchId: lead.branchId,
         actorId,
 
-        actionUrl: `/leads`,
+        actionUrl: `/leads/all`,
 
         priority: "HIGH",
 
@@ -812,7 +812,7 @@ export async function notifyFollowupReminder(lead: {
 
       branchId: lead.branchId,
 
-      actionUrl: `/leads`,
+      actionUrl: `/leads/all`,
 
       priority: "HIGH",
 
@@ -1017,7 +1017,7 @@ export async function notifyLoanEvent(
         branchId: loan.branchId,
         actorId,
 
-        actionUrl: `/loan-application/${loan.id}`,
+        actionUrl: `/loan-application/all/${loan.id}`,
 
         priority:
           event === "LOAN_DISBURSED" || event === "LOAN_REJECTED"
@@ -1038,23 +1038,101 @@ export async function notifyLoanEvent(
 }
 
 // -----------------------------------------------------------------------------
-// Visa notifications
+// student status change
 // -----------------------------------------------------------------------------
 
-type VisaEvent = "VISA_APPLIED" | "VISA_APPROVED" | "VISA_REJECTED";
-
-export async function notifyVisaEvent(
+export async function notifyStudentStatusChanged(
   student: {
     id: string;
     studentName: string;
     branchId: string;
     counselorId?: string | null;
   },
-  event: VisaEvent,
+  oldStatus: string,
+  newStatus: string,
   actorId: string,
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
+    const explicitRecipientIds = student.counselorId
+      ? [student.counselorId]
+      : [];
+
+    const recipients = await resolveRecipients(
+      student.branchId,
+      actorId,
+      explicitRecipientIds,
+      tx,
+    );
+
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      student.branchId,
+      tx,
+    );
+
+    await writeOutboxEntries(
+      recipients,
+      {
+        eventKey: "STUDENT_STATUS_CHANGED",
+
+        getTitles: (roleName) => ({
+          title: isGlobalAdminRole(roleName)
+            ? `Student Status Changed by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : "Student Status Updated",
+        }),
+
+        defaultMessage: `${student.studentName} status changed from ${formatStatus(
+          oldStatus,
+        )} to ${formatStatus(newStatus)} by ${actorName}.`,
+
+        entityType: "student",
+        entityId: student.id,
+
+        branchId: student.branchId,
+        actorId,
+
+        actionUrl: `/student-profiles/${student.id}`,
+
+        priority: "NORMAL",
+
+        metadata: {
+          oldStatus,
+          newStatus,
+          counselorId: student.counselorId ?? null,
+        },
+
+        dedupeKey: `STUDENT_STATUS_CHANGED:${student.id}:${oldStatus}:${newStatus}`,
+      },
+      tx,
+    );
+  } catch (error) {
+    handleNotificationError("notifyStudentStatusChanged", error, tx);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Visa notifications
+// -----------------------------------------------------------------------------
+
+export async function notifyVisaStatusChanged(
+  student: {
+    id: string;
+    studentName: string;
+    branchId: string;
+  },
+  oldStatus: string,
+  newStatus: string,
+  actorId: string,
+  tx?: Prisma.TransactionClient,
+): Promise<void> {
+  try {
+    if (newStatus !== "APPROVED" && newStatus !== "REJECTED") {
+      return;
+    }
+
     const recipients = await resolveRecipients(
       student.branchId,
       actorId,
@@ -1068,55 +1146,43 @@ export async function notifyVisaEvent(
       tx,
     );
 
-    const titles: Record<VisaEvent, string> = {
-      VISA_APPLIED: "Visa Applied",
-
-      VISA_APPROVED: "Visa Approved",
-
-      VISA_REJECTED: "Visa Rejected",
-    };
-
-    const messages: Record<VisaEvent, string> = {
-      VISA_APPLIED: `Visa applied for ${student.studentName}.`,
-
-      VISA_APPROVED: `Visa approved for ${student.studentName}.`,
-
-      VISA_REJECTED: `Visa rejected for ${student.studentName}.`,
-    };
+    const eventKey =
+      newStatus === "APPROVED" ? "VISA_APPROVED" : "VISA_REJECTED";
 
     await writeOutboxEntries(
       recipients,
       {
-        eventKey: event,
+        eventKey,
 
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `${titles[event]} by ${actorName}${
-                branchName ? ` (${branchName})` : ""
-              }`
-            : titles[event],
+            ? `Visa ${
+                newStatus === "APPROVED" ? "Approved" : "Rejected"
+              } by ${actorName}${branchName ? ` (${branchName})` : ""}`
+            : `Visa ${newStatus === "APPROVED" ? "Approved" : "Rejected"}`,
         }),
 
-        defaultMessage: `${messages[event]} Updated by ${actorName}.`,
+        defaultMessage: `Visa for ${student.studentName} has been ${newStatus.toLowerCase()} by ${actorName}.`,
 
         entityType: "student",
         entityId: student.id,
 
         branchId: student.branchId,
-
         actorId,
 
         actionUrl: `/student-profiles/${student.id}`,
 
-        priority:
-          event === "VISA_APPROVED" || event === "VISA_REJECTED"
-            ? "HIGH"
-            : "NORMAL",
+        priority: newStatus === "APPROVED" ? "NORMAL" : "HIGH",
+
+        metadata: {
+          oldStatus,
+          newStatus,
+        },
       },
       tx,
     );
   } catch (error) {
-    handleNotificationError("notifyVisaEvent", error, tx);
+    handleNotificationError("notifyVisaStatusChanged", error, tx);
   }
 }
 
