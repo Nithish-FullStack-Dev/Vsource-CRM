@@ -500,7 +500,7 @@ export function StudentVisaProfileSection({
         }}
       >
         <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto p-0">
-          <DialogHeader className="sticky top-0 z-20 border-b bg-background px-6 py-4">
+          <DialogHeader className="sticky top-0 border-b bg-background px-6 py-4">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <DialogTitle className="text-base font-black">
