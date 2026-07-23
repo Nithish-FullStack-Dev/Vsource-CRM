@@ -6,12 +6,7 @@
 
 import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
-import {
-  ok,
-  handleError,
-  parsePagination,
-  buildMeta,
-} from "@/lib/api-helpers";
+import { ok, handleError, parsePagination, buildMeta } from "@/lib/api-helpers";
 import { verifyToken } from "@/lib/jwt";
 import { ApiError } from "@/lib/rbac";
 
@@ -28,14 +23,14 @@ export async function GET(req: NextRequest) {
     const userId = await getCurrentUserId(req);
     const sp = req.nextUrl.searchParams;
     const { skip, take, page, limit } = parsePagination(sp);
-    const filter = sp.get("filter"); // "unread" | "archived" | null (all)
+    const filter = sp.get("filter");
 
     const where = {
       recipientId: userId,
-      ...(filter === "unread" && { readAt: null, archivedAt: null }),
-      ...(filter === "archived" && { archivedAt: { not: null } }),
-      ...(filter === "all" && { archivedAt: null }),
-      ...(!filter && { archivedAt: null }),
+      archivedAt: null,
+      ...(filter === "unread" && {
+        readAt: null,
+      }),
     };
 
     const [notifications, total] = await Promise.all([

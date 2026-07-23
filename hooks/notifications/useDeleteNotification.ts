@@ -1,13 +1,13 @@
-// hooks/notifications/useDeleteAllNotifications.ts
+// hooks\notifications\useDeleteNotification.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationService } from "@/services/notifications/notification.service";
 import { NOTIFICATION_KEYS } from "@/services/notifications/query-key";
 
-export function useDeleteAllNotifications() {
+export function useDeleteNotification() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => notificationService.deleteAll(),
+    mutationFn: (id: string) => notificationService.delete(id),
 
     onSuccess: async () => {
       await queryClient.invalidateQueries({

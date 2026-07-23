@@ -35,7 +35,7 @@ export interface UnreadCountResponse {
   data: { count: number };
 }
 
-export type NotificationFilter = "all" | "unread" | "archived";
+export type NotificationFilter = "all" | "unread";
 
 export const notificationService = {
   async getNotifications(params?: {
@@ -43,14 +43,20 @@ export const notificationService = {
     limit?: number;
     filter?: NotificationFilter;
   }) {
-    const { data } = await api.get<NotificationListResponse>("/notifications", {
-      params,
+    const res = await api.get("/notifications", {
+      params: {
+        page: params?.page,
+        limit: params?.limit,
+        filter: params?.filter,
+      },
     });
-    return data;
-  },
 
+    return res.data;
+  },
   async getUnreadCount() {
-    const { data } = await api.get<UnreadCountResponse>("/notifications/unread-count");
+    const { data } = await api.get<UnreadCountResponse>(
+      "/notifications/unread-count",
+    );
     return data.data;
   },
 
@@ -71,6 +77,10 @@ export const notificationService = {
 
   async deleteAll() {
     const { data } = await api.delete("/notifications");
+    return data;
+  },
+  async delete(id: string) {
+    const { data } = await api.delete(`/notifications/${id}`);
     return data;
   },
 };

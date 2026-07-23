@@ -1,6 +1,7 @@
+// app\(dashboard)\notifications\page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Bell,
   CheckCheck,
@@ -18,14 +19,26 @@ import { NotificationFilter } from "@/services/notifications/notification.servic
 import { useNotifications } from "@/hooks/notifications/useNotifications";
 import { useUnreadCount } from "@/hooks/notifications/useUnreadCount";
 import { useMarkAllRead } from "@/hooks/notifications/useMarkAllRead";
-import { useDeleteAllNotifications } from "@/hooks/notifications/useDeleteAllNotifications";
 import { NotificationItem } from "@/components/notifications/NotificationItem";
+import { useDeleteAllNotifications } from "@/hooks/notifications/useDeleteAllNotifications";
+import { useDeleteNotification } from "@/hooks/notifications/useDeleteNotification";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export default function NotificationsPage() {
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [page, setPage] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
-
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const { data: notificationsData, isLoading } = useNotifications({
     page,
     limit: 20,
@@ -35,28 +48,26 @@ export default function NotificationsPage() {
   const { data: unreadData } = useUnreadCount();
   const markAllRead = useMarkAllRead();
   const deleteAll = useDeleteAllNotifications();
-
+  const deleteNotification = useDeleteNotification();
   const notifications = notificationsData?.data ?? [];
   const meta = notificationsData?.meta;
+  useEffect(() => {
+    if (!meta) return;
+
+    if (meta.totalPages === 0) {
+      setPage(1);
+      return;
+    }
+
+    if (page > meta.totalPages) {
+      setPage(meta.totalPages);
+    }
+  }, [meta, page]);
   const unreadCount = unreadData?.count ?? 0;
 
   const handleTabChange = (val: string) => {
     setFilter(val as NotificationFilter);
     setPage(1);
-  };
-
-  const handleDeleteAll = async () => {
-    if (!confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
-      return;
-    }
-    setIsDeleting(true);
-    try {
-      await deleteAll.mutateAsync();
-    } catch (err) {
-      console.error("Failed to delete notifications", err);
-    } finally {
-      setIsDeleting(false);
-    }
   };
 
   return (
@@ -69,7 +80,8 @@ export default function NotificationsPage() {
             Notifications Center
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Stay updated with lead activities, status changes, applications, and reminders.
+            Stay updated with lead activities, status changes, applications, and
+            reminders.
           </p>
         </div>
 
@@ -95,16 +107,16 @@ export default function NotificationsPage() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={handleDeleteAll}
-              disabled={isDeleting || deleteAll.isPending}
+              onClick={() => setDeleteAllOpen(true)}
+              disabled={deleteAll.isPending}
               className="gap-2"
             >
-              {isDeleting || deleteAll.isPending ? (
+              {deleteAll.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <Trash2 className="size-4" />
               )}
-              Delete All Notifications
+              Delete All
             </Button>
           )}
         </div>
@@ -112,10 +124,27 @@ export default function NotificationsPage() {
 
       {/* Tabs and Controls */}
       <div className="flex items-center justify-between gap-4">
-        <Tabs defaultValue="all" value={filter} onValueChange={handleTabChange}>
-          <TabsList className="grid grid-cols-3 w-[300px]">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="unread" className="relative">
+        <Tabs value={filter} onValueChange={handleTabChange}>
+          <TabsList className="grid grid-cols-2 w-[220px]">
+            <TabsTrigger
+              value="all"
+              className="
+        data-[state=active]:bg-primary
+        data-[state=active]:text-primary-foreground
+        data-[state=active]:shadow-sm
+    "
+            >
+              All
+            </TabsTrigger>
+            <TabsTrigger
+              value="unread"
+              className="
+        relative
+        data-[state=active]:bg-primary
+        data-[state=active]:text-primary-foreground
+        data-[state=active]:shadow-sm
+    "
+            >
               Unread
               {unreadCount > 0 && (
                 <span className="ml-1.5 rounded-full bg-blue-600 px-1.5 py-0.2 text-[10px] font-bold text-white">
@@ -123,7 +152,6 @@ export default function NotificationsPage() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="archived">Archived</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -145,22 +173,22 @@ export default function NotificationsPage() {
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
             <Inbox className="size-12 stroke-1 text-muted-foreground/50 mb-3" />
-            <h3 className="text-base font-semibold text-foreground">No notifications found</h3>
+            <h3 className="text-base font-semibold text-foreground">
+              No notifications found
+            </h3>
             <p className="text-xs text-muted-foreground mt-1">
               {filter === "unread"
                 ? "You have no unread notifications right now."
-                : filter === "archived"
-                ? "You have no archived notifications."
                 : "You don't have any notifications yet."}
             </p>
           </div>
         ) : (
           <div className="space-y-1 divide-y divide-border/40">
-            {notifications.map((item) => (
+            {notifications.map((item : any) => (
               <NotificationItem
                 key={item.id}
                 notification={item}
-                showArchiveAction={true}
+                showDeleteAction
               />
             ))}
           </div>
@@ -171,7 +199,8 @@ export default function NotificationsPage() {
           <div className="flex items-center justify-between border-t border-border pt-4 mt-4 px-2">
             <p className="text-xs text-muted-foreground">
               Showing page <span className="font-semibold">{meta.page}</span> of{" "}
-              <span className="font-semibold">{meta.totalPages}</span> ({meta.total} total)
+              <span className="font-semibold">{meta.totalPages}</span> (
+              {meta.total} total)
             </p>
 
             <div className="flex items-center gap-2">
@@ -197,6 +226,52 @@ export default function NotificationsPage() {
           </div>
         )}
       </Card>
+      <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all notifications?</AlertDialogTitle>
+
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete all
+              notifications from your account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteAll.isPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              disabled={deleteAll.isPending}
+              onClick={async (e) => {
+                e.preventDefault();
+
+                try {
+                  await deleteAll.mutateAsync();
+
+                  setPage(1);
+
+                  toast.success("All notifications deleted successfully.");
+
+                  setDeleteAllOpen(false);
+                } catch {
+                  toast.error("Failed to delete notifications.");
+                }
+              }}
+            >
+              {deleteAll.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete All"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

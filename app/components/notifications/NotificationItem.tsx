@@ -1,6 +1,7 @@
+// app\components\notifications\NotificationItem.tsx
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   UserPlus,
@@ -12,28 +13,47 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  Archive,
+  Trash2,
   Bell,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { NotificationItem as NotificationItemType } from "@/services/notifications/notification.service";
 import { useMarkRead } from "@/hooks/notifications/useMarkRead";
-import { useArchiveNotification } from "@/hooks/notifications/useArchiveNotification";
+// import { useDeleteNotification } from "@/hooks/notifications/useDeleteNotification";
 import { cn } from "@/lib/utils";
-
+import { useDeleteNotification } from "@/hooks/notifications/useDeleteNotification";
+// import { useDeleteNotification } from "@/hooks/notifications/useDeleteAllNotifications";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 interface NotificationItemProps {
   notification: NotificationItemType;
   onClosePopover?: () => void;
-  showArchiveAction?: boolean;
+  showDeleteAction?: boolean;
 }
 
 function getEventIcon(eventKey: string, entityType: string | null) {
-  if (eventKey.startsWith("LEAD")) return <UserPlus className="size-4 text-blue-500" />;
-  if (eventKey.startsWith("STUDENT")) return <GraduationCap className="size-4 text-emerald-500" />;
-  if (eventKey.startsWith("APPLICATION")) return <FileText className="size-4 text-purple-500" />;
-  if (eventKey.startsWith("LOAN")) return <Landmark className="size-4 text-amber-500" />;
-  if (eventKey.startsWith("VISA")) return <Plane className="size-4 text-cyan-500" />;
-  if (eventKey.startsWith("FOLLOWUP")) return <Clock className="size-4 text-rose-500" />;
+  if (eventKey.startsWith("LEAD"))
+    return <UserPlus className="size-4 text-blue-500" />;
+  if (eventKey.startsWith("STUDENT"))
+    return <GraduationCap className="size-4 text-emerald-500" />;
+  if (eventKey.startsWith("APPLICATION"))
+    return <FileText className="size-4 text-purple-500" />;
+  if (eventKey.startsWith("LOAN"))
+    return <Landmark className="size-4 text-amber-500" />;
+  if (eventKey.startsWith("VISA"))
+    return <Plane className="size-4 text-cyan-500" />;
+  if (eventKey.startsWith("FOLLOWUP"))
+    return <Clock className="size-4 text-rose-500" />;
 
   switch (entityType) {
     case "lead":
@@ -67,29 +87,28 @@ function formatRelativeTime(dateString: string): string {
 export function NotificationItem({
   notification,
   onClosePopover,
-  showArchiveAction = false,
+  showDeleteAction = false,
 }: NotificationItemProps) {
   const router = useRouter();
   const markRead = useMarkRead();
-  const archiveNotification = useArchiveNotification();
-
+  const deleteNotification = useDeleteNotification();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const isUnread = !notification.readAt;
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleClick = () => {
+    if (isDeleting) return;
+
     if (isUnread) {
       markRead.mutate(notification.id);
     }
-    if (onClosePopover) {
-      onClosePopover();
-    }
+
+    onClosePopover?.();
+
     if (notification.actionUrl) {
       router.push(notification.actionUrl);
     }
-  };
-
-  const handleArchive = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    archiveNotification.mutate(notification.id);
   };
 
   return (
@@ -97,7 +116,7 @@ export function NotificationItem({
       onClick={handleClick}
       className={cn(
         "group relative flex items-start gap-3 p-3 text-left transition-colors cursor-pointer rounded-lg border border-transparent hover:bg-accent/60",
-        isUnread ? "bg-accent/30 font-medium" : "opacity-85"
+        isUnread ? "bg-accent/30 font-medium" : "opacity-85",
       )}
     >
       {/* Module Icon Container */}
@@ -121,7 +140,8 @@ export function NotificationItem({
         </p>
 
         {/* Priority Badge if Urgent/High */}
-        {notification.priority === "URGENT" || notification.priority === "HIGH" ? (
+        {notification.priority === "URGENT" ||
+        notification.priority === "HIGH" ? (
           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 dark:text-rose-400 mt-1">
             <AlertCircle className="size-3" /> Priority
           </span>
@@ -136,16 +156,76 @@ export function NotificationItem({
             title="Unread"
           />
         )}
-        {showArchiveAction && (
+        {showDeleteAction && (
           <button
-            onClick={handleArchive}
-            className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground rounded transition-opacity"
-            title="Archive"
+            type="button"
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+
+              setIsDeleting(true);
+
+              try {
+                await deleteNotification.mutateAsync(notification.id);
+                toast.success("Notification deleted.");
+                setDeleteOpen(false);
+              } catch {
+                toast.error("Unable to delete notification.");
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-red-600 transition-all"
+            title="Delete notification"
           >
-            <Archive className="size-3.5" />
+            <Trash2 className="size-4" />
           </button>
         )}
       </div>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete notification?</AlertDialogTitle>
+
+            <AlertDialogDescription>
+              This notification will be permanently deleted. This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteNotification.isPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              disabled={deleteNotification.isPending}
+              onClick={async (e) => {
+                e.preventDefault();
+
+                try {
+                  await deleteNotification.mutateAsync(notification.id);
+
+                  toast.success("Notification deleted.");
+
+                  setDeleteOpen(false);
+                } catch {
+                  toast.error("Unable to delete notification.");
+                }
+              }}
+            >
+              {deleteNotification.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
