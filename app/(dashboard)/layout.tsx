@@ -4,8 +4,9 @@
 
 import { Sidebar } from "./layouts/Sidebar";
 import { Topbar } from "./layouts/Topbar";
-import { useUi } from "@/store";
+import { useAuth, useUi } from "@/store";
 import RouteGuard from "@/components/guards/RouteGuard";
+import { SocketProvider } from "@/components/providers/socket-provider";
 
 export default function DashboardLayout({
   children,
@@ -13,6 +14,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { sidebarCollapsed } = useUi();
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
@@ -25,10 +27,11 @@ export default function DashboardLayout({
           }`}
         >
           <Topbar />
-
-          <main className="min-h-[calc(100vh-64px)] overflow-y-auto p-4 md:p-6">
-            {children}
-          </main>
+          <SocketProvider authenticated={Boolean(user)}>
+            <main className="min-h-[calc(100vh-64px)] overflow-y-auto p-4 md:p-6">
+              {children}
+            </main>
+          </SocketProvider>
         </div>
       </RouteGuard>
     </div>
