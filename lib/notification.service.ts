@@ -417,7 +417,7 @@ export async function notifyLeadCreated(
         branchId: lead.branchId,
         actorId,
 
-        actionUrl: `/leads/${lead.id}`,
+        actionUrl: `/leads`,
 
         priority: "NORMAL",
 
@@ -482,7 +482,7 @@ export async function notifyLeadAssigned(
         branchId: lead.branchId,
         actorId,
 
-        actionUrl: `/leads/${lead.id}`,
+        actionUrl: `/leads`,
 
         priority: "NORMAL",
 
@@ -546,7 +546,7 @@ export async function notifyLeadStatusChanged(
         branchId: lead.branchId,
         actorId,
 
-        actionUrl: `/leads/${lead.id}`,
+        actionUrl: `/leads`,
 
         priority: "NORMAL",
 
@@ -615,7 +615,7 @@ export async function notifyFollowupScheduled(
         branchId: lead.branchId,
         actorId,
 
-        actionUrl: `/leads/${lead.id}`,
+        actionUrl: `/leads`,
 
         priority: "HIGH",
 
@@ -812,7 +812,7 @@ export async function notifyFollowupReminder(lead: {
 
       branchId: lead.branchId,
 
-      actionUrl: `/leads/${lead.id}`,
+      actionUrl: `/leads`,
 
       priority: "HIGH",
 

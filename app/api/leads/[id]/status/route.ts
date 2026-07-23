@@ -1,4 +1,3 @@
-// app\api\leads\[id]\status\route.ts
 import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { badRequest, handleError, notFound, ok } from "@/lib/api-helpers";
@@ -10,6 +9,7 @@ import {
   notifyLeadConverted,
   notifyStudentCreated,
 } from "@/lib/notification.service";
+import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 
 export async function PATCH(
   req: NextRequest,
@@ -25,107 +25,166 @@ export async function PATCH(
     const { id } = await params;
     const body = await req.json();
 
-    if (!body?.status) {
+    if (!body?.status || typeof body.status !== "string") {
       return badRequest("Status is required");
     }
 
-    const lead = await db.lead.findUnique({
-      where: { id },
-      include: {
+    const existingLead = await db.lead.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        status: true,
+        isConverted: true,
+        studentName: true,
+        leadNumber: true,
+        branchId: true,
+        mobileNumber: true,
+        emailId: true,
         counselors: {
-          select: { counselorId: true },
+          select: {
+            counselorId: true,
+            isPrimary: true,
+          },
         },
       },
     });
 
-    if (!lead) {
+    if (!existingLead) {
       return notFound("Lead");
     }
 
-    const oldStatus = lead.status;
-    const counselorId = currentUser.id || null;
-    let createdStudentId: string | null = null;
+    if (body.status === existingLead.status) {
+      return ok(existingLead, "Lead status is already updated");
+    }
 
-    const result = await db.$transaction(
+    const oldStatus = existingLead.status;
+    const isConverting =
+      body.status === "converted" && !existingLead.isConverted;
+
+    const primaryCounselor =
+      existingLead.counselors.find((item) => item.isPrimary) ??
+      existingLead.counselors[0];
+
+    const studentCounselorId = primaryCounselor?.counselorId ?? currentUser.id;
+
+    const transactionResult = await db.$transaction(
       async (tx: Prisma.TransactionClient) => {
         const updatedLead = await tx.lead.update({
-          where: { id },
+          where: {
+            id,
+          },
           data: {
             status: body.status,
+            updatedById: currentUser.id,
             ...(body.status === "converted"
               ? {
                   isConverted: true,
-                  convertedAt: new Date(),
+                  convertedAt:
+                    existingLead.isConverted && !isConverting
+                      ? undefined
+                      : new Date(),
                 }
               : {}),
           },
         });
 
+        let studentId: string | null = null;
+        let studentWasCreated = false;
+
         if (body.status === "converted") {
           const existingStudent = await tx.student.findUnique({
             where: {
-              leadId: lead.id,
+              leadId: existingLead.id,
+            },
+            select: {
+              id: true,
             },
           });
 
-          if (!existingStudent) {
+          if (existingStudent) {
+            studentId = existingStudent.id;
+          } else {
             const newStudent = await tx.student.create({
               data: {
-                leadId: lead.id,
-                branchId: lead.branchId,
-                counselorId,
-                studentName: lead.studentName ?? "",
-                mobileNumber: lead.mobileNumber ?? "",
-                emailId: lead.emailId ?? "",
+                leadId: existingLead.id,
+                branchId: existingLead.branchId,
+                counselorId: studentCounselorId,
+                studentName:
+                  existingLead.studentName || existingLead.leadNumber,
+                mobileNumber: existingLead.mobileNumber ?? "",
+                emailId: existingLead.emailId ?? "",
+              },
+              select: {
+                id: true,
               },
             });
-            createdStudentId = newStudent.id;
-          } else {
-            createdStudentId = existingStudent.id;
+
+            studentId = newStudent.id;
+            studentWasCreated = true;
           }
         }
 
-        return updatedLead;
+        const leadForNotification = {
+          id: existingLead.id,
+          leadNumber: existingLead.leadNumber,
+          studentName: existingLead.studentName,
+          branchId: existingLead.branchId,
+          counselors: existingLead.counselors.map((assignment) => ({
+            counselorId: assignment.counselorId,
+          })),
+        };
+
+        await notifyLeadStatusChanged(
+          leadForNotification,
+          oldStatus,
+          body.status,
+          currentUser.id,
+          tx,
+        );
+
+        if (isConverting && studentId) {
+          await notifyLeadConverted(
+            leadForNotification,
+            studentId,
+            currentUser.id,
+            tx,
+          );
+        }
+
+        if (studentWasCreated && studentId) {
+          await notifyStudentCreated(
+            {
+              id: studentId,
+              studentName: existingLead.studentName || existingLead.leadNumber,
+              branchId: existingLead.branchId,
+              counselorId: studentCounselorId,
+            },
+            currentUser.id,
+            tx,
+          );
+        }
+
+        return {
+          updatedLead,
+          studentId,
+          studentWasCreated,
+        };
       },
     );
 
-    // Fire notification triggers after transaction succeeds
-    const leadForNotify = {
-      id: lead.id,
-      leadNumber: lead.leadNumber,
-      studentName: lead.studentName,
-      branchId: lead.branchId,
-      counselors: lead.counselors,
-    };
+    const accessToken = req.cookies.get("access_token")?.value;
 
-    if (body.status && body.status !== oldStatus) {
-      await notifyLeadStatusChanged(
-        leadForNotify,
-        oldStatus,
-        body.status,
-        currentUser.id,
-      );
-    }
-
-    if (body.status === "converted" && createdStudentId) {
-      await notifyLeadConverted(
-        leadForNotify,
-        createdStudentId,
-        currentUser.id,
-      );
-      await notifyStudentCreated(
-        {
-          id: createdStudentId,
-          studentName: lead.studentName || lead.leadNumber,
-          branchId: lead.branchId,
-          counselorId,
-        },
-        currentUser.id,
-      );
+    if (accessToken) {
+      await triggerNotificationProcessor(accessToken);
     }
 
     return ok(
-      result,
+      {
+        ...transactionResult.updatedLead,
+        studentId: transactionResult.studentId,
+      },
       body.status === "converted"
         ? "Lead converted successfully"
         : "Lead status updated successfully",

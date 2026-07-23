@@ -17,6 +17,7 @@ import {
   notifyLeadAssigned,
   notifyFollowupScheduled,
 } from "@/lib/notification.service";
+import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 
 type Ctx = {
   params: Promise<{
@@ -119,7 +120,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     );
 
     const { id } = await params;
-
     const body = LeadUpdateSchema.parse(await req.json());
 
     const {
@@ -133,7 +133,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     } = body;
 
     const existingLead = await db.lead.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
       select: {
         id: true,
         status: true,
@@ -141,7 +143,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         leadNumber: true,
         branchId: true,
         counselors: {
-          select: { counselorId: true },
+          select: {
+            counselorId: true,
+          },
         },
       },
     });
@@ -150,15 +154,26 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       return notFound("Lead");
     }
 
+    const previousCounselorIds = existingLead.counselors.map(
+      (assignment) => assignment.counselorId,
+    );
+
+    const uniqueCounselorIds =
+      counselorIds !== undefined
+        ? Array.from(new Set(counselorIds))
+        : undefined;
+
+    const newlyAssignedCounselorIds =
+      uniqueCounselorIds?.filter(
+        (counselorId) => !previousCounselorIds.includes(counselorId),
+      ) ?? [];
+
     const lead = await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const updateData: Prisma.LeadUpdateInput = {
         ...leadData,
-
-        // Preserve existing status unless the frontend explicitly changes it
         ...(body.status !== undefined && {
           status: body.status,
         }),
-
         ...(branchId && {
           branch: {
             connect: {
@@ -166,7 +181,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             },
           },
         }),
-
         updatedBy: {
           connect: {
             id: currentUser.id,
@@ -182,22 +196,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         where: {
           id,
         },
-
         data: updateData,
       });
 
-      /*
-       * Update assigned counselors only when counselorIds
-       * is explicitly provided in the PATCH request.
-       */
-      if (counselorIds !== undefined) {
+      if (uniqueCounselorIds !== undefined) {
         await tx.leadCounselor.deleteMany({
           where: {
             leadId: id,
           },
         });
-
-        const uniqueCounselorIds = Array.from(new Set(counselorIds));
 
         if (uniqueCounselorIds.length > 0) {
           await tx.leadCounselor.createMany({
@@ -211,16 +218,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         }
       }
 
-      /*
-       * Update English proficiency tests only when
-       * englishTests is explicitly provided.
-       *
-       * Current strategy:
-       * 1. Delete existing tests.
-       * 2. Create the latest tests received from frontend.
-       *
-       * Everything happens inside one transaction.
-       */
       if (englishTests !== undefined) {
         await tx.leadEnglishTest.deleteMany({
           where: {
@@ -232,47 +229,33 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           await tx.leadEnglishTest.createMany({
             data: englishTests.map((test) => ({
               leadId: id,
-
               testType: test.testType,
-
               totalScore: test.totalScore,
-
               listeningScore: test.listeningScore,
-
               readingScore: test.readingScore,
-
               writingScore: test.writingScore,
-
               speakingScore: test.speakingScore,
             })),
           });
         }
       }
 
-      /*
-       * Create follow-up timeline entry.
-       */
       if (followupDate || followupNote?.trim()) {
         await tx.leadTimeline.create({
           data: {
             leadId: id,
-
             description: followupNote?.trim() || "Follow-up scheduled",
-
             nextFollowup: followupDate ? new Date(followupDate) : null,
-
             createdById: currentUser.id,
-
             updatedById: currentUser.id,
           },
         });
       }
 
-      return tx.lead.findUnique({
+      const updatedLead = await tx.lead.findUniqueOrThrow({
         where: {
           id,
         },
-
         include: {
           branch: {
             select: {
@@ -281,11 +264,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               code: true,
             },
           },
-
           counselors: {
             select: {
               isPrimary: true,
-
+              counselorId: true,
               counselor: {
                 select: {
                   id: true,
@@ -294,13 +276,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               },
             },
           },
-
           englishTests: {
             orderBy: {
               createdAt: "asc",
             },
           },
-
           timelines: {
             include: {
               createdBy: {
@@ -309,7 +289,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                   name: true,
                 },
               },
-
               updatedBy: {
                 select: {
                   id: true,
@@ -317,12 +296,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                 },
               },
             },
-
             orderBy: {
               createdAt: "desc",
             },
           },
-
           _count: {
             select: {
               timelines: true,
@@ -330,37 +307,53 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           },
         },
       });
+
+      const leadForNotification = {
+        id: updatedLead.id,
+        leadNumber: updatedLead.leadNumber,
+        studentName: updatedLead.studentName,
+        branchId: updatedLead.branchId,
+        counselors: updatedLead.counselors.map((assignment) => ({
+          counselorId: assignment.counselorId,
+        })),
+      };
+
+      if (body.status !== undefined && body.status !== existingLead.status) {
+        await notifyLeadStatusChanged(
+          leadForNotification,
+          existingLead.status,
+          body.status,
+          currentUser.id,
+          tx,
+        );
+      }
+
+      if (newlyAssignedCounselorIds.length > 0) {
+        await notifyLeadAssigned(
+          leadForNotification,
+          newlyAssignedCounselorIds,
+          currentUser.id,
+          tx,
+        );
+      }
+
+      if (followupDate) {
+        await notifyFollowupScheduled(
+          leadForNotification,
+          new Date(followupDate),
+          followupNote?.trim(),
+          currentUser.id,
+          tx,
+        );
+      }
+
+      return updatedLead;
     });
 
-    // Fire-and-forget notifications after transaction succeeds
-    const leadForNotify = {
-      id,
-      leadNumber: existingLead.leadNumber,
-      studentName: existingLead.studentName,
-      branchId: existingLead.branchId,
-      counselors: existingLead.counselors,
-    };
+    const accessToken = req.cookies.get("access_token")?.value;
 
-    if (body.status !== undefined && body.status !== existingLead.status) {
-      await notifyLeadStatusChanged(
-        leadForNotify,
-        existingLead.status,
-        body.status,
-        currentUser.id,
-      );
-    }
-
-    if (counselorIds !== undefined && counselorIds.length > 0) {
-      await notifyLeadAssigned(leadForNotify, counselorIds, currentUser.id);
-    }
-
-    if (followupDate || followupNote) {
-      await notifyFollowupScheduled(
-        leadForNotify,
-        followupDate || new Date(),
-        followupNote,
-        currentUser.id,
-      );
+    if (accessToken) {
+      await triggerNotificationProcessor(accessToken);
     }
 
     return ok(lead, "Lead updated successfully");
