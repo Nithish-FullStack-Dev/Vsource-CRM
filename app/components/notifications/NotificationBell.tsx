@@ -184,7 +184,7 @@ export function NotificationBell() {
             </div>
           ) : (
             <div className="space-y-1 p-2">
-              {notifications.map((notification) => (
+              {notifications.map((notification: any) => (
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
