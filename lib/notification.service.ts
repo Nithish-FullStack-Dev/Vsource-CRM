@@ -1,27 +1,37 @@
 /**
  * lib/notification.service.ts
- * ─────────────────────────────────────────────────────────────────────────────
- * Centralized notification service. Every module calls these helpers instead
- * of writing notification logic inline. All functions write to NotificationOutbox
- * (transactional outbox pattern) and Notification table, fire-and-forget so that
- * notification failures can never break core business operations.
- * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Central notification service for the CRM.
+ *
+ * Recipient rules:
+ * - Super Admin: receives every notification.
+ * - Director: receives every notification.
+ * - Branch Manager: receives notifications from assigned branches.
+ * - Other roles: receive notifications for actions they performed.
+ * - Explicit recipients are added only for assignment/reminder use cases.
+ *
+ * Architecture:
+ * - This service writes only PENDING NotificationOutbox rows.
+ * - The notification processor creates the final Notification record.
+ * - The processor then emits notification:new through Socket.IO.
  */
 
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
+
 import db from "@/lib/prisma";
 import { ROLES } from "@/lib/rbac";
 import { NotificationPriority, Prisma } from "@/generated/prisma/client";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Event types
+// -----------------------------------------------------------------------------
 
 export type NotificationEventKey =
   | "LEAD_CREATED"
   | "LEAD_ASSIGNED"
   | "LEAD_STATUS_CHANGED"
   | "LEAD_CONVERTED"
+  | "FOLLOWUP_SCHEDULED"
   | "FOLLOWUP_REMINDER"
   | "STUDENT_CREATED"
   | "APPLICATION_SUBMITTED"
@@ -43,34 +53,84 @@ export interface RecipientInfo {
 
 export interface RoleBasedNotificationPayload {
   eventKey: NotificationEventKey;
-  getTitles: (roleName: string) => { title: string; message?: string };
+
+  getTitles: (roleName: string) => {
+    title: string;
+    message?: string;
+  };
+
   defaultMessage: string;
+
   entityType: string;
   entityId: string;
+
   branchId?: string;
   actorId?: string;
+
   actionUrl?: string;
   priority?: NotificationPriority;
+
   metadata?: Record<string, unknown>;
+
+  /**
+   * Optional stable key for events that must not be repeated.
+   *
+   * The recipient ID is automatically appended.
+   */
+  dedupeKey?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+type NotificationDbClient = typeof db | Prisma.TransactionClient;
+
+// -----------------------------------------------------------------------------
+// Role helpers
+// -----------------------------------------------------------------------------
 
 export function isGlobalAdminRole(roleName: string): boolean {
-  const norm = (roleName || "").toUpperCase().replace(/\s+|_/g, "");
-  return norm === "SUPERADMIN" || norm === "DIRECTOR";
+  const normalized = roleName
+    .trim()
+    .toUpperCase()
+    .replace(/[\s_-]+/g, "");
+
+  return normalized === "SUPERADMIN" || normalized === "DIRECTOR";
 }
 
-async function getActorAndBranchName(actorId?: string, branchId?: string) {
+// -----------------------------------------------------------------------------
+// Database helpers
+// -----------------------------------------------------------------------------
+
+async function getActorAndBranchName(
+  actorId?: string,
+  branchId?: string,
+  tx?: Prisma.TransactionClient,
+): Promise<{
+  actorName: string;
+  branchName: string;
+}> {
+  const client: NotificationDbClient = tx ?? db;
+
   const [actor, branch] = await Promise.all([
     actorId
-      ? db.user.findUnique({ where: { id: actorId }, select: { name: true } })
-      : null,
+      ? client.user.findUnique({
+          where: {
+            id: actorId,
+          },
+          select: {
+            name: true,
+          },
+        })
+      : Promise.resolve(null),
+
     branchId
-      ? db.branch.findUnique({ where: { id: branchId }, select: { name: true } })
-      : null,
+      ? client.branch.findUnique({
+          where: {
+            id: branchId,
+          },
+          select: {
+            name: true,
+          },
+        })
+      : Promise.resolve(null),
   ]);
 
   return {
@@ -80,58 +140,118 @@ async function getActorAndBranchName(actorId?: string, branchId?: string) {
 }
 
 /**
- * Resolves all recipients for a notification:
- * - Super Admins and Directors get ALL notifications.
- * - Branch Managers get notifications from their assigned branches only.
- * - Counsellors/others passed via assignedUserIds.
- * - The creator (actorId) is ALSO included as a recipient if provided.
+ * Resolves the users who should receive one notification event.
+ *
+ * Global:
+ * - Super Admin
+ * - Director
+ *
+ * Branch scoped:
+ * - Branch Managers assigned to the event branch
+ *
+ * Personal:
+ * - The actor who performed the action
+ * - Explicit recipients used for assignment/reminder events
  */
 async function resolveRecipients(
   branchId?: string,
-  assignedUserIds: string[] = [],
   actorId?: string,
+  explicitRecipientIds: string[] = [],
+  tx?: Prisma.TransactionClient,
 ): Promise<RecipientInfo[]> {
+  const client: NotificationDbClient = tx ?? db;
+
   const recipientMap = new Map<string, string>();
 
-  // 1. Super Admins & Directors
-  const globalUsers = await db.user.findMany({
+  // ---------------------------------------------------------------------------
+  // 1. Super Admin and Director receive every notification
+  // ---------------------------------------------------------------------------
+
+  const globalUsers = await client.user.findMany({
     where: {
       role: {
         name: {
-          in: [ROLES.SUPER_ADMIN, ROLES.DIRECTOR, "Super Admin", "Director", "SuperAdmin"],
+          in: [ROLES.SUPER_ADMIN, ROLES.DIRECTOR],
         },
       },
     },
-    select: { id: true, role: { select: { name: true } } },
-  });
-  globalUsers.forEach((u) => recipientMap.set(u.id, u.role.name));
-
-  // 2. Branch Managers for this branch
-  if (branchId) {
-    const branchManagers = await db.user.findMany({
-      where: {
-        role: {
-          name: {
-            in: [ROLES.BRANCH_MANAGER, "Branch Manager", "Manager"],
-          },
-        },
-        branches: {
-          some: { id: branchId },
+    select: {
+      id: true,
+      role: {
+        select: {
+          name: true,
         },
       },
-      select: { id: true, role: { select: { name: true } } },
-    });
-    branchManagers.forEach((u) => recipientMap.set(u.id, u.role.name));
+    },
+  });
+
+  for (const user of globalUsers) {
+    recipientMap.set(user.id, user.role.name);
   }
 
-  // 3. Additional assigned users and actor
-  const extraIds = [...assignedUserIds, ...(actorId ? [actorId] : [])].filter(Boolean);
-  if (extraIds.length > 0) {
-    const extraUsers = await db.user.findMany({
-      where: { id: { in: extraIds } },
-      select: { id: true, role: { select: { name: true } } },
+  // ---------------------------------------------------------------------------
+  // 2. Branch Managers receive notifications for assigned branches
+  // ---------------------------------------------------------------------------
+
+  if (branchId) {
+    const branchManagers = await client.user.findMany({
+      where: {
+        role: {
+          name: ROLES.BRANCH_MANAGER,
+        },
+        branches: {
+          some: {
+            id: branchId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
-    extraUsers.forEach((u) => recipientMap.set(u.id, u.role.name));
+
+    for (const manager of branchManagers) {
+      recipientMap.set(manager.id, manager.role.name);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. Actor and explicit recipients
+  // ---------------------------------------------------------------------------
+
+  const personalRecipientIds = Array.from(
+    new Set(
+      [actorId, ...explicitRecipientIds].filter(
+        (id): id is string => typeof id === "string" && id.length > 0,
+      ),
+    ),
+  );
+
+  if (personalRecipientIds.length > 0) {
+    const personalRecipients = await client.user.findMany({
+      where: {
+        id: {
+          in: personalRecipientIds,
+        },
+      },
+      select: {
+        id: true,
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    for (const user of personalRecipients) {
+      recipientMap.set(user.id, user.role.name);
+    }
   }
 
   return Array.from(recipientMap.entries()).map(([id, roleName]) => ({
@@ -140,138 +260,176 @@ async function resolveRecipients(
   }));
 }
 
-// ---------------------------------------------------------------------------
-// Internal: write outbox entries and create live Notification records
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Transactional outbox writer
+// -----------------------------------------------------------------------------
 
 async function writeOutboxEntries(
   recipients: RecipientInfo[],
   payload: RoleBasedNotificationPayload,
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
-  if (!recipients || recipients.length === 0) return;
+  if (recipients.length === 0) {
+    return;
+  }
 
-  const client = tx ?? db;
+  const client: NotificationDbClient = tx ?? db;
+
   const now = new Date();
+
+  /**
+   * One event ID is shared by all recipients of this invocation.
+   *
+   * The processor can use this value when creating final Notification rows.
+   */
+  const eventId = randomUUID();
 
   const outboxRows = recipients.map(({ id: recipientId, roleName }) => {
     const { title, message } = payload.getTitles(roleName);
-    const finalMessage = message ?? payload.defaultMessage;
-    const id = randomUUID();
-    const dedupeKey = `${payload.eventKey}:${payload.entityId}:${recipientId}:${now.getTime()}`;
 
-    return {
-      id,
-      eventKey: payload.eventKey,
-      aggregateType: payload.entityType,
-      aggregateId: payload.entityId,
-      actorId: payload.actorId ?? null,
-      branchId: payload.branchId ?? null,
-      dedupeKey,
-      payload: {
-        recipientId,
-        title,
-        message: finalMessage,
-        actionUrl: payload.actionUrl ?? null,
-        priority: payload.priority ?? "NORMAL",
-        metadata: payload.metadata ?? {},
-      } as Prisma.InputJsonValue,
-      status: "PROCESSED" as const,
-      processedAt: now,
-      updatedAt: now,
-    };
-  });
-
-  const notificationRows = recipients.map(({ id: recipientId, roleName }) => {
-    const { title, message } = payload.getTitles(roleName);
     const finalMessage = message ?? payload.defaultMessage;
-    const eventId = randomUUID();
+
+    const baseDedupeKey = payload.dedupeKey ?? eventId;
+
     return {
       id: randomUUID(),
-      eventId,
+
       eventKey: payload.eventKey,
-      recipientId,
+
+      aggregateType: payload.entityType,
+
+      aggregateId: payload.entityId,
+
       actorId: payload.actorId ?? null,
+
       branchId: payload.branchId ?? null,
-      entityType: payload.entityType,
-      entityId: payload.entityId,
-      title,
-      message: finalMessage,
-      actionUrl: payload.actionUrl ?? null,
-      icon: null,
-      priority: payload.priority ?? "NORMAL",
-      metadata: (payload.metadata as Prisma.InputJsonValue) ?? null,
-      readAt: null,
-      archivedAt: null,
+
+      dedupeKey: `${baseDedupeKey}:${recipientId}`,
+
+      payload: {
+        eventId,
+        recipientId,
+
+        title,
+        message: finalMessage,
+
+        actionUrl: payload.actionUrl ?? null,
+
+        priority: payload.priority ?? "NORMAL",
+
+        metadata: payload.metadata ?? {},
+      } as Prisma.InputJsonValue,
+
+      status: "PENDING" as const,
+
+      attempts: 0,
+
+      nextAttemptAt: now,
+
+      processedAt: null,
+
+      lockedAt: null,
+      lockedBy: null,
+
+      lastError: null,
+
       createdAt: now,
       updatedAt: now,
     };
   });
 
-  await Promise.all([
-    (client as typeof db).notificationOutbox.createMany({
-      data: outboxRows,
-      skipDuplicates: true,
-    }),
-    (client as typeof db).notification.createMany({
-      data: notificationRows,
-      skipDuplicates: true,
-    }),
-  ]);
+  await client.notificationOutbox.createMany({
+    data: outboxRows,
+    skipDuplicates: true,
+  });
 }
 
-// ---------------------------------------------------------------------------
-// PUBLIC API — exported helpers called by route handlers
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Error helper
+// -----------------------------------------------------------------------------
 
-/**
- * Notify: New Lead Created
- */
+function handleNotificationError(
+  methodName: string,
+  error: unknown,
+  tx?: Prisma.TransactionClient,
+): void {
+  console.error(`[NotificationService] ${methodName} failed:`, error);
+
+  /**
+   * When notification creation is part of a Prisma transaction,
+   * allow the transaction to roll back.
+   */
+  if (tx) {
+    throw error;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Lead notifications
+// -----------------------------------------------------------------------------
+
 export async function notifyLeadCreated(
   lead: {
     id: string;
     leadNumber: string;
     studentName?: string | null;
     branchId: string;
-    counselors?: Array<{ counselorId: string }>;
+    counselors?: Array<{
+      counselorId: string;
+    }>;
   },
   actorId: string,
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const assignedCounselorIds = (lead.counselors || []).map((c) => c.counselorId);
-    const recipients = await resolveRecipients(lead.branchId, assignedCounselorIds, actorId);
-    const { actorName, branchName } = await getActorAndBranchName(actorId, lead.branchId);
+    /**
+     * Regular users receive events they created.
+     * Global users and matching branch managers are included automatically.
+     */
+    const recipients = await resolveRecipients(lead.branchId, actorId, [], tx);
 
-    const studentLabel = lead.studentName || "A lead";
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      lead.branchId,
+      tx,
+    );
+
+    const leadLabel = getLeadLabel(lead);
 
     await writeOutboxEntries(
       recipients,
       {
         eventKey: "LEAD_CREATED",
+
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `New Lead Created by ${actorName}${branchName ? ` (${branchName})` : ""}`
-            : `New Lead Created by ${actorName}`,
+            ? `New Lead Created by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : "Lead Created Successfully",
         }),
-        defaultMessage: `${studentLabel} (${lead.leadNumber}) has been created.`,
+
+        defaultMessage: `${leadLabel} has been created by ${actorName}.`,
+
         entityType: "lead",
         entityId: lead.id,
+
         branchId: lead.branchId,
         actorId,
+
         actionUrl: `/leads/${lead.id}`,
+
         priority: "NORMAL",
+
+        dedupeKey: `LEAD_CREATED:${lead.id}`,
       },
       tx,
     );
-  } catch (err) {
-    console.error("[NotificationService] notifyLeadCreated failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyLeadCreated", error, tx);
   }
 }
 
-/**
- * Notify: Lead Assigned / Reassigned
- */
 export async function notifyLeadAssigned(
   lead: {
     id: string;
@@ -284,43 +442,70 @@ export async function notifyLeadAssigned(
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const recipients = await resolveRecipients(lead.branchId, newCounselorIds, actorId);
-    const { actorName, branchName } = await getActorAndBranchName(actorId, lead.branchId);
+    /**
+     * The assigning user receives their own action.
+     * Newly assigned counsellors are explicit recipients.
+     */
+    const recipients = await resolveRecipients(
+      lead.branchId,
+      actorId,
+      newCounselorIds,
+      tx,
+    );
+
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      lead.branchId,
+      tx,
+    );
+
+    const leadLabel = getLeadLabel(lead);
 
     await writeOutboxEntries(
       recipients,
       {
         eventKey: "LEAD_ASSIGNED",
+
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Lead Assigned by ${actorName}${branchName ? ` (${branchName})` : ""}`
-            : `Lead Assigned by ${actorName}`,
+            ? `Lead Assigned by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : "Lead Assigned",
         }),
-        defaultMessage: `Lead ${lead.leadNumber}${lead.studentName ? ` — ${lead.studentName}` : ""} has been assigned.`,
+
+        defaultMessage: `${leadLabel} has been assigned by ${actorName}.`,
+
         entityType: "lead",
         entityId: lead.id,
+
         branchId: lead.branchId,
         actorId,
+
         actionUrl: `/leads/${lead.id}`,
+
         priority: "NORMAL",
+
+        metadata: {
+          counselorIds: Array.from(new Set(newCounselorIds)),
+        },
       },
       tx,
     );
-  } catch (err) {
-    console.error("[NotificationService] notifyLeadAssigned failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyLeadAssigned", error, tx);
   }
 }
 
-/**
- * Notify: Lead Status Changed
- */
 export async function notifyLeadStatusChanged(
   lead: {
     id: string;
     leadNumber: string;
     studentName?: string | null;
     branchId: string;
-    counselors?: Array<{ counselorId: string }>;
+    counselors?: Array<{
+      counselorId: string;
+    }>;
   },
   oldStatus: string,
   newStatus: string,
@@ -328,139 +513,196 @@ export async function notifyLeadStatusChanged(
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const assignedCounselorIds = (lead.counselors || []).map((c) => c.counselorId);
-    const recipients = await resolveRecipients(lead.branchId, assignedCounselorIds, actorId);
-    const { actorName, branchName } = await getActorAndBranchName(actorId, lead.branchId);
+    const recipients = await resolveRecipients(lead.branchId, actorId, [], tx);
 
-    const studentLabel = lead.studentName || lead.leadNumber;
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      lead.branchId,
+      tx,
+    );
+
+    const leadLabel = getLeadLabel(lead);
 
     await writeOutboxEntries(
       recipients,
       {
         eventKey: "LEAD_STATUS_CHANGED",
+
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Lead Status Changed by ${actorName}${branchName ? ` (${branchName})` : ""}`
-            : `Lead Status Changed by ${actorName}`,
+            ? `Lead Status Changed by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : "Lead Status Updated",
         }),
-        defaultMessage: `${studentLabel} (${lead.leadNumber}) status updated from ${capitalize(oldStatus)} to ${capitalize(newStatus)}.`,
+
+        defaultMessage: `${leadLabel} status changed from ${formatStatus(
+          oldStatus,
+        )} to ${formatStatus(newStatus)} by ${actorName}.`,
+
         entityType: "lead",
         entityId: lead.id,
+
         branchId: lead.branchId,
         actorId,
+
         actionUrl: `/leads/${lead.id}`,
+
         priority: "NORMAL",
-        metadata: { oldStatus, newStatus },
+
+        metadata: {
+          oldStatus,
+          newStatus,
+        },
       },
       tx,
     );
-  } catch (err) {
-    console.error("[NotificationService] notifyLeadStatusChanged failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyLeadStatusChanged", error, tx);
   }
 }
 
-/**
- * Notify: Follow-up Scheduled with Note & Date
- */
 export async function notifyFollowupScheduled(
   lead: {
     id: string;
     leadNumber: string;
     studentName?: string | null;
     branchId: string;
-    counselors?: Array<{ counselorId: string }>;
+    counselors?: Array<{
+      counselorId: string;
+    }>;
   },
   followupDate: Date | string,
-  followupNote: string | undefined | null,
+  followupNote: string | null | undefined,
   actorId: string,
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const assignedCounselorIds = (lead.counselors || []).map((c) => c.counselorId);
-    const recipients = await resolveRecipients(lead.branchId, assignedCounselorIds, actorId);
-    const { actorName, branchName } = await getActorAndBranchName(actorId, lead.branchId);
+    const recipients = await resolveRecipients(lead.branchId, actorId, [], tx);
 
-    const dateStr =
-      typeof followupDate === "string"
-        ? followupDate.split("T")[0]
-        : followupDate.toISOString().split("T")[0];
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      lead.branchId,
+      tx,
+    );
 
-    const studentLabel = lead.studentName || lead.leadNumber;
-    const noteText = followupNote?.trim() ? ` Note: "${followupNote.trim()}"` : "";
+    const dateString = toIndiaDateString(followupDate);
+
+    const leadLabel = getLeadLabel(lead);
+
+    const trimmedNote = followupNote?.trim();
+
+    const noteMessage = trimmedNote ? ` Note: "${trimmedNote}"` : "";
 
     await writeOutboxEntries(
       recipients,
       {
-        eventKey: "FOLLOWUP_REMINDER",
+        eventKey: "FOLLOWUP_SCHEDULED",
+
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Follow-up Scheduled by ${actorName}${branchName ? ` (${branchName})` : ""}`
-            : `Follow-up Scheduled by ${actorName}`,
+            ? `Follow-up Scheduled by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : "Follow-up Scheduled",
         }),
-        defaultMessage: `Follow-up for ${studentLabel} (${lead.leadNumber}) set for ${dateStr}.${noteText}`,
+
+        defaultMessage: `Follow-up for ${leadLabel} is scheduled for ${dateString}.${noteMessage}`,
+
         entityType: "lead",
         entityId: lead.id,
+
         branchId: lead.branchId,
         actorId,
+
         actionUrl: `/leads/${lead.id}`,
+
         priority: "HIGH",
-        metadata: { followupDate: dateStr, followupNote },
+
+        metadata: {
+          followupDate: dateString,
+
+          followupNote: trimmedNote ?? null,
+        },
+
+        dedupeKey: `FOLLOWUP_SCHEDULED:${lead.id}:${dateString}`,
       },
       tx,
     );
-  } catch (err) {
-    console.error("[NotificationService] notifyFollowupScheduled failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyFollowupScheduled", error, tx);
   }
 }
 
-/**
- * Notify: Lead Converted to Student
- */
 export async function notifyLeadConverted(
   lead: {
     id: string;
     leadNumber: string;
     studentName?: string | null;
     branchId: string;
-    counselors?: Array<{ counselorId: string }>;
+    counselors?: Array<{
+      counselorId: string;
+    }>;
   },
   studentId: string,
   actorId: string,
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const assignedCounselorIds = (lead.counselors || []).map((c) => c.counselorId);
-    const recipients = await resolveRecipients(lead.branchId, assignedCounselorIds, actorId);
-    const { actorName, branchName } = await getActorAndBranchName(actorId, lead.branchId);
-    const label = lead.studentName ?? lead.leadNumber;
+    const recipients = await resolveRecipients(lead.branchId, actorId, [], tx);
+
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      lead.branchId,
+      tx,
+    );
+
+    const leadLabel = getLeadLabel(lead);
 
     await writeOutboxEntries(
       recipients,
       {
         eventKey: "LEAD_CONVERTED",
+
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Lead Converted by ${actorName}${branchName ? ` (${branchName})` : ""}`
-            : `Lead Converted by ${actorName}`,
+            ? `Lead Converted by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : "Lead Converted",
         }),
-        defaultMessage: `${label} (${lead.leadNumber}) has been converted to a student profile.`,
+
+        defaultMessage: `${leadLabel} has been converted to a student profile by ${actorName}.`,
+
         entityType: "student",
         entityId: studentId,
+
         branchId: lead.branchId,
         actorId,
+
         actionUrl: `/student-profiles/${studentId}`,
+
         priority: "HIGH",
+
+        metadata: {
+          leadId: lead.id,
+          leadNumber: lead.leadNumber,
+          studentId,
+        },
+
+        dedupeKey: `LEAD_CONVERTED:${lead.id}:${studentId}`,
       },
       tx,
     );
-  } catch (err) {
-    console.error("[NotificationService] notifyLeadConverted failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyLeadConverted", error, tx);
   }
 }
 
-/**
- * Notify: Student Created (called after lead conversion)
- */
+// -----------------------------------------------------------------------------
+// Student notifications
+// -----------------------------------------------------------------------------
+
 export async function notifyStudentCreated(
   student: {
     id: string;
@@ -472,69 +714,133 @@ export async function notifyStudentCreated(
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const assignedCounselorIds = student.counselorId ? [student.counselorId] : [];
-    const recipients = await resolveRecipients(student.branchId, assignedCounselorIds, actorId);
-    const { actorName, branchName } = await getActorAndBranchName(actorId, student.branchId);
+    const recipients = await resolveRecipients(
+      student.branchId,
+      actorId,
+      [],
+      tx,
+    );
+
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      student.branchId,
+      tx,
+    );
 
     await writeOutboxEntries(
       recipients,
       {
         eventKey: "STUDENT_CREATED",
+
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Student Created by ${actorName}${branchName ? ` (${branchName})` : ""}`
-            : `Student Created by ${actorName}`,
+            ? `Student Created by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : "Student Profile Created",
         }),
-        defaultMessage: `${student.studentName} has been added as a student profile.`,
+
+        defaultMessage: `${student.studentName} has been added as a student by ${actorName}.`,
+
         entityType: "student",
         entityId: student.id,
+
         branchId: student.branchId,
+
         actorId,
+
         actionUrl: `/student-profiles/${student.id}`,
+
         priority: "NORMAL",
+
+        dedupeKey: `STUDENT_CREATED:${student.id}`,
       },
       tx,
     );
-  } catch (err) {
-    console.error("[NotificationService] notifyStudentCreated failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyStudentCreated", error, tx);
   }
 }
 
-/**
- * Notify: Follow-up Reminder (called by cron)
- */
+// -----------------------------------------------------------------------------
+// Follow-up reminder generated by cron
+// -----------------------------------------------------------------------------
+
 export async function notifyFollowupReminder(lead: {
   id: string;
   leadNumber: string;
   studentName?: string | null;
   branchId: string;
-  counselors: Array<{ counselorId: string }>;
+  nextFollowup?: Date | string | null;
+  counselors: Array<{
+    counselorId: string;
+  }>;
 }): Promise<void> {
   try {
-    const assignedCounselorIds = lead.counselors.map((c) => c.counselorId);
-    const recipients = await resolveRecipients(lead.branchId, assignedCounselorIds);
-    const today = toDateString(new Date());
-    const label = lead.studentName ?? lead.leadNumber;
+    const assignedCounselorIds = lead.counselors.map(
+      (counselor) => counselor.counselorId,
+    );
+
+    /**
+     * No actor exists because cron generated this event.
+     *
+     * Assigned counsellors are explicitly included.
+     */
+    const recipients = await resolveRecipients(
+      lead.branchId,
+      undefined,
+      assignedCounselorIds,
+    );
+
+    const followupDate = lead.nextFollowup
+      ? toIndiaDateString(lead.nextFollowup)
+      : toIndiaDateString(new Date());
+
+    const leadLabel = getLeadLabel(lead);
 
     await writeOutboxEntries(recipients, {
       eventKey: "FOLLOWUP_REMINDER",
-      getTitles: () => ({ title: "Today's Follow-up Reminder" }),
-      defaultMessage: `${label} (${lead.leadNumber}) is scheduled for follow-up today.`,
+
+      getTitles: () => ({
+        title: "Today's Follow-up Reminder",
+      }),
+
+      defaultMessage: `${leadLabel} is scheduled for follow-up today.`,
+
       entityType: "lead",
       entityId: lead.id,
+
       branchId: lead.branchId,
+
       actionUrl: `/leads/${lead.id}`,
+
       priority: "HIGH",
-      metadata: { followupDate: today },
+
+      metadata: {
+        followupDate,
+      },
+
+      /**
+       * This prevents the same cron reminder from being created
+       * more than once per lead, date and recipient.
+       */
+      dedupeKey: `FOLLOWUP_REMINDER:${lead.id}:${followupDate}`,
     });
-  } catch (err) {
-    console.error("[NotificationService] notifyFollowupReminder failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyFollowupReminder", error);
   }
 }
 
-/**
- * Notify: Application Event
- */
+// -----------------------------------------------------------------------------
+// Application notifications
+// -----------------------------------------------------------------------------
+
+type ApplicationEvent =
+  | "APPLICATION_SUBMITTED"
+  | "APPLICATION_OFFER_RECEIVED"
+  | "APPLICATION_CAS_RECEIVED"
+  | "APPLICATION_REJECTED";
+
 export async function notifyApplicationEvent(
   student: {
     id: string;
@@ -543,56 +849,94 @@ export async function notifyApplicationEvent(
     counselorId?: string | null;
   },
   applicationId: string,
-  event: "APPLICATION_SUBMITTED" | "APPLICATION_OFFER_RECEIVED" | "APPLICATION_CAS_RECEIVED" | "APPLICATION_REJECTED",
+  event: ApplicationEvent,
   actorId: string,
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const assignedCounselorIds = student.counselorId ? [student.counselorId] : [];
-    const recipients = await resolveRecipients(student.branchId, assignedCounselorIds, actorId);
-    const { actorName, branchName } = await getActorAndBranchName(actorId, student.branchId);
+    const recipients = await resolveRecipients(
+      student.branchId,
+      actorId,
+      [],
+      tx,
+    );
 
-    const messages: Record<typeof event, string> = {
-      APPLICATION_SUBMITTED: `Application submitted for ${student.studentName}.`,
-      APPLICATION_OFFER_RECEIVED: `Offer letter received for ${student.studentName}.`,
-      APPLICATION_CAS_RECEIVED: `CAS received for ${student.studentName}.`,
-      APPLICATION_REJECTED: `Application rejected for ${student.studentName}.`,
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      student.branchId,
+      tx,
+    );
+
+    const titles: Record<ApplicationEvent, string> = {
+      APPLICATION_SUBMITTED: "Application Submitted",
+
+      APPLICATION_OFFER_RECEIVED: "Offer Received",
+
+      APPLICATION_CAS_RECEIVED: "CAS Received",
+
+      APPLICATION_REJECTED: "Application Rejected",
     };
 
-    const titles: Record<typeof event, string> = {
-      APPLICATION_SUBMITTED: "Application Submitted",
-      APPLICATION_OFFER_RECEIVED: "Offer Received",
-      APPLICATION_CAS_RECEIVED: "CAS Received",
-      APPLICATION_REJECTED: "Application Rejected",
+    const messages: Record<ApplicationEvent, string> = {
+      APPLICATION_SUBMITTED: `Application submitted for ${student.studentName}.`,
+
+      APPLICATION_OFFER_RECEIVED: `Offer letter received for ${student.studentName}.`,
+
+      APPLICATION_CAS_RECEIVED: `CAS received for ${student.studentName}.`,
+
+      APPLICATION_REJECTED: `Application rejected for ${student.studentName}.`,
     };
 
     await writeOutboxEntries(
       recipients,
       {
         eventKey: event,
+
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `${titles[event]} by ${actorName}${branchName ? ` (${branchName})` : ""}`
-            : `${titles[event]} by ${actorName}`,
+            ? `${titles[event]} by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : titles[event],
         }),
-        defaultMessage: messages[event],
+
+        defaultMessage: `${messages[event]} Updated by ${actorName}.`,
+
         entityType: "application",
+
         entityId: applicationId,
+
         branchId: student.branchId,
+
         actorId,
+
         actionUrl: `/student-profiles/${student.id}`,
+
         priority: event === "APPLICATION_REJECTED" ? "HIGH" : "NORMAL",
+
+        metadata: {
+          studentId: student.id,
+
+          applicationId,
+        },
       },
       tx,
     );
-  } catch (err) {
-    console.error("[NotificationService] notifyApplicationEvent failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyApplicationEvent", error, tx);
   }
 }
 
-/**
- * Notify: Loan Event
- */
+// -----------------------------------------------------------------------------
+// Loan notifications
+// -----------------------------------------------------------------------------
+
+type LoanEvent =
+  | "LOAN_CREATED"
+  | "LOAN_APPROVED"
+  | "LOAN_REJECTED"
+  | "LOAN_DISBURSED";
+
 export async function notifyLoanEvent(
   loan: {
     id: string;
@@ -601,56 +945,104 @@ export async function notifyLoanEvent(
     counselorId?: string | null;
     fintechAssigneeId?: string | null;
   },
-  event: "LOAN_CREATED" | "LOAN_APPROVED" | "LOAN_REJECTED" | "LOAN_DISBURSED",
+  event: LoanEvent,
   actorId: string,
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const assignedIds = [loan.counselorId, loan.fintechAssigneeId].filter(Boolean) as string[];
-    const recipients = await resolveRecipients(loan.branchId, assignedIds, actorId);
-    const { actorName, branchName } = await getActorAndBranchName(actorId, loan.branchId);
+    /**
+     * The actor receives the event.
+     *
+     * Add assigned staff as explicit recipients for assignment-related
+     * loan events when required.
+     */
+    const explicitRecipientIds =
+      event === "LOAN_CREATED"
+        ? [loan.counselorId, loan.fintechAssigneeId].filter(
+            (id): id is string => typeof id === "string" && id.length > 0,
+          )
+        : [];
 
-    const messages: Record<typeof event, string> = {
-      LOAN_CREATED: `Loan application created for ${loan.fullName}.`,
-      LOAN_APPROVED: `Loan application approved for ${loan.fullName}.`,
-      LOAN_REJECTED: `Loan application rejected for ${loan.fullName}.`,
-      LOAN_DISBURSED: `Loan disbursed for ${loan.fullName}.`,
+    const recipients = await resolveRecipients(
+      loan.branchId,
+      actorId,
+      explicitRecipientIds,
+      tx,
+    );
+
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      loan.branchId,
+      tx,
+    );
+
+    const titles: Record<LoanEvent, string> = {
+      LOAN_CREATED: "Loan Created",
+
+      LOAN_APPROVED: "Loan Approved",
+
+      LOAN_REJECTED: "Loan Rejected",
+
+      LOAN_DISBURSED: "Loan Disbursed",
     };
 
-    const titles: Record<typeof event, string> = {
-      LOAN_CREATED: "Loan Created",
-      LOAN_APPROVED: "Loan Approved",
-      LOAN_REJECTED: "Loan Rejected",
-      LOAN_DISBURSED: "Loan Disbursed",
+    const messages: Record<LoanEvent, string> = {
+      LOAN_CREATED: `Loan application created for ${loan.fullName}.`,
+
+      LOAN_APPROVED: `Loan application approved for ${loan.fullName}.`,
+
+      LOAN_REJECTED: `Loan application rejected for ${loan.fullName}.`,
+
+      LOAN_DISBURSED: `Loan disbursed for ${loan.fullName}.`,
     };
 
     await writeOutboxEntries(
       recipients,
       {
         eventKey: event,
+
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `${titles[event]} by ${actorName}${branchName ? ` (${branchName})` : ""}`
-            : `${titles[event]} by ${actorName}`,
+            ? `${titles[event]} by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : titles[event],
         }),
-        defaultMessage: messages[event],
+
+        defaultMessage: `${messages[event]} Updated by ${actorName}.`,
+
         entityType: "loan",
         entityId: loan.id,
+
         branchId: loan.branchId,
         actorId,
+
         actionUrl: `/loan-application/${loan.id}`,
-        priority: event === "LOAN_DISBURSED" ? "HIGH" : "NORMAL",
+
+        priority:
+          event === "LOAN_DISBURSED" || event === "LOAN_REJECTED"
+            ? "HIGH"
+            : "NORMAL",
+
+        metadata: {
+          counselorId: loan.counselorId ?? null,
+
+          fintechAssigneeId: loan.fintechAssigneeId ?? null,
+        },
       },
       tx,
     );
-  } catch (err) {
-    console.error("[NotificationService] notifyLoanEvent failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyLoanEvent", error, tx);
   }
 }
 
-/**
- * Notify: Visa Event
- */
+// -----------------------------------------------------------------------------
+// Visa notifications
+// -----------------------------------------------------------------------------
+
+type VisaEvent = "VISA_APPLIED" | "VISA_APPROVED" | "VISA_REJECTED";
+
 export async function notifyVisaEvent(
   student: {
     id: string;
@@ -658,60 +1050,134 @@ export async function notifyVisaEvent(
     branchId: string;
     counselorId?: string | null;
   },
-  event: "VISA_APPLIED" | "VISA_APPROVED" | "VISA_REJECTED",
+  event: VisaEvent,
   actorId: string,
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const assignedCounselorIds = student.counselorId ? [student.counselorId] : [];
-    const recipients = await resolveRecipients(student.branchId, assignedCounselorIds, actorId);
-    const { actorName, branchName } = await getActorAndBranchName(actorId, student.branchId);
+    const recipients = await resolveRecipients(
+      student.branchId,
+      actorId,
+      [],
+      tx,
+    );
 
-    const messages: Record<typeof event, string> = {
-      VISA_APPLIED: `Visa applied for ${student.studentName}.`,
-      VISA_APPROVED: `Visa approved for ${student.studentName}. 🎉`,
-      VISA_REJECTED: `Visa rejected for ${student.studentName}.`,
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      student.branchId,
+      tx,
+    );
+
+    const titles: Record<VisaEvent, string> = {
+      VISA_APPLIED: "Visa Applied",
+
+      VISA_APPROVED: "Visa Approved",
+
+      VISA_REJECTED: "Visa Rejected",
     };
 
-    const titles: Record<typeof event, string> = {
-      VISA_APPLIED: "Visa Applied",
-      VISA_APPROVED: "Visa Approved",
-      VISA_REJECTED: "Visa Rejected",
+    const messages: Record<VisaEvent, string> = {
+      VISA_APPLIED: `Visa applied for ${student.studentName}.`,
+
+      VISA_APPROVED: `Visa approved for ${student.studentName}.`,
+
+      VISA_REJECTED: `Visa rejected for ${student.studentName}.`,
     };
 
     await writeOutboxEntries(
       recipients,
       {
         eventKey: event,
+
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `${titles[event]} by ${actorName}${branchName ? ` (${branchName})` : ""}`
-            : `${titles[event]} by ${actorName}`,
+            ? `${titles[event]} by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : titles[event],
         }),
-        defaultMessage: messages[event],
+
+        defaultMessage: `${messages[event]} Updated by ${actorName}.`,
+
         entityType: "student",
         entityId: student.id,
+
         branchId: student.branchId,
+
         actorId,
+
         actionUrl: `/student-profiles/${student.id}`,
-        priority: event === "VISA_REJECTED" ? "HIGH" : (event === "VISA_APPROVED" ? "HIGH" : "NORMAL"),
+
+        priority:
+          event === "VISA_APPROVED" || event === "VISA_REJECTED"
+            ? "HIGH"
+            : "NORMAL",
       },
       tx,
     );
-  } catch (err) {
-    console.error("[NotificationService] notifyVisaEvent failed:", err);
+  } catch (error) {
+    handleNotificationError("notifyVisaEvent", error, tx);
   }
 }
 
-// ---------------------------------------------------------------------------
-// Utilities
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Utility functions
+// -----------------------------------------------------------------------------
 
-function capitalize(str: string): string {
-  if (!str) return "";
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+function getLeadLabel(lead: {
+  leadNumber: string;
+  studentName?: string | null;
+}): string {
+  const studentName = lead.studentName?.trim();
+
+  if (studentName) {
+    return `${studentName} (${lead.leadNumber})`;
+  }
+
+  return lead.leadNumber;
 }
 
-function toDateString(date: Date): string {
-  return date.toISOString().split("T")[0];
+function formatStatus(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  return value
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+/**
+ * Converts a Date or date string to YYYY-MM-DD using Asia/Kolkata.
+ */
+function toIndiaDateString(value: Date | string): string {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid follow-up date");
+  }
+
+  const dateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = dateParts.find((part) => part.type === "year")?.value;
+
+  const month = dateParts.find((part) => part.type === "month")?.value;
+
+  const day = dateParts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    throw new Error("Unable to format follow-up date");
+  }
+
+  return `${year}-${month}-${day}`;
 }
