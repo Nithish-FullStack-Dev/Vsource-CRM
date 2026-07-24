@@ -135,7 +135,7 @@ export default function LeadStatusDialog({ lead, open, onClose }: Props) {
 
           {status === "converted" && (
             <p className="mt-3 text-sm text-orange-500">
-              This will convert the lead into a Student and move it to Visa
+              This will convert the Walk-in to application and move it to Visa
               Applications.
             </p>
           )}

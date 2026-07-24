@@ -1,3 +1,4 @@
+// app\api\loan-applications\[id]\follow-ups\route.ts
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/prisma";
 import { followUpSchema } from "@/schemas/loan-application/loan-application.schema";

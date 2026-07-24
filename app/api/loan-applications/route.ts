@@ -13,7 +13,8 @@ import {
 } from "@/lib/loan-application/server";
 import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
-
+import { notifyLeadCreated, notifyLoanEvent } from "@/lib/notification.service";
+import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 /* -------------------------------------------------------------------------- */
 /*                                  INCLUDE                                   */
 /* -------------------------------------------------------------------------- */
@@ -416,7 +417,7 @@ export async function POST(request: NextRequest) {
       MODULES.LOAN_APPLICATION,
       PERMISSIONS.CREATE,
     );
-
+    const accessToken = request.cookies.get("access_token")?.value;
     const body: unknown = await request.json();
 
     const values = updateLoanApplicationSchema.parse(body);
@@ -499,7 +500,19 @@ export async function POST(request: NextRequest) {
 
         include: loanApplicationInclude,
       });
-
+      console.log("After notifyLoanEvent");
+      await notifyLoanEvent(
+        {
+          id: loanApplication.id,
+          fullName: loanApplication.fullName,
+          branchId: loanApplication.branchId,
+          counselorId: loanApplication.counselorId,
+          fintechAssigneeId: loanApplication.fintechAssigneeId,
+        },
+        "LOAN_CREATED",
+        currentUser.id,
+        tx,
+      );
       await tx.loanActivity.create({
         data: {
           applicationId: loanApplication.id,
@@ -514,7 +527,7 @@ export async function POST(request: NextRequest) {
 
       return loanApplication;
     });
-
+    await triggerNotificationProcessor(accessToken);
     return NextResponse.json(
       {
         message: "Loan enquiry created successfully",

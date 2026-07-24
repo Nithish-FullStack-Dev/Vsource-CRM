@@ -321,7 +321,7 @@ export default function Dashboard() {
         description: selectedPeriodLabel,
       },
       {
-        label: "Active Students",
+        label: "Active Applications",
         value: formatNumber(data.kpis.activeStudents.value),
         change: data.kpis.activeStudents.change,
         icon: GraduationCap,
@@ -437,12 +437,12 @@ export default function Dashboard() {
                 </CardTitle>
 
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {selectedPeriodLabel} student workflow
+                  {selectedPeriodLabel} application workflow
                 </p>
               </div>
 
               <Badge variant="secondary" className="shrink-0">
-                {formatNumber(data.summary.students)} Students
+                {formatNumber(data.summary.students)} Applications
               </Badge>
             </CardHeader>
 
@@ -493,13 +493,12 @@ export default function Dashboard() {
                           Walk-ins
                         </th>
                         <th className="px-4 py-3 text-right font-medium">
-                          Students
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium">
                           Applications
                         </th>
                         <th className="px-4 py-3 text-right font-medium">
-                          Offers
+                          Uni Applications                        </th>
+                        <th className="px-4 py-3 text-right font-medium">
+                          Uni Offers
                         </th>
                         <th className="px-4 py-3 text-right font-medium">
                           CAS
@@ -748,13 +747,13 @@ function TrackerColumn({ column }: { column: DashboardTrackerColumn }) {
           })
         ) : (
           <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed bg-background/60 p-4 text-center">
-            <span className="text-xs text-muted-foreground">No students</span>
+            <span className="text-xs text-muted-foreground">No applications</span>
           </div>
         )}
 
         {column.total > column.students.length ? (
           <div className="pt-1 text-center text-[10px] font-medium text-muted-foreground">
-            +{column.total - column.students.length} more students
+            +{column.total - column.students.length} more applications
           </div>
         ) : null}
       </div>
