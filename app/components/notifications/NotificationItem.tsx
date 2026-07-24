@@ -125,27 +125,31 @@ export function NotificationItem({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-foreground truncate">
+      <div className="min-w-0 flex-1 overflow-hidden">
+        {/* Title + Time */}
+        <div className="flex min-w-0 items-start gap-2">
+          <p className="min-w-0 flex-1 line-clamp-2 wrap-break-word text-xs font-semibold leading-4 text-foreground">
             {notification.title}
           </p>
-          <span className="text-[10px] text-muted-foreground shrink-0">
+
+          <span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground">
             {formatRelativeTime(notification.createdAt)}
           </span>
         </div>
 
-        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+        {/* Message */}
+        <p className="mt-0.5 line-clamp-2 wrap-break-word text-xs leading-relaxed text-muted-foreground">
           {notification.message}
         </p>
 
-        {/* Priority Badge if Urgent/High */}
-        {notification.priority === "URGENT" ||
-        notification.priority === "HIGH" ? (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 dark:text-rose-400 mt-1">
-            <AlertCircle className="size-3" /> Priority
+        {/* Priority */}
+        {(notification.priority === "URGENT" ||
+          notification.priority === "HIGH") && (
+          <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 dark:text-rose-400">
+            <AlertCircle className="size-3 shrink-0" />
+            Priority
           </span>
-        ) : null}
+        )}
       </div>
 
       {/* Unread indicator / Actions */}

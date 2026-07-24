@@ -275,8 +275,8 @@ export default function LoanApplicationsPage() {
                   {[
                     "Application ID",
                     "Applicant",
-                    "Category",
-                    "Loan Type",
+                    // "Category",
+                    // "Loan Type",
                     "Mobile",
                     "Assignee",
                     "Bank / NBFC",
@@ -326,12 +326,12 @@ export default function LoanApplicationsPage() {
                           {a.email || "—"}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      {/* <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {a.applicantCategory || "—"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      </td> */}
+                      {/* <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {a.loanCategory || "—"}
-                      </td>
+                      </td> */}
                       <td className="whitespace-nowrap px-4 py-3">
                         {a.mobile}
                       </td>
