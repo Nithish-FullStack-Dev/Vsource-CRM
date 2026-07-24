@@ -147,7 +147,7 @@ export default function NotificationsPage() {
             >
               Unread
               {unreadCount > 0 && (
-                <span className="ml-1.5 rounded-full bg-blue-600 px-1.5 py-0.2 text-[10px] font-bold text-white">
+                <span className="ml-1.5 rounded-full bg-red-600 px-1.5 py-0.2 text-[10px] font-bold text-white">
                   {unreadCount}
                 </span>
               )}

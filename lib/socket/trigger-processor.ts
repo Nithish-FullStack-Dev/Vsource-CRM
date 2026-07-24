@@ -1,3 +1,4 @@
+// lib\socket\trigger-processor.ts
 export async function triggerNotificationProcessor(
   accessToken: string | undefined,
 ): Promise<void> {
