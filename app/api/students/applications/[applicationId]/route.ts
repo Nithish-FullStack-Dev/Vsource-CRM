@@ -3,8 +3,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
-
+import { MODULES, PERMISSIONS } from "@/lib/module-codes";
+import { getAuthorizedUser } from "@/lib/rbac";
 import { ApplicationStatus, OfferStatus } from "@/generated/prisma/enums";
+import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
+import { notifyApplicationEvent } from "@/lib/notification.service";
 
 const parseApplicationStatus = (
   value: unknown,
@@ -43,9 +46,17 @@ export async function PATCH(
   },
 ) {
   try {
+    const currentUser = await getAuthorizedUser(
+      req,
+      MODULES.STUDENT_PROFILES,
+      PERMISSIONS.UPDATE,
+    );
+
     const { applicationId } = await params;
 
     const body = await req.json();
+
+    const accessToken = req.cookies.get("access_token")?.value;
 
     const university = await prisma.university.findUnique({
       where: {
@@ -91,41 +102,83 @@ export async function PATCH(
       },
     });
 
-    const application = await prisma.studentApplication.update({
-      where: {
-        id: applicationId,
-      },
+    const application = await prisma.$transaction(async (tx) => {
+      const existingApplication = await tx.studentApplication.findUnique({
+        where: {
+          id: applicationId,
+        },
+        select: {
+          offerStatus: true,
+        },
+      });
 
-      data: {
-        countryId: body.countryId,
-        universityId: body.universityId,
-        courseId: body.courseId,
-        intakeId: body.intakeId || null,
+      const updatedApplication = await tx.studentApplication.update({
+        where: {
+          id: applicationId,
+        },
 
-        portal: body.portal || null,
+        data: {
+          countryId: body.countryId,
+          universityId: body.universityId,
+          courseId: body.courseId,
+          intakeId: body.intakeId || null,
 
-        applicationDate: body.applicationDate
-          ? new Date(body.applicationDate)
-          : null,
+          portal: body.portal || null,
 
-        followUpDate: body.followUpDate ? new Date(body.followUpDate) : null,
+          applicationDate: body.applicationDate
+            ? new Date(body.applicationDate)
+            : null,
 
-        status: parseApplicationStatus(body.status),
-        offerStatus: parseOfferStatus(body.offerStatus),
+          followUpDate: body.followUpDate ? new Date(body.followUpDate) : null,
 
-        countryName: country?.name,
-        universityName: university.name,
-        courseName: course.name,
-        intakeName: course.intake?.name || null,
-      },
+          status: parseApplicationStatus(body.status),
+          offerStatus: parseOfferStatus(body.offerStatus),
 
-      include: {
-        country: true,
-        university: true,
-        course: true,
-        intake: true,
-      },
+          countryName: country?.name,
+          universityName: university.name,
+          courseName: course.name,
+          intakeName: course.intake?.name || null,
+        },
+
+        include: {
+          student: {
+            select: {
+              id: true,
+              studentName: true,
+              branchId: true,
+              counselorId: true,
+            },
+          },
+          country: true,
+          university: true,
+          course: true,
+          intake: true,
+        },
+      });
+
+      if (
+        updatedApplication.offerStatus &&
+        updatedApplication.offerStatus !== "PENDING" &&
+        updatedApplication.offerStatus !== existingApplication?.offerStatus
+      ) {
+        await notifyApplicationEvent(
+          {
+            id: updatedApplication.student.id,
+            studentName: updatedApplication.student.studentName,
+            branchId: updatedApplication.student.branchId,
+            counselorId: updatedApplication.student.counselorId,
+          },
+          updatedApplication.id,
+          updatedApplication.offerStatus,
+          currentUser.id,
+          tx,
+        );
+      }
+
+      return updatedApplication;
     });
+
+    await triggerNotificationProcessor(accessToken);
 
     return ok(application, "Application updated successfully");
   } catch (error) {

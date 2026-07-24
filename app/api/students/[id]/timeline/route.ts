@@ -5,7 +5,11 @@ import { ok, handleError } from "@/lib/api-helpers";
 import { getAuthorizedUser } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { TimelineType } from "@/generated/prisma/browser";
-import { notifyFollowupScheduled } from "@/lib/notification.service";
+import {
+  notifyFollowupScheduled,
+  scheduleFollowupReminder,
+} from "@/lib/notification.service";
+import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 
 interface Params {
   params: Promise<{
@@ -55,33 +59,24 @@ export async function POST(request: NextRequest, { params }: Params) {
       PERMISSIONS.CREATE,
     );
 
+    const accessToken = request.cookies.get("access_token")?.value;
     const { id } = await params;
-
     const body = await request.json();
 
-    const timeline = await db.studentTimeline.create({
-      data: {
-        studentId: id,
-        type: body.type as TimelineType,
-        description: body.description,
-        followupDate: body.followupDate ? new Date(body.followupDate) : null,
-        createdById: user.id,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const followupDate = body.followupDate ? new Date(body.followupDate) : null;
 
-    // Fire follow-up notification if type is followup and a date was provided
-    if (body.type === "followup" && body.followupDate) {
-      const student = await db.student.findUnique({
-        where: { id },
+    if (
+      body.type === "followup" &&
+      (!followupDate || Number.isNaN(followupDate.getTime()))
+    ) {
+      throw new Error("A valid follow-up date is required");
+    }
+
+    const timeline = await db.$transaction(async (tx) => {
+      const student = await tx.student.findUnique({
+        where: {
+          id,
+        },
         select: {
           id: true,
           studentName: true,
@@ -90,32 +85,69 @@ export async function POST(request: NextRequest, { params }: Params) {
         },
       });
 
-      if (student) {
-        // Build a lead-compatible shape from student data for the notification service
-        const leadLike = {
-          id: student.id,
-          leadNumber: student.studentName ?? id,
-          studentName: student.studentName,
-          branchId: student.branchId ?? "",
-          counselors: student.counselorId
-            ? [{ counselorId: student.counselorId }]
-            : [],
-        };
+      if (!student) {
+        throw new Error("Student not found");
+      }
 
-        notifyFollowupScheduled(
-          leadLike,
-          body.followupDate,
-          body.description ?? null,
+      const createdTimeline = await tx.studentTimeline.create({
+        data: {
+          studentId: id,
+          type: body.type as TimelineType,
+          description: body.description?.trim() || null,
+          followupDate,
+          createdById: user.id,
+        },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (createdTimeline.type === "followup" && createdTimeline.followupDate) {
+        // Immediate notification:
+        // "Follow-up has been scheduled."
+        await notifyFollowupScheduled(
+          student,
+          createdTimeline.followupDate,
+          createdTimeline.description,
           user.id,
-        ).catch((err) =>
-          console.error("[StudentTimeline] notifyFollowupScheduled failed:", err),
+          tx,
+        );
+
+        // Future notification:
+        // "You have a follow-up today."
+        await scheduleFollowupReminder(
+          {
+            id: createdTimeline.id,
+            studentId: createdTimeline.studentId,
+            followupDate: createdTimeline.followupDate,
+            description: createdTimeline.description,
+          },
+          student,
+          user.id,
+          tx,
         );
       }
-    }
+
+      return createdTimeline;
+    });
+
+    /*
+     * This processes only notifications that are due now.
+     *
+     * FOLLOWUP_SCHEDULED will be processed.
+     * FOLLOWUP_REMINDER remains PENDING because its
+     * nextAttemptAt is in the future.
+     */
+    await triggerNotificationProcessor(accessToken);
 
     return ok(timeline, "Timeline added successfully");
   } catch (error) {
     return handleError(error);
   }
 }
-

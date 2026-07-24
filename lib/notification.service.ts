@@ -35,10 +35,10 @@ export type NotificationEventKey =
   | "FOLLOWUP_REMINDER"
   | "STUDENT_CREATED"
   | "STUDENT_STATUS_CHANGED"
-  | "APPLICATION_SUBMITTED"
-  | "APPLICATION_OFFER_RECEIVED"
-  | "APPLICATION_CAS_RECEIVED"
-  | "APPLICATION_REJECTED"
+  | "PRIORITY_UCOL"
+  | "PRIORITY_COL"
+  | "COL"
+  | "UCOL"
   | "LOAN_CREATED"
   | "LOAN_APPROVED"
   | "LOAN_REJECTED"
@@ -71,6 +71,13 @@ export interface RoleBasedNotificationPayload {
   priority?: NotificationPriority;
 
   metadata?: Record<string, unknown>;
+
+  /**
+   * Date and time when the outbox event becomes eligible for processing.
+   *
+   * Defaults to the current time for immediate notifications.
+   */
+  nextAttemptAt?: Date | string;
 
   /**
    * Optional stable key for events that must not be repeated.
@@ -277,6 +284,16 @@ async function writeOutboxEntries(
 
   const now = new Date();
 
+  const nextAttemptAt = payload.nextAttemptAt
+    ? new Date(payload.nextAttemptAt)
+    : now;
+
+  if (Number.isNaN(nextAttemptAt.getTime())) {
+    throw new Error(
+      `Invalid nextAttemptAt value for notification event: ${payload.eventKey}`,
+    );
+  }
+
   /**
    * One event ID is shared by all recipients of this invocation.
    *
@@ -324,7 +341,7 @@ async function writeOutboxEntries(
 
       attempts: 0,
 
-      nextAttemptAt: now,
+      nextAttemptAt,
 
       processedAt: null,
 
@@ -563,14 +580,11 @@ export async function notifyLeadStatusChanged(
 }
 
 export async function notifyFollowupScheduled(
-  lead: {
+  student: {
     id: string;
-    leadNumber: string;
-    studentName?: string | null;
+    studentName: string;
     branchId: string;
-    counselors?: Array<{
-      counselorId: string;
-    }>;
+    counselorId?: string | null;
   },
   followupDate: Date | string,
   followupNote: string | null | undefined,
@@ -578,17 +592,20 @@ export async function notifyFollowupScheduled(
   tx?: Prisma.TransactionClient,
 ): Promise<void> {
   try {
-    const recipients = await resolveRecipients(lead.branchId, actorId, [], tx);
+    const recipients = await resolveRecipients(
+      student.branchId,
+      actorId,
+      [],
+      tx,
+    );
 
     const { actorName, branchName } = await getActorAndBranchName(
       actorId,
-      lead.branchId,
+      student.branchId,
       tx,
     );
 
     const dateString = toIndiaDateString(followupDate);
-
-    const leadLabel = getLeadLabel(lead);
 
     const trimmedNote = followupNote?.trim();
 
@@ -607,25 +624,26 @@ export async function notifyFollowupScheduled(
             : "Follow-up Scheduled",
         }),
 
-        defaultMessage: `Follow-up for ${leadLabel} is scheduled for ${dateString}.${noteMessage}`,
+        defaultMessage: `Follow-up for ${student.studentName} is scheduled for ${dateString}.${noteMessage}`,
 
-        entityType: "lead",
-        entityId: lead.id,
+        entityType: "student",
+        entityId: student.id,
 
-        branchId: lead.branchId,
+        branchId: student.branchId,
+
         actorId,
 
-        actionUrl: `/leads/all`,
+        actionUrl: `/student-profiles/${student.id}`,
 
         priority: "HIGH",
 
         metadata: {
+          studentId: student.id,
           followupDate: dateString,
-
           followupNote: trimmedNote ?? null,
         },
 
-        dedupeKey: `FOLLOWUP_SCHEDULED:${lead.id}:${dateString}`,
+        dedupeKey: `FOLLOWUP_SCHEDULED:${student.id}:${dateString}`,
       },
       tx,
     );
@@ -699,6 +717,80 @@ export async function notifyLeadConverted(
   }
 }
 
+export async function notifyLeadFollowupScheduled(
+  lead: {
+    id: string;
+    leadNumber: string;
+    studentName?: string | null;
+    branchId: string;
+    counselors?: Array<{
+      counselorId: string;
+    }>;
+  },
+  followupDate: Date | string,
+  followupNote: string | null | undefined,
+  actorId: string,
+  tx?: Prisma.TransactionClient,
+): Promise<void> {
+  try {
+    const recipients = await resolveRecipients(lead.branchId, actorId, [], tx);
+
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      lead.branchId,
+      tx,
+    );
+
+    const dateString = toIndiaDateString(followupDate);
+
+    const leadLabel = getLeadLabel(lead);
+
+    const trimmedNote = followupNote?.trim();
+
+    const noteMessage = trimmedNote ? ` Note: "${trimmedNote}"` : "";
+
+    await writeOutboxEntries(
+      recipients,
+      {
+        eventKey: "FOLLOWUP_SCHEDULED",
+
+        getTitles: (roleName) => ({
+          title: isGlobalAdminRole(roleName)
+            ? `Lead Follow-up Scheduled by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : "Lead Follow-up Scheduled",
+        }),
+
+        defaultMessage: `Follow-up for ${leadLabel} is scheduled for ${dateString}.${noteMessage}`,
+
+        entityType: "lead",
+        entityId: lead.id,
+
+        branchId: lead.branchId,
+
+        actorId,
+
+        actionUrl: `/leads/all`,
+
+        priority: "HIGH",
+
+        metadata: {
+          leadId: lead.id,
+          leadNumber: lead.leadNumber,
+          followupDate: dateString,
+          followupNote: trimmedNote ?? null,
+        },
+
+        dedupeKey: `FOLLOWUP_SCHEDULED:LEAD:${lead.id}:${dateString}`,
+      },
+      tx,
+    );
+  } catch (error) {
+    handleNotificationError("notifyLeadFollowupScheduled", error, tx);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // Student notifications
 // -----------------------------------------------------------------------------
@@ -763,8 +855,121 @@ export async function notifyStudentCreated(
 }
 
 // -----------------------------------------------------------------------------
-// Follow-up reminder generated by cron
+// Follow-up reminder
 // -----------------------------------------------------------------------------
+
+export async function scheduleFollowupReminder(
+  timeline: {
+    id: string;
+    studentId: string;
+    followupDate: Date;
+    description?: string | null;
+  },
+  student: {
+    id: string;
+    studentName: string;
+    branchId: string;
+    counselorId?: string | null;
+  },
+  actorId: string,
+  tx?: Prisma.TransactionClient,
+): Promise<void> {
+  try {
+    const client: NotificationDbClient = tx ?? db;
+
+    const reminderAt = new Date(timeline.followupDate);
+
+    if (Number.isNaN(reminderAt.getTime())) {
+      throw new Error("Invalid follow-up reminder date");
+    }
+
+    if (reminderAt <= new Date()) {
+      return;
+    }
+
+    const recipientIds = Array.from(
+      new Set(
+        [actorId, student.counselorId].filter(
+          (recipientId): recipientId is string => Boolean(recipientId),
+        ),
+      ),
+    );
+
+    if (recipientIds.length === 0) {
+      return;
+    }
+
+    const users = await client.user.findMany({
+      where: {
+        id: {
+          in: recipientIds,
+        },
+      },
+      select: {
+        id: true,
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    const recipients: RecipientInfo[] = users.map((user) => ({
+      id: user.id,
+      roleName: user.role.name,
+    }));
+
+    if (recipients.length === 0) {
+      return;
+    }
+
+    const dateString = toIndiaDateString(reminderAt);
+    const trimmedNote = timeline.description?.trim();
+
+    const noteMessage = trimmedNote ? ` Note: "${trimmedNote}"` : "";
+
+    await writeOutboxEntries(
+      recipients,
+      {
+        eventKey: "FOLLOWUP_REMINDER",
+
+        getTitles: () => ({
+          title: "Follow-up Reminder",
+        }),
+
+        defaultMessage:
+          `You have a follow-up with ${student.studentName} scheduled for ` +
+          `${dateString}.${noteMessage}`,
+
+        entityType: "studentTimeline",
+        entityId: timeline.id,
+
+        branchId: student.branchId,
+        actorId,
+
+        actionUrl: `/student-profiles/${student.id}`,
+
+        priority: "HIGH",
+
+        metadata: {
+          studentId: student.id,
+          timelineId: timeline.id,
+          followupDate: reminderAt.toISOString(),
+          followupNote: trimmedNote ?? null,
+          notificationType: "followup_reminder",
+        },
+
+        dedupeKey: `FOLLOWUP_REMINDER:${timeline.id}`,
+
+        nextAttemptAt: reminderAt,
+      },
+      tx,
+    );
+  } catch (error) {
+    handleNotificationError("scheduleFollowupReminder", error, tx);
+  }
+}
 
 export async function notifyFollowupReminder(lead: {
   id: string;
@@ -835,11 +1040,7 @@ export async function notifyFollowupReminder(lead: {
 // Application notifications
 // -----------------------------------------------------------------------------
 
-type ApplicationEvent =
-  | "APPLICATION_SUBMITTED"
-  | "APPLICATION_OFFER_RECEIVED"
-  | "APPLICATION_CAS_RECEIVED"
-  | "APPLICATION_REJECTED";
+type ApplicationEvent = "PRIORITY_UCOL" | "PRIORITY_COL" | "COL" | "UCOL";
 
 export async function notifyApplicationEvent(
   student: {
@@ -867,25 +1068,40 @@ export async function notifyApplicationEvent(
       tx,
     );
 
-    const titles: Record<ApplicationEvent, string> = {
-      APPLICATION_SUBMITTED: "Application Submitted",
+    const notificationConfig: Record<
+      ApplicationEvent,
+      {
+        title: string;
+        message: string;
+        priority: "NORMAL" | "HIGH";
+      }
+    > = {
+      PRIORITY_UCOL: {
+        title: "Priority UCOL",
+        message: `Application submitted for ${student.studentName}.`,
+        priority: "NORMAL",
+      },
 
-      APPLICATION_OFFER_RECEIVED: "Offer Received",
+      PRIORITY_COL: {
+        title: "Priority COL",
+        message: `Offer letter received for ${student.studentName}.`,
+        priority: "NORMAL",
+      },
 
-      APPLICATION_CAS_RECEIVED: "CAS Received",
+      COL: {
+        title: "COL",
+        message: `CAS received for ${student.studentName}.`,
+        priority: "NORMAL",
+      },
 
-      APPLICATION_REJECTED: "Application Rejected",
+      UCOL: {
+        title: "UCOL",
+        message: `Application rejected for ${student.studentName}.`,
+        priority: "HIGH",
+      },
     };
 
-    const messages: Record<ApplicationEvent, string> = {
-      APPLICATION_SUBMITTED: `Application submitted for ${student.studentName}.`,
-
-      APPLICATION_OFFER_RECEIVED: `Offer letter received for ${student.studentName}.`,
-
-      APPLICATION_CAS_RECEIVED: `CAS received for ${student.studentName}.`,
-
-      APPLICATION_REJECTED: `Application rejected for ${student.studentName}.`,
-    };
+    const config = notificationConfig[event];
 
     await writeOutboxEntries(
       recipients,
@@ -894,16 +1110,15 @@ export async function notifyApplicationEvent(
 
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `${titles[event]} by ${actorName}${
+            ? `${config.title} by ${actorName}${
                 branchName ? ` (${branchName})` : ""
               }`
-            : titles[event],
+            : config.title,
         }),
 
-        defaultMessage: `${messages[event]} Updated by ${actorName}.`,
+        defaultMessage: `${config.message} Updated by ${actorName}.`,
 
         entityType: "application",
-
         entityId: applicationId,
 
         branchId: student.branchId,
@@ -912,13 +1127,14 @@ export async function notifyApplicationEvent(
 
         actionUrl: `/student-profiles/${student.id}`,
 
-        priority: event === "APPLICATION_REJECTED" ? "HIGH" : "NORMAL",
+        priority: config.priority,
 
         metadata: {
           studentId: student.id,
-
           applicationId,
         },
+
+        dedupeKey: `${event}:${applicationId}`,
       },
       tx,
     );
