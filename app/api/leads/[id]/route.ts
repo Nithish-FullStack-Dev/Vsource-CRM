@@ -15,7 +15,7 @@ import { Prisma } from "@/generated/prisma/client";
 import {
   notifyLeadStatusChanged,
   notifyLeadAssigned,
-  notifyFollowupScheduled,
+  notifyLeadFollowupScheduled,
 } from "@/lib/notification.service";
 import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 
@@ -338,7 +338,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       }
 
       if (followupDate) {
-        await notifyFollowupScheduled(
+        await notifyLeadFollowupScheduled(
           leadForNotification,
           new Date(followupDate),
           followupNote?.trim(),

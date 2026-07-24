@@ -4,6 +4,10 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ok, handleError } from "@/lib/api-helpers";
 import { ApplicationStatus, OfferStatus } from "@/generated/prisma/enums";
+import { notifyApplicationEvent } from "@/lib/notification.service";
+import { MODULES, PERMISSIONS } from "@/lib/module-codes";
+import { getAuthorizedUser } from "@/lib/rbac";
+import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 
 const parseApplicationStatus = (
   value: unknown,
@@ -36,9 +40,17 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const currentUser = await getAuthorizedUser(
+      req,
+      MODULES.STUDENT_PROFILES,
+      PERMISSIONS.UPDATE,
+    );
+
     const { id: studentId } = await params;
 
     const body = await req.json();
+
+    const accessToken = req.cookies.get("access_token")?.value;
 
     if (!body.countryId) {
       throw new Error("Country is required");
@@ -108,39 +120,72 @@ export async function POST(
     if (applicationCount >= 5) {
       throw new Error("Maximum 5 university applications allowed per student");
     }
-    const application = await prisma.studentApplication.create({
-      data: {
-        studentId,
 
-        countryId: body.countryId,
-        universityId: body.universityId,
-        courseId: body.courseId,
-        intakeId: body.intakeId || null,
+    const application = await prisma.$transaction(async (tx) => {
+      const createdApplication = await tx.studentApplication.create({
+        data: {
+          studentId,
 
-        portal: body.portal || null,
+          countryId: body.countryId,
+          universityId: body.universityId,
+          courseId: body.courseId,
+          intakeId: body.intakeId || null,
 
-        applicationDate: body.applicationDate
-          ? new Date(body.applicationDate)
-          : null,
+          portal: body.portal || null,
 
-        followUpDate: body.followUpDate ? new Date(body.followUpDate) : null,
+          applicationDate: body.applicationDate
+            ? new Date(body.applicationDate)
+            : null,
 
-        status: parseApplicationStatus(body.status),
-        offerStatus: parseOfferStatus(body.offerStatus),
+          followUpDate: body.followUpDate ? new Date(body.followUpDate) : null,
 
-        countryName: country?.name,
-        universityName: university.name,
-        courseName: course.name,
-        intakeName: course.intake?.name || null,
-      },
+          status: parseApplicationStatus(body.status),
+          offerStatus: parseOfferStatus(body.offerStatus),
 
-      include: {
-        country: true,
-        university: true,
-        course: true,
-        intake: true,
-      },
+          countryName: country?.name,
+          universityName: university.name,
+          courseName: course.name,
+          intakeName: course.intake?.name || null,
+        },
+
+        include: {
+          student: {
+            select: {
+              id: true,
+              studentName: true,
+              branchId: true,
+              counselorId: true,
+            },
+          },
+          country: true,
+          university: true,
+          course: true,
+          intake: true,
+        },
+      });
+
+      if (
+        createdApplication.offerStatus &&
+        createdApplication.offerStatus !== "PENDING"
+      ) {
+        await notifyApplicationEvent(
+          {
+            id: createdApplication.student.id,
+            studentName: createdApplication.student.studentName,
+            branchId: createdApplication.student.branchId,
+            counselorId: createdApplication.student.counselorId,
+          },
+          createdApplication.id,
+          createdApplication.offerStatus,
+          currentUser.id,
+          tx,
+        );
+      }
+
+      return createdApplication;
     });
+
+    await triggerNotificationProcessor(accessToken);
 
     return ok(application, "Application created successfully");
   } catch (error) {

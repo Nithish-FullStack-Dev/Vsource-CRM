@@ -1,14 +1,6 @@
 /**
  * app/api/notifications/process/route.ts
  * POST /api/notifications/process
- *
- * Internal endpoint: processes PENDING NotificationOutbox rows and converts
- * them into Notification records. Secured with CRON_SECRET header.
- *
- * Call this from:
- *   - Vercel Cron (vercel.json)
- *   - Any external scheduler
- *   - Manually for testing
  */
 
 import { randomUUID } from "node:crypto";
