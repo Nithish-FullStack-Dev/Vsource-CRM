@@ -24,6 +24,7 @@ model User {
   leadAssignments                             LeadCounselor[]
   leadTimelinesCreated                        LeadTimeline[]           @relation("LeadTimelineCreatedBy")
   leadTimelinesUpdated                        LeadTimeline[]           @relation("LeadTimelineUpdatedBy")
+  leadFintechAssignments Lead[] @relation("LeadFintech")
   loanActivitiesCreated                       LoanActivity[]           @relation("LoanActivityCreatedBy")
   loanApplicationsCounseled                   LoanApplication[]        @relation("LoanApplicationCounselor")
   loanApplicationCreated                      LoanApplication[]        @relation("LoanApplicationCreatedBy")
@@ -155,7 +156,7 @@ model Lead {
   verbalScore             Float?
   analyticalWritingScore  Float?
   gapsIfAny               String?
-  status                  LeadStatus        @default(new)
+  status                  LeadStatus        @default(NEW)
   graduationStatus        GraduationStatus?
   loanRequirement         Boolean           @default(false)
   nextFollowup            DateTime?
@@ -173,7 +174,9 @@ model Lead {
   timelines               LeadTimeline[]
   loanApplication         LoanApplication?
   student                 Student?
+fintechAssigneeId String?
 
+fintechAssignee User? @relation("LeadFintech",fields: [fintechAssigneeId],references: [id])
   @@index([branchId])
   @@index([branchId, status])
   @@index([branchId, isConverted])
@@ -271,7 +274,7 @@ model MbbsLead {
   preferredCourse     String?
   preferredTiers      String[]            @default([])
   remarks             String?
-  status              MbbsLeadStatus      @default(new)
+  status              MbbsLeadStatus      @default(NEW)
   nextFollowup        DateTime?
   createdById         String?
   updatedById         String?
@@ -726,7 +729,7 @@ model LoanApplication {
   documents                LoanDocument[]
   followUps                LoanFollowUp[]
   sanction                 LoanSanction?
-
+  documentMasters LoanDocumentMaster[] @relation("LoanApplicationDocumentMasters")
   @@index([branchId])
   @@index([counselorId])
   @@index([fintechAssigneeId])
@@ -873,24 +876,55 @@ model LoanActivity {
   @@index([createdById])
 }
 
+enum LoanDocumentCategory {
+  KYC
+  OPTIONAL
+  OTHER
+}
+
 model LoanDocument {
-  id               String          @id @default(uuid())
-  applicationId    String
-  documentCode     String
-  documentType     String
-  originalFileName String
-  storedFileName   String
-  fileUrl          String
-  mimeType         String
-  fileSize         Int
-  remarks          String?
-  uploadedAt       DateTime        @default(now())
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  application      LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  id                 String             @id @default(uuid())
+  applicationId      String
+  documentCode       String
+  documentType       String
+  originalFileName   String
+  storedFileName     String
+  fileUrl            String
+  mimeType           String
+  fileSize           Int
+  remarks            String?
+  uploadedAt         DateTime           @default(now())
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  documentMasterId   String
+  application        LoanApplication    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  LoanDocumentMaster LoanDocumentMaster @relation(fields: [documentMasterId], references: [id])
 
   @@index([applicationId])
   @@index([applicationId, documentCode])
+  @@index([documentMasterId])
+}
+
+model LoanDocumentMaster {
+  id           String               @id
+  code         String               @unique
+  name         String
+  category     LoanDocumentCategory
+  required     Boolean              @default(false)
+  isSystem     Boolean              @default(false)
+  isActive     Boolean              @default(true)
+  sortOrder    Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime
+   applicationId String?
+  application   LoanApplication?  @relation("LoanApplicationDocumentMasters",fields: [applicationId],references: [id],onDelete: Cascade)
+  LoanDocument LoanDocument[]
+
+  @@index([category])
+  @@index([category, sortOrder])
+  @@index([isActive])
+  @@index([applicationId])
+  @@index([applicationId, category])
 }
 
 model Notification {
@@ -953,22 +987,17 @@ model NotificationOutbox {
   @@index([status, nextAttemptAt, createdAt])
 }
 
+
 enum LeadStatus {
-  draft
-  new
-  contacted
-  qualified
-  converted
-  lost
+  NEW
+  VISA_APPLICATION
+  DROP
 }
 
 enum MbbsLeadStatus {
-  new
-  contacted
-  qualified
-  admitted
-  enrolled
-  lost
+  NEW
+  VISA_APPLICATION
+  DROP
 }
 
 enum StudentStatus {
@@ -1129,3 +1158,4 @@ enum NotificationPriority {
   HIGH
   URGENT
 }
+

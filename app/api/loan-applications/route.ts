@@ -149,7 +149,7 @@ async function syncLoanRequiredLeads() {
       nextFollowup: true,
       remarks: true,
       createdAt: true,
-
+      fintechAssigneeId: true,
       counselors: {
         where: {
           isPrimary: true,
@@ -219,6 +219,7 @@ async function syncLoanRequiredLeads() {
           branchId: lead.branchId,
 
           counselorId,
+          fintechAssigneeId: lead.fintechAssigneeId,
 
           nextFollowUp: lead.nextFollowup,
 

@@ -28,21 +28,21 @@ import { api } from "@/lib/api";
 import { LEADS } from "@/lib/lead";
 
 const statuses = [
-  "draft",
-  "new",
-  "contacted",
-  "qualified",
-  "converted",
-  "lost",
-] as const;
+  {
+    label: "New",
+    value: "NEW",
+  },
+  {
+    label: "Visa Application",
+    value: "VISA_APPLICATION",
+  },
+  {
+    label: "Drop",
+    value: "DROP",
+  },
+];
 
-type LeadStatus =
-  | "draft"
-  | "new"
-  | "contacted"
-  | "qualified"
-  | "converted"
-  | "lost";
+type LeadStatus = "NEW" | "VISA_APPLICATION" | "DROP";
 
 interface Props {
   lead: any;
@@ -51,7 +51,7 @@ interface Props {
 }
 
 export default function LeadStatusDialog({ lead, open, onClose }: Props) {
-  const [status, setStatus] = useState<LeadStatus>("new");
+  const [status, setStatus] = useState<LeadStatus>("NEW");
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function LeadStatusDialog({ lead, open, onClose }: Props) {
         queryKey: ["notifications"],
       });
 
-      toast.success(response?.message || "Lead status updated successfully");
+      toast.success(response?.message || "Walkin status updated successfully");
 
       onClose();
     },
@@ -86,7 +86,7 @@ export default function LeadStatusDialog({ lead, open, onClose }: Props) {
       toast.error(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to update lead status",
+          "Failed to update Walkin status",
       );
     },
   });
@@ -106,7 +106,7 @@ export default function LeadStatusDialog({ lead, open, onClose }: Props) {
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Update Lead Status</AlertDialogTitle>
+          <AlertDialogTitle>Update Walkin Status</AlertDialogTitle>
 
           <AlertDialogDescription>
             {lead.studentName}
@@ -123,17 +123,16 @@ export default function LeadStatusDialog({ lead, open, onClose }: Props) {
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-
             <SelectContent>
               {statuses.map((item) => (
-                <SelectItem key={item} value={item}>
-                  {item}
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          {status === "converted" && (
+          {status === "VISA_APPLICATION" && (
             <p className="mt-3 text-sm text-orange-500">
               This will convert the Walk-in to application and move it to Visa
               Applications.
