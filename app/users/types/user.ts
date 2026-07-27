@@ -25,4 +25,7 @@ export interface User {
   role: Role;
 
   target?: number | null;
+
+  isBlocked: boolean;
+  failedLoginAttempts: number;
 }

@@ -29,6 +29,8 @@ const USER_SELECT = {
   email: true,
   createdAt: true,
   updatedAt: true,
+  isBlocked: true,
+  failedLoginAttempts: true,
 
   role: {
     select: {
@@ -65,6 +67,8 @@ export async function GET(req: NextRequest) {
     const roleId = sp.get("roleId") || undefined;
 
     const branchId = sp.get("branchId") || undefined;
+
+    const isBlockedParam = sp.get("isBlocked");
 
     const accessWhere = getUserAccessWhere(scope);
 
@@ -119,6 +123,14 @@ export async function GET(req: NextRequest) {
                     id: branchId,
                   },
                 },
+              },
+            ]
+          : []),
+
+        ...(isBlockedParam !== null
+          ? [
+              {
+                isBlocked: isBlockedParam === "true",
               },
             ]
           : []),

@@ -15,11 +15,13 @@ import {
   Users2,
   GraduationCap,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import logo from "@/assets/vsourcess.png";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import GuestGuard from "@/components/guards/GuestGuard";
+import { getDeviceFingerprint } from "@/lib/get-device-fingerprint";
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
@@ -30,19 +32,30 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    getDeviceFingerprint();
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setAttemptsLeft(null);
     setLoading(true);
-    const res = await login(email, password);
+
+    const deviceFingerprint = await getDeviceFingerprint();
+    const res = await login(email, password, deviceFingerprint);
+
     setLoading(false);
+
     if (res.ok) {
       return;
     }
-    if (!res.ok) {
-      setError(res.error || "Invalid email or password");
-      return;
+
+    setError(res.error || "Invalid email or password");
+    if (typeof res.attemptsLeft === "number") {
+      setAttemptsLeft(res.attemptsLeft);
     }
   };
 
@@ -159,16 +172,6 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                {/* <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline"
-                  onClick={() => toast.info("Reset link sent to your email")}
-                >
-                  Forgot password?
-                </button>
-              </div> */}
                 <div className="relative">
                   <Label htmlFor="password">Password:</Label>
 
@@ -196,21 +199,16 @@ export default function LoginPage() {
                   {error && (
                     <p className="mt-1 text-sm text-red-500">{error}</p>
                   )}
+
+                  {attemptsLeft !== null && attemptsLeft > 0 && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-amber-600">
+                      <AlertTriangle className="h-3 w-3" />
+                      {attemptsLeft} attempt{attemptsLeft === 1 ? "" : "s"} left
+                      before your account is locked.
+                    </p>
+                  )}
                 </div>
               </div>
-              {/* <div className="flex items-center gap-2">
-              <Checkbox
-                id="remember"
-                checked={remember}
-                onCheckedChange={(v: any) => setRemember(!!v)}
-              />
-              <Label
-                htmlFor="remember"
-                className="text-sm font-normal cursor-pointer"
-              >
-                Remember me for 30 days
-              </Label>
-            </div> */}
               <Button type="submit" className="w-full h-11" disabled={loading}>
                 {loading ? (
                   <Loader2 className="size-4 animate-spin" />

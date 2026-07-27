@@ -39,9 +39,7 @@ export const getUserColumns = ({
 
   {
     id: "roles",
-
     header: "Roles",
-
     cell: ({ row }) => {
       const roles = row.original.role?.name ?? "-";
 
@@ -51,9 +49,7 @@ export const getUserColumns = ({
 
   {
     id: "branches",
-
     header: "Branches",
-
     cell: ({ row }) => {
       const branches = row.original.branches ?? [];
 
@@ -72,11 +68,24 @@ export const getUserColumns = ({
       );
     },
   },
+
+  {
+    id: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const isBlocked = row.original.isBlocked;
+
+      return isBlocked ? (
+        <Badge variant="destructive">Blocked</Badge>
+      ) : (
+        <Badge variant="secondary">Active</Badge>
+      );
+    },
+  },
+
   {
     accessorKey: "createdAt",
-
     header: "Created",
-
     cell: ({ row }) => {
       return new Date(row.original.createdAt).toLocaleDateString();
     },
@@ -84,7 +93,6 @@ export const getUserColumns = ({
 
   {
     id: "actions",
-
     cell: ({ row }) => {
       const user = row.original;
 
