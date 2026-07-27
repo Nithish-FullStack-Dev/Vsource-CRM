@@ -75,7 +75,6 @@ interface PageActionsProps {
   branchOptions: string[];
 
   statusStyle: Record<LeadStatus, string>;
-
   selectedCounselors: string[];
   setSelectedCounselors: React.Dispatch<React.SetStateAction<string[]>>;
 
@@ -137,6 +136,7 @@ export default function PageActions(props: PageActionsProps) {
   const queryClient = useQueryClient();
   const [branches, setBranches] = useState<Branch[]>([]);
   const { data: counselors = [] } = useCounselors(editingLead?.branchId);
+  const fintechUsers = counselors;
   const [universityOpen, setUniversityOpen] = useState(false);
   const [universitySearch, setUniversitySearch] = useState("");
   const { data: intakes = [], isLoading: intakeLoad } = useQuery({
@@ -505,6 +505,21 @@ export default function PageActions(props: PageActionsProps) {
                           </span>
                         )}
                       </div>
+                    </div>
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Fintech Assignee
+                      </p>
+
+                      {selected.fintechAssignee ? (
+                        <Badge variant="secondary">
+                          {selected.fintechAssignee.name}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          No fintech assignee
+                        </span>
+                      )}
                     </div>
                   </div>
                 </section>
@@ -1189,7 +1204,37 @@ export default function PageActions(props: PageActionsProps) {
                       )}
                     </div>
                   </div>
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label>Fintech Assignee</Label>
 
+                    <Select
+                      value={editingLead.fintechAssigneeId ?? ""}
+                      onValueChange={(value) =>
+                        setEditingLead({
+                          ...editingLead,
+                          fintechAssigneeId: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Fintech Assignee" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {fintechUsers.map(
+                          (user: {
+                            id: string;
+                            name: string;
+                            role?: { name: string };
+                          }) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.name}
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   {/* Preferred Country */}
                   <div className="grid gap-1.5">
                     <Label

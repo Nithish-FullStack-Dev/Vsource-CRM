@@ -132,7 +132,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           convertedAt,
           convertedById: currentUser.id,
           updatedById: currentUser.id,
-          status: "converted",
+          status: "VISA_APPLICATION",
         },
       });
 

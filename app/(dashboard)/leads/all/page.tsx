@@ -51,23 +51,15 @@ import {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 const statusStyle: Record<LeadStatus, string> = {
-  draft:
-    "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
-  new: "bg-info/15 text-info border-info/20",
-  contacted: "bg-warning/15 text-warning border-warning/20",
-  qualified: "bg-primary/10 text-primary border-primary/20",
-  converted: "bg-success/15 text-success border-success/20",
-  lost: "bg-muted text-muted-foreground border-border",
+  NEW: "bg-info/15 text-info border-info/20",
+  VISA_APPLICATION: "bg-success/15 text-success border-success/20",
+  DROP: "bg-muted text-muted-foreground border-border",
 };
 
 const statusTabs: Array<LeadStatus | "all"> = [
-  "all",
-  "draft",
-  "new",
-  "contacted",
-  "qualified",
-  "converted",
-  "lost",
+  "NEW",
+  "VISA_APPLICATION",
+  "DROP",
 ];
 
 const branchOptions = [
@@ -209,7 +201,7 @@ export default function AllLeadsPage() {
         branchId: editingLead.branchId,
 
         counselorIds: selectedCounselors,
-
+        fintechAssigneeId: editingLead.fintechAssigneeId,
         preferredCountry: editingLead.preferredCountry || undefined,
         preferredIntake: editingLead.preferredIntake || undefined,
         preferredCourse: editingLead.preferredCourse || undefined,
@@ -873,7 +865,7 @@ export default function AllLeadsPage() {
                               onClick={() => {
                                 if (
                                   canUpdate(MODULES.MASTER_LEADS) &&
-                                  lead.status !== "converted"
+                                  lead.status !== "VISA_APPLICATION"
                                 ) {
                                   setEditingLeadStatus(lead);
                                 }

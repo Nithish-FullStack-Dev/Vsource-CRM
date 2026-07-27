@@ -55,7 +55,12 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
       include: {
         branch: true,
-
+        fintechAssignee: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         counselors: {
           select: {
             isPrimary: true,
@@ -126,6 +131,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       counselorIds,
       englishTests,
       assignedCounselorId: _assignedCounselorId,
+      fintechAssigneeId,
       followupDate,
       followupNote,
       branchId,
@@ -171,9 +177,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const lead = await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const updateData: Prisma.LeadUpdateInput = {
         ...leadData,
+
         ...(body.status !== undefined && {
           status: body.status,
         }),
+
         ...(branchId && {
           branch: {
             connect: {
@@ -181,6 +189,20 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             },
           },
         }),
+
+        fintechAssignee:
+          fintechAssigneeId === undefined
+            ? undefined
+            : fintechAssigneeId
+              ? {
+                  connect: {
+                    id: fintechAssigneeId,
+                  },
+                }
+              : {
+                  disconnect: true,
+                },
+
         updatedBy: {
           connect: {
             id: currentUser.id,
@@ -262,6 +284,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               id: true,
               name: true,
               code: true,
+            },
+          },
+          fintechAssignee: {
+            select: {
+              id: true,
+              name: true,
             },
           },
           counselors: {

@@ -235,6 +235,8 @@ const leadFormSchema = z.object({
   ),
   loanRequirement: z.boolean(),
   counselorIds: z.array(z.string()).optional(),
+  loanNote: z.string().optional(),
+  fintechAssigneeId: z.string().uuid().nullable().optional(),
 });
 
 type LeadFormValues = z.input<typeof leadFormSchema>;
@@ -332,6 +334,8 @@ export default function AddLeadPage() {
       graduationStatus: undefined,
       loanRequirement: false,
       counselorIds: [],
+      loanNote: "",
+      fintechAssigneeId: "",
 
       tenthPercentage: undefined,
       tenthYearOfPassing: undefined,
@@ -357,9 +361,10 @@ export default function AddLeadPage() {
       preferredTiers: [],
       workExperience: "",
 
-      status: "draft",
+      status: "NEW",
     },
   });
+  const loanRequired = watch("loanRequirement");
   const {
     fields: englishTestFields,
     append: appendEnglishTest,
@@ -792,6 +797,37 @@ export default function AddLeadPage() {
                           )}
                         />
                       </div>
+                      {loanRequired && (
+                        <div className="space-y-2">
+                          <Label>Assign Fintech</Label>
+
+                          <Controller
+                            control={control}
+                            name="fintechAssigneeId"
+                            render={({ field }) => (
+                              <Select
+                                disabled={
+                                  !selectedBranchId || counselorsLoading
+                                }
+                                value={field.value ?? ""}
+                                onValueChange={(value) => field.onChange(value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select Fintech" />
+                                </SelectTrigger>
+
+                                <SelectContent>
+                                  {counselors.map((user) => (
+                                    <SelectItem key={user.id} value={user.id}>
+                                      {user?.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </div>
+                      )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -2013,7 +2049,7 @@ export default function AddLeadPage() {
                       onSubmit(
                         {
                           ...values,
-                          status: "new",
+                          status: "NEW",
                         },
                         true,
                       );
