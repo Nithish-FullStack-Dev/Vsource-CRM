@@ -1,5 +1,5 @@
 /**
- * api/_lib/schemas.ts
+ * lib\schemas.ts
  * ─────────────────────────────────────────────────────────────────────────────
  * Zod validation schemas for every entity.  These are imported by the route
  * handlers to parse / validate incoming request bodies.
@@ -104,14 +104,7 @@ export const BulkPermissionUpsertSchema = z.object({
 // ---------------------------------------------------------------------------
 // Lead
 // ---------------------------------------------------------------------------
-const LeadStatusEnum = z.enum([
-  "draft",
-  "new",
-  "contacted",
-  "qualified",
-  "converted",
-  "lost",
-]);
+const LeadStatusEnum = z.enum(["NEW", "VISA_APPLICATION", "DROP"]);
 const LeadTypeEnum = z.enum(["study_abroad", "mbbs"]);
 const EnglishTestTypeEnum = z.enum(["IELTS", "TOEFL", "DUOLINGO", "PTE"]);
 
@@ -183,7 +176,7 @@ export const LeadCreateSchema = z.object({
     .default([]),
   gapsIfAny: optStr,
 
-  status: LeadStatusEnum.default("new"),
+  status: LeadStatusEnum.default("NEW"),
 
   nextFollowup: optDate,
 
@@ -203,6 +196,7 @@ export const LeadCreateSchema = z.object({
   loanRequirement: z.boolean().default(false),
 
   counselorIds: z.array(z.string().uuid()).optional(),
+  fintechAssigneeId: z.string().uuid().nullable().optional(),
 });
 
 export const LeadUpdateSchema = LeadCreateSchema.partial()
@@ -248,14 +242,7 @@ export const BankUpdateSchema = z.object({
 // ---------------------------------------------------------------------------
 // MBBS Lead
 // ---------------------------------------------------------------------------
-const MbbsLeadStatusEnum = z.enum([
-  "new",
-  "contacted",
-  "qualified",
-  "admitted",
-  "enrolled",
-  "lost",
-]);
+const MbbsLeadStatusEnum = z.enum(["NEW", "VISA_APPLICATION", "DROP"]);
 
 export const MbbsLeadCreateSchema = z.object({
   leadNumber: optStr,
@@ -289,7 +276,7 @@ export const MbbsLeadCreateSchema = z.object({
     .default([]),
   remarks: optStr,
   assignedCounselorId: optUuid,
-  status: MbbsLeadStatusEnum.default("new"),
+  status: MbbsLeadStatusEnum.default("NEW"),
   nextFollowup: optDate,
 });
 

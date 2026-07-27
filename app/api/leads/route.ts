@@ -157,6 +157,12 @@ export async function GET(req: NextRequest) {
               },
             },
           },
+          fintechAssignee: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           englishTests: {
             orderBy: {
               createdAt: "asc",
@@ -206,15 +212,22 @@ export async function POST(req: NextRequest) {
     );
     const accessToken = req.cookies.get("access_token")?.value;
 
-    const body = LeadCreateSchema.parse(await req.json());
+    const json = await req.json();
 
+    console.log("Incoming Lead Data:");
+    console.log(JSON.stringify(json, null, 2));
+
+    const body = LeadCreateSchema.parse(json);
     const {
       counselorIds,
       englishTests,
       assignedCounselorId: _assignedCounselorId,
+      fintechAssigneeId,
       ...leadData
     } = body;
-
+    const fintechId = Array.isArray(fintechAssigneeId)
+      ? (fintechAssigneeId[0] ?? null)
+      : (fintechAssigneeId ?? null);
     const latestLead = await db.lead.findFirst({
       orderBy: {
         createdAt: "desc",
@@ -285,6 +298,7 @@ export async function POST(req: NextRequest) {
           leadNumber,
           createdById: currentUser.id,
           updatedById: currentUser.id,
+          fintechAssigneeId: fintechId,
           counselors:
             selectedCounselorIds.length > 0
               ? {
@@ -355,7 +369,7 @@ export async function POST(req: NextRequest) {
 
     await triggerNotificationProcessor(accessToken);
 
-    return created(lead, "Lead created successfully");
+    return created(lead, "Walkin created successfully");
   } catch (error) {
     return handleError(error);
   }

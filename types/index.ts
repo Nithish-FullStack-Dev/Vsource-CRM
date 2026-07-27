@@ -1,18 +1,7 @@
 // crm-frontend-next\app\types\index.ts
-export type MbbsLeadStatus =
-  | "new"
-  | "contacted"
-  | "qualified"
-  | "converted"
-  | "lost"
-  | "draft";
-export type LeadStatus =
-  | "new"
-  | "contacted"
-  | "qualified"
-  | "converted"
-  | "lost"
-  | "draft";
+export type LeadStatus = "NEW" | "VISA_APPLICATION" | "DROP";
+
+export type MbbsLeadStatus = "NEW" | "VISA_APPLICATION" | "DROP";
 export type ApplicationStage =
   | "inquiry"
   | "documents"
@@ -62,7 +51,12 @@ export interface Lead {
     id: string;
     name: string;
   };
+  fintechAssigneeId?: string | null;
 
+  fintechAssignee?: {
+    id: string;
+    name: string;
+  } | null;
   counselors?: {
     isPrimary: boolean;
     counselor: {

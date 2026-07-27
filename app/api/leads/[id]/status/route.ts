@@ -61,7 +61,7 @@ export async function PATCH(
 
     const oldStatus = existingLead.status;
     const isConverting =
-      body.status === "converted" && !existingLead.isConverted;
+      body.status === "VISA_APPLICATION" && !existingLead.isConverted;
 
     const primaryCounselor =
       existingLead.counselors.find((item) => item.isPrimary) ??
@@ -78,7 +78,7 @@ export async function PATCH(
           data: {
             status: body.status,
             updatedById: currentUser.id,
-            ...(body.status === "converted"
+            ...(body.status === "VISA_APPLICATION"
               ? {
                   isConverted: true,
                   convertedAt:
@@ -93,7 +93,7 @@ export async function PATCH(
         let studentId: string | null = null;
         let studentWasCreated = false;
 
-        if (body.status === "converted") {
+        if (body.status === "VISA_APPLICATION") {
           const existingStudent = await tx.student.findUnique({
             where: {
               leadId: existingLead.id,
@@ -185,9 +185,9 @@ export async function PATCH(
         ...transactionResult.updatedLead,
         studentId: transactionResult.studentId,
       },
-      body.status === "converted"
-        ? "Lead converted successfully"
-        : "Lead status updated successfully",
+      body.status === "VISA_APPLICATION"
+        ? "Walkin converted successfully"
+        : "Walkin status updated successfully",
     );
   } catch (err) {
     return handleError(err);
