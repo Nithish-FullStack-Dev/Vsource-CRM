@@ -34,9 +34,11 @@ interface AuthState {
   login: (
     email: string,
     password: string,
+    deviceFingerprint: string,
   ) => Promise<{
     ok: boolean;
     error?: string;
+    attemptsLeft?: number;
     user: User | null;
   }>;
 
@@ -55,9 +57,9 @@ export const useAuth = create<AuthState>()((set, get) => ({
   isAuthenticated: false,
   isHydrating: true,
 
-  login: async (email, password) => {
+  login: async (email, password, deviceFingerprint) => {
     try {
-      const data = await authService.login(email, password);
+      const data = await authService.login(email, password, deviceFingerprint);
 
       set({
         user: data.user,
@@ -69,6 +71,7 @@ export const useAuth = create<AuthState>()((set, get) => ({
       return {
         ok: false,
         error: error?.message ?? "Login failed",
+        attemptsLeft: error?.attemptsLeft,
         user: null,
       };
     }

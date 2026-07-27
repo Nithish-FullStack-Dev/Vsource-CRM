@@ -1,6 +1,5 @@
-// crm-frontend-next\app\services\auth.service.ts
 export const authService = {
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string, deviceFingerprint: string) => {
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: {
@@ -10,13 +9,18 @@ export const authService = {
       body: JSON.stringify({
         email,
         password,
+        deviceFingerprint,
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data?.message || "Invalid email or password");
+      const err = new Error(data?.message || "Invalid email or password") as Error & {
+        attemptsLeft?: number;
+      };
+      err.attemptsLeft = data?.attemptsLeft;
+      throw err;
     }
 
     return data;

@@ -15,6 +15,8 @@ import {
   Megaphone,
   UserCog,
   ShieldCheck,
+  ShieldAlert,
+  ShieldQuestion,
   Settings2,
   MapPin,
   User,
@@ -34,6 +36,7 @@ import { cn } from "@/lib/utils";
 import logo from "@/assets/vsourcess.png";
 import { useState } from "react";
 import Image from "next/image";
+import { ROLES } from "@/lib/roles";
 
 const items = [
   {
@@ -152,8 +155,11 @@ export function Sidebar() {
     leads: pathname.startsWith("/leads"),
   });
   const canRead = useAuth((s) => s.canRead);
+  const currentUser = useAuth((s) => s.user);
 
   const { canCreate, canDelete, canUpdate } = useAuth();
+
+  const isSuperAdmin = currentUser?.role?.name === ROLES.SUPER_ADMIN;
 
   const hasModulePermission = (
     moduleCode: string,
@@ -364,6 +370,75 @@ export function Sidebar() {
               </div>
             );
           })}
+
+          {isSuperAdmin && (
+            <div className="space-y-0.5">
+              <Link
+                href="/blocked-users"
+                className={cn(
+                  "group relative flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                  pathname === "/blocked-users" ||
+                    pathname.startsWith("/blocked-users/")
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                )}
+              >
+                {(pathname === "/blocked-users" ||
+                  pathname.startsWith("/blocked-users/")) && (
+                    <motion.span
+                      layoutId="sidebar-active"
+                      className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary"
+                    />
+                  )}
+
+                <ShieldAlert
+                  className={cn(
+                    "size-[18px] shrink-0",
+                    (pathname === "/blocked-users" ||
+                      pathname.startsWith("/blocked-users/")) &&
+                    "text-primary",
+                  )}
+                />
+
+                {!sidebarCollapsed && (
+                  <span className="truncate">Blocked Users</span>
+                )}
+              </Link>
+
+              {/* NEW: IP & Device Access link */}
+              <Link
+                href="/admin/ip-rules"
+                className={cn(
+                  "group relative flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                  pathname === "/admin/ip-rules" ||
+                    pathname.startsWith("/admin/ip-rules/")
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                )}
+              >
+                {(pathname === "/admin/ip-rules" ||
+                  pathname.startsWith("/admin/ip-rules/")) && (
+                    <motion.span
+                      layoutId="sidebar-active"
+                      className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary"
+                    />
+                  )}
+
+                <ShieldQuestion
+                  className={cn(
+                    "size-[18px] shrink-0",
+                    (pathname === "/admin/ip-rules" ||
+                      pathname.startsWith("/admin/ip-rules/")) &&
+                    "text-primary",
+                  )}
+                />
+
+                {!sidebarCollapsed && (
+                  <span className="truncate">IP & Device Access</span>
+                )}
+              </Link>
+            </div>
+          )}
         </nav>
 
         {!sidebarCollapsed && (

@@ -1,26 +1,11 @@
-// lib\rbac.ts
 import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { verifyToken } from "@/lib/jwt";
 import { PermissionAction } from "./module-codes";
+import { ROLES, RoleName } from "@/lib/roles";
 
-export const ROLES = {
-  SUPER_ADMIN: "Super Admin",
-  DIRECTOR: "Director",
-  BRANCH_MANAGER: "Branch Manager",
-  RECEPTIONIST: "Receptionist",
-  COUNSELLOR: "Counsellor",
-
-  SR_ASSOCIATE: "Sr Associate",
-  SR_ASSOCIATE_BACKEND: "Sr Associate Backend",
-  SR_ASSOCIATE_FINTECH: "Sr Associate Fintech",
-
-  JR_ASSOCIATE: "Jr Associate",
-  JR_ASSOCIATE_BACKEND: "Jr Associate Backend",
-  JR_ASSOCIATE_FINTECH: "Jr Associate Fintech",
-} as const;
-
-export type RoleName = (typeof ROLES)[keyof typeof ROLES];
+export { ROLES };
+export type { RoleName };
 
 export class ApiError extends Error {
   constructor(

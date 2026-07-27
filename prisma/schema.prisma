@@ -12,6 +12,8 @@ model User {
   name                                        String
   email                                       String                   @unique
   password                                    String
+  failedLoginAttempts                         Int                      @default(0)
+  isBlocked                                   Boolean                  @default(false)
   roleId                                      String
   createdAt                                   DateTime                 @default(now())
   updatedAt                                   DateTime                 @updatedAt
@@ -1128,4 +1130,47 @@ enum NotificationPriority {
   NORMAL
   HIGH
   URGENT
+}
+model IpRule {
+  id                String    @id @default(uuid())
+  ip                String
+  deviceFingerprint String?
+  label             String?
+  status            IpStatus
+  reason            String?
+  expiresAt         DateTime?
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([ip, deviceFingerprint])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model LoginIpLog {
+  id                String            @id @default(uuid())
+  ip                String
+  deviceFingerprint String?
+  userEmail         String?
+  userAgent         String?
+  status            LoginIpLogStatus
+  createdAt         DateTime          @default(now())
+
+  @@index([ip])
+  @@index([deviceFingerprint])
+  @@index([createdAt])
+  @@index([userEmail])
+}
+
+enum IpStatus {
+  ALLOWED
+  BLOCKED
+}
+
+enum LoginIpLogStatus {
+  ALLOWED
+  BLOCKED_NOT_WHITELISTED
+  BLOCKED_EXPLICIT
+  EXPIRED_ALLOW
 }
