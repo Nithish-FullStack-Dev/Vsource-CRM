@@ -15,8 +15,6 @@ model User {
   roleId                                      String
   createdAt                                   DateTime                 @default(now())
   updatedAt                                   DateTime                 @updatedAt
-  failedLoginAttempts                         Int                      @default(0)
-  isBlocked                                   Boolean                  @default(false)
   intakeTargets                               CounsellorIntakeTarget[] @relation("UserIntakeTargets")
   createdIntakeTargets                        CounsellorIntakeTarget[] @relation("UserCreatedIntakeTargets")
   leadsConverted                              Lead[]                   @relation("LeadConvertedBy")
@@ -989,37 +987,6 @@ model NotificationOutbox {
   @@index([status, nextAttemptAt, createdAt])
 }
 
-model IpRule {
-  id                String    @id
-  ip                String
-  deviceFingerprint String?
-  label             String?
-  status            IpStatus
-  reason            String?
-  expiresAt         DateTime?
-  createdById       String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime
-
-  @@unique([ip, deviceFingerprint])
-  @@index([expiresAt])
-  @@index([status])
-}
-
-model LoginIpLog {
-  id                String           @id
-  ip                String
-  deviceFingerprint String?
-  userEmail         String?
-  userAgent         String?
-  status            LoginIpLogStatus
-  createdAt         DateTime         @default(now())
-
-  @@index([createdAt])
-  @@index([deviceFingerprint])
-  @@index([ip])
-  @@index([userEmail])
-}
 
 enum LeadStatus {
   NEW
@@ -1192,14 +1159,3 @@ enum NotificationPriority {
   URGENT
 }
 
-enum IpStatus {
-  ALLOWED
-  BLOCKED
-}
-
-enum LoginIpLogStatus {
-  ALLOWED
-  BLOCKED_NOT_WHITELISTED
-  BLOCKED_EXPLICIT
-  EXPIRED_ALLOW
-}
