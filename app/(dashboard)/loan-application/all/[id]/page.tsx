@@ -28,7 +28,6 @@ import {
 import {
   useLoanApplication,
   useLoanStatus,
-  useUpdateLoanApplication,
 } from "@/hooks/loan-application/useLoanApplications";
 import { getLoanTabs, LOAN_STATUSES } from "@/lib/loan-application/constants";
 import {
@@ -40,12 +39,8 @@ import { EducationTab } from "./_components/EducationTab";
 import { EmploymentTab } from "./_components/EmploymentTab";
 import { BusinessTab } from "./_components/BusinessTab";
 import { CoApplicantTab } from "./_components/CoApplicantTab";
-import { FinancialTab } from "./_components/FinancialTab";
 import { DocumentsTab } from "./_components/DocumentsTab";
-import { CibilTab } from "./_components/CibilTab";
 import { BanksTab } from "./_components/BanksTab";
-import { SanctionTab } from "./_components/SanctionTab";
-import { DisbursementTab } from "./_components/DisbursementTab";
 import { RemarksTab } from "./_components/RemarksTab";
 import {
   Dialog,
@@ -54,10 +49,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DepositTab } from "./_components/DepositTab";
 import { useAuth } from "@/store";
 import { MODULES } from "@/lib/module-codes";
 import { usePageTitle } from "@/store/page-title";
+import LendingPatner from "./_components/LendingPatner";
 
 const icons: Record<string, React.ElementType> = {
   basic: User,
@@ -150,7 +145,6 @@ export default function LoanApplicationProfilePage() {
           canCreate={canCreate}
         />
       ),
-      financial: <FinancialTab applicant={a as any} canUpdate={canUpdate} />,
       documents: (
         <DocumentsTab
           applicationId={a.id ?? ""}
@@ -158,7 +152,6 @@ export default function LoanApplicationProfilePage() {
           canUpdate={canUpdate}
         />
       ),
-      cibil: <CibilTab applicant={a as any} />,
       banks: (
         <BanksTab
           applicationId={a.id}
@@ -167,11 +160,7 @@ export default function LoanApplicationProfilePage() {
           canDelete={canDelete}
         />
       ),
-      sanction: <SanctionTab applicant={a as any} canUpdate={canUpdate} />,
-      disbursement: (
-        <DisbursementTab applicant={a as any} canUpdate={canUpdate} />
-      ),
-      deposit: <DepositTab applicant={a as any} canUpdate={canUpdate} />,
+      Lending_Patner: <LendingPatner />,
       remarks: (
         <RemarksTab
           applicant={a as any}
