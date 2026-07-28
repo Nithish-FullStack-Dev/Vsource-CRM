@@ -1,78 +1,89 @@
+import { reportPercentage } from "@/lib/report-metric-rules";
 import type {
   PerformanceReportCounselorPoint,
   PerformanceReportMetricRow,
 } from "@/types/performance-report";
 
-const emptyTotals = (): PerformanceReportMetricRow => ({
-  totalWalkins: 0,
-  leadsCreated: 0,
-  leads: 0,
-  qualifiedLeads: 0,
-  lostLeads: 0,
-  students: 0,
-  droppedStudents: 0,
-  loanLogins: 0,
+export const emptyPerformanceMetrics = (): PerformanceReportMetricRow => ({
+  walkIns: 0,
+  references: 0,
+  activeWalkIns: 0,
+  dropHoldDif: 0,
+  applications: 0,
+  sameDayApplications: 0,
+  oldWalkInApplications: 0,
+  universityApplications: 0,
+  offers: 0,
+  casApplied: 0,
+  casReceived: 0,
+  visaApplied: 0,
+  visaApproved: 0,
+  loanApplications: 0,
+  outsideLoan: 0,
   loanApproved: 0,
-  applicationConversions: 0,
-  visaConversions: 0,
-  applicationConversionRate: 0,
-  visaConversionRate: 0,
-  conversionRate: 0,
+  loanDisbursed: 0,
   target: 0,
   achieved: 0,
+  leadToStudentConversionPercentage: 0,
+  universityApplicationConversionPercentage: 0,
+  visaConversionPercentage: 0,
+  loanConversionPercentage: 0,
   targetCompletionPercentage: 0,
-  applications: 0,
-  offers: 0,
-  casReceived: 0,
-  visaApproved: 0,
 });
 
-export function calculatePerformanceTotals<
-  T extends PerformanceReportMetricRow,
->(rows: T[]): PerformanceReportMetricRow {
-  const total = rows.reduce((sum, row) => {
-    for (const key of [
-      "totalWalkins",
-      "leadsCreated",
-      "leads",
-      "qualifiedLeads",
-      "lostLeads",
-      "students",
-      "droppedStudents",
-      "loanLogins",
-      "loanApproved",
-      "applicationConversions",
-      "visaConversions",
-      "target",
-      "achieved",
-      "applications",
-      "offers",
-      "casReceived",
-      "visaApproved",
-    ] as const) {
-      sum[key] += row[key];
-    }
-    return sum;
-  }, emptyTotals());
+const additiveKeys = [
+  "walkIns",
+  "references",
+  "activeWalkIns",
+  "dropHoldDif",
+  "applications",
+  "sameDayApplications",
+  "oldWalkInApplications",
+  "universityApplications",
+  "offers",
+  "casApplied",
+  "casReceived",
+  "visaApplied",
+  "visaApproved",
+  "loanApplications",
+  "outsideLoan",
+  "loanApproved",
+  "loanDisbursed",
+  "target",
+  "achieved",
+] as const;
 
-  total.targetCompletionPercentage = total.target
-    ? Number(((total.achieved / total.target) * 100).toFixed(1))
-    : 0;
-  total.applicationConversionRate = total.totalWalkins
-    ? Number(
-        ((total.applicationConversions / total.totalWalkins) * 100).toFixed(1),
-      )
-    : 0;
-  total.visaConversionRate = total.applicationConversions
-    ? Number(
-        ((total.visaConversions / total.applicationConversions) * 100).toFixed(
-          1,
-        ),
-      )
-    : 0;
-  total.conversionRate = total.applicationConversionRate;
+export function finalizePerformanceMetrics<T extends PerformanceReportMetricRow>(
+  row: T,
+): T {
+  row.leadToStudentConversionPercentage = reportPercentage(
+    row.applications,
+    row.walkIns,
+  );
+  row.universityApplicationConversionPercentage = reportPercentage(
+    row.universityApplications,
+    row.applications,
+  );
+  row.visaConversionPercentage = reportPercentage(
+    row.visaApproved,
+    row.applications,
+  );
+  row.loanConversionPercentage = reportPercentage(
+    row.loanApproved,
+    row.loanApplications,
+  );
+  row.targetCompletionPercentage = reportPercentage(row.achieved, row.target);
+  return row;
+}
 
-  return total;
+export function calculatePerformanceTotals<T extends PerformanceReportMetricRow>(
+  rows: T[],
+): PerformanceReportMetricRow {
+  const total = emptyPerformanceMetrics();
+  for (const row of rows) {
+    for (const key of additiveKeys) total[key] += row[key];
+  }
+  return finalizePerformanceMetrics(total);
 }
 
 export type CounselorPerformanceGroup = {
@@ -86,18 +97,16 @@ export function groupCounselorPerformance(
   rows: PerformanceReportCounselorPoint[],
 ): CounselorPerformanceGroup[] {
   const groups = new Map<string, CounselorPerformanceGroup>();
-
   for (const row of rows) {
     const group = groups.get(row.branchId) ?? {
       branchId: row.branchId,
       branch: row.branch,
       rows: [],
-      totals: emptyTotals(),
+      totals: emptyPerformanceMetrics(),
     };
     group.rows.push(row);
     groups.set(row.branchId, group);
   }
-
   return [...groups.values()]
     .map((group) => ({
       ...group,

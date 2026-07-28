@@ -32,11 +32,7 @@ function errorMessage(error: unknown, fallback: string) {
   const data = error.response?.data as ErrorPayload | string | undefined;
   if (typeof data === "string") {
     return (
-      data
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 180) ||
+      data.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 180) ||
       error.message ||
       fallback
     );
@@ -44,9 +40,7 @@ function errorMessage(error: unknown, fallback: string) {
   return data?.message || data?.error || error.message || fallback;
 }
 
-async function unwrap<T>(
-  request: Promise<{ data: ApiResponse<T> }>,
-): Promise<T> {
+async function unwrap<T>(request: Promise<{ data: ApiResponse<T> }>): Promise<T> {
   try {
     const { data } = await request;
     if (!data.success) throw new Error(data.message || "Request failed");
@@ -69,9 +63,7 @@ export function getPerformanceReport(
 }
 
 export function getPerformanceReportFilterOptions(): Promise<PerformanceReportFilterOptions> {
-  return unwrap(
-    api.get<ApiResponse<PerformanceReportFilterOptions>>(endpoints.filters),
-  );
+  return unwrap(api.get<ApiResponse<PerformanceReportFilterOptions>>(endpoints.filters));
 }
 
 export async function exportPerformanceReport(
@@ -89,12 +81,8 @@ export async function exportPerformanceReport(
       error.response?.data instanceof Blob &&
       error.response.data.type.includes("application/json")
     ) {
-      const payload = JSON.parse(
-        await error.response.data.text(),
-      ) as ErrorPayload;
-      throw new Error(
-        payload.message || payload.error || "Unable to export report",
-      );
+      const payload = JSON.parse(await error.response.data.text()) as ErrorPayload;
+      throw new Error(payload.message || payload.error || "Unable to export report");
     }
     throw new Error(errorMessage(error, "Unable to export performance report"));
   }

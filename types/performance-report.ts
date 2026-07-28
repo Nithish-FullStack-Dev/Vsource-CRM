@@ -56,12 +56,10 @@ export const DEFAULT_PERFORMANCE_REPORT_FILTERS: PerformanceReportFilters = {
 };
 
 export type ReportOption = { value: string; label: string };
-
 export type CounselorReportOption = ReportOption & {
   branchIds: string[];
   roleName: string;
 };
-
 export type UniversityReportOption = ReportOption & { countryId: string };
 
 export type PerformanceReportAccess =
@@ -88,82 +86,64 @@ export type PerformanceReportFilterOptions = {
   nbfcs: string[];
 };
 
-export type PerformanceReportSummary = {
+export type PerformanceReportMetricRow = {
+  walkIns: number;
+  references: number;
+  activeWalkIns: number;
+  dropHoldDif: number;
+  applications: number;
+  sameDayApplications: number;
+  oldWalkInApplications: number;
+  universityApplications: number;
+  offers: number;
+  casApplied: number;
+  casReceived: number;
+  visaApplied: number;
+  visaApproved: number;
+  loanApplications: number;
+  outsideLoan: number;
+  loanApproved: number;
+  loanDisbursed: number;
+  target: number;
+  achieved: number;
+  leadToStudentConversionPercentage: number;
+  universityApplicationConversionPercentage: number;
+  visaConversionPercentage: number;
+  loanConversionPercentage: number;
+  targetCompletionPercentage: number;
+};
+
+export type PerformanceReportSummary = PerformanceReportMetricRow & {
   totalPipelineRecords: number;
   totalLeads: number;
   totalStudents: number;
   totalApplications: number;
-  qualifiedLeads: number;
-  lostLeads: number;
-  droppedStudents: number;
-  totalTarget: number;
-  totalAchieved: number;
-  totalLeadsCreated: number;
   targetAssignments: number;
-  targetCompletionPercentage: number;
-  applicationConversions: number;
-  visaConversions: number;
-  applicationConversionRate: number;
-  visaConversionRate: number;
-  /** Backward-compatible alias for applicationConversionRate. */
-  conversionRate: number;
-  offerApplications: number;
-  casReceivedStudents: number;
-  visaApprovedStudents: number;
-  loanLogins: number;
-  loanApproved: number;
 };
 
 export type PerformanceReportMonthlyPoint = {
   key: string;
   label: string;
-  leads: number;
-  students: number;
+  walkIns: number;
   applications: number;
-  loanLogins: number;
-  loanApproved: number;
-  visaConversions: number;
+  universityApplications: number;
+  loanApplications: number;
+  visaApproved: number;
 };
 
 export type PerformanceReportCountryPoint = {
   country: string;
-  leads: number;
-  students: number;
+  walkIns: number;
   applications: number;
+  universityApplications: number;
 };
 
 export type PerformanceReportStatusPoint = { status: string; count: number };
-
 export type PerformanceReportSourcePoint = {
   source: string;
-  leads: number;
-  students: number;
-  total: number;
-};
-
-export type PerformanceReportMetricRow = {
-  totalWalkins: number;
-  leadsCreated: number;
-  leads: number;
-  qualifiedLeads: number;
-  lostLeads: number;
-  students: number;
-  droppedStudents: number;
-  loanLogins: number;
-  loanApproved: number;
-  applicationConversions: number;
-  visaConversions: number;
-  applicationConversionRate: number;
-  visaConversionRate: number;
-  /** Backward-compatible alias for applicationConversionRate. */
-  conversionRate: number;
-  target: number;
-  achieved: number;
-  targetCompletionPercentage: number;
+  walkIns: number;
   applications: number;
-  offers: number;
-  casReceived: number;
-  visaApproved: number;
+  total: number;
 };
 
 export type PerformanceReportBranchPoint = PerformanceReportMetricRow & {
@@ -194,6 +174,7 @@ export type PerformanceReportRow = {
   counselorId: string | null;
   counselorName: string;
   source: string;
+  isReference: boolean;
   countryName: string;
   intakeName: string;
   courseName: string;
@@ -201,6 +182,7 @@ export type PerformanceReportRow = {
   currentStage: string;
   createdAt: string;
   convertedAt: string | null;
+  applicationTiming: "same_day" | "old_walkin" | null;
   nextFollowup: string | null;
   applicationsCount: number;
   latestApplicationId: string | null;
@@ -211,8 +193,10 @@ export type PerformanceReportRow = {
   casStatus: string;
   visaStatus: string;
   loanStatus: string;
-  loanLogin: boolean;
+  loanApplication: boolean;
+  outsideLoan: boolean;
   loanApproved: boolean;
+  loanDisbursed: boolean;
   nbfc: string;
   fintechAssigneeName: string;
 };
@@ -261,12 +245,7 @@ export type PerformanceReportData = {
   counselorPerformance: PerformanceReportCounselorPoint[];
   rows: PerformanceReportRow[];
   applicationRows?: PerformanceApplicationExportRow[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+  pagination: { page: number; limit: number; total: number; totalPages: number };
 };
 
 export type ApiResponse<T> = { success: boolean; data: T; message?: string };

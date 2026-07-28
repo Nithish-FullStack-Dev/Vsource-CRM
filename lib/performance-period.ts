@@ -2,12 +2,7 @@ import type { PerformancePeriodType } from "@/types/counsellor-performance";
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
-type DateParts = {
-  year: number;
-  month: number;
-  day: number;
-};
-
+type DateParts = { year: number; month: number; day: number };
 type PeriodRangeInput = {
   period: PerformancePeriodType;
   date: string;
@@ -23,82 +18,60 @@ export type ResolvedPeriodRange = {
   label: string;
 };
 
-function isValidYmd(value: string | undefined): value is string {
-  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
-}
+const isValidYmd = (value: string | undefined): value is string =>
+  Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 
 function parseYmd(value: string): DateParts {
   const [year, month, day] = value.split("-").map(Number);
-
-  return {
-    year,
-    month,
-    day,
-  };
+  return { year, month, day };
 }
 
-function toYmdFromUtcDate(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
+const toYmd = (date: Date) => date.toISOString().slice(0, 10);
 
-function addDaysToYmd(value: string, days: number) {
+function addDays(value: string, days: number) {
   const { year, month, day } = parseYmd(value);
-  const date = new Date(Date.UTC(year, month - 1, day + days));
-
-  return toYmdFromUtcDate(date);
+  return toYmd(new Date(Date.UTC(year, month - 1, day + days)));
 }
 
-function getMonthStart(value: string) {
+function monthStart(value: string) {
   const { year, month } = parseYmd(value);
-
   return `${year}-${String(month).padStart(2, "0")}-01`;
 }
 
-function getNextMonthStart(value: string) {
+function nextMonthStart(value: string) {
   const { year, month } = parseYmd(value);
-  const date = new Date(Date.UTC(year, month, 1));
-
-  return toYmdFromUtcDate(date);
+  return toYmd(new Date(Date.UTC(year, month, 1)));
 }
 
-function getWeekStartMonday(value: string) {
+function weekStartMonday(value: string) {
   const { year, month, day } = parseYmd(value);
   const date = new Date(Date.UTC(year, month - 1, day));
-  const dayOfWeek = date.getUTCDay();
-  const daysFromMonday = (dayOfWeek + 6) % 7;
-
-  date.setUTCDate(date.getUTCDate() - daysFromMonday);
-
-  return toYmdFromUtcDate(date);
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  return toYmd(date);
 }
 
-function istDateStartToUtc(value: string) {
+function istStartToUtc(value: string) {
   const { year, month, day } = parseYmd(value);
-
   return new Date(Date.UTC(year, month - 1, day) - IST_OFFSET_MS);
 }
 
-function formatDateLabel(value: string) {
+function formatDate(value: string) {
   const { year, month, day } = parseYmd(value);
-  const date = new Date(Date.UTC(year, month - 1, day));
-
   return new Intl.DateTimeFormat("en-IN", {
     timeZone: "UTC",
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(date);
+  }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
-function formatMonthLabel(value: string) {
+function formatMonth(value: string) {
   const { year, month } = parseYmd(value);
-  const date = new Date(Date.UTC(year, month - 1, 1));
-
   return new Intl.DateTimeFormat("en-IN", {
     timeZone: "UTC",
     month: "short",
     year: "numeric",
-  }).format(date);
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
 export function getCurrentIstDate() {
@@ -117,41 +90,36 @@ export function resolvePerformancePeriodRange({
   endDate,
 }: PeriodRangeInput): ResolvedPeriodRange {
   const safeDate = isValidYmd(date) ? date : getCurrentIstDate();
-
   let rangeStart: string;
   let rangeEndExclusive: string;
   let label: string;
 
   if (period === "custom") {
-    const safeStart = isValidYmd(startDate) ? startDate : safeDate;
-    const safeEnd = isValidYmd(endDate) ? endDate : safeStart;
-
-    rangeStart = safeStart <= safeEnd ? safeStart : safeEnd;
-    const inclusiveEnd = safeEnd >= safeStart ? safeEnd : safeStart;
-    rangeEndExclusive = addDaysToYmd(inclusiveEnd, 1);
-
-    label = `${formatDateLabel(rangeStart)} - ${formatDateLabel(inclusiveEnd)}`;
+    const first = isValidYmd(startDate) ? startDate : safeDate;
+    const second = isValidYmd(endDate) ? endDate : first;
+    rangeStart = first <= second ? first : second;
+    const inclusiveEnd = first <= second ? second : first;
+    rangeEndExclusive = addDays(inclusiveEnd, 1);
+    label = `${formatDate(rangeStart)} - ${formatDate(inclusiveEnd)}`;
   } else if (period === "daily") {
     rangeStart = safeDate;
-    rangeEndExclusive = addDaysToYmd(safeDate, 1);
-    label = formatDateLabel(safeDate);
+    rangeEndExclusive = addDays(safeDate, 1);
+    label = formatDate(safeDate);
   } else if (period === "weekly") {
-    rangeStart = getWeekStartMonday(safeDate);
-    rangeEndExclusive = addDaysToYmd(rangeStart, 7);
-    label = `${formatDateLabel(rangeStart)} - ${formatDateLabel(
-      addDaysToYmd(rangeEndExclusive, -1),
-    )}`;
+    rangeStart = weekStartMonday(safeDate);
+    rangeEndExclusive = addDays(rangeStart, 7);
+    label = `${formatDate(rangeStart)} - ${formatDate(addDays(rangeEndExclusive, -1))}`;
   } else {
-    rangeStart = getMonthStart(safeDate);
-    rangeEndExclusive = getNextMonthStart(safeDate);
-    label = formatMonthLabel(rangeStart);
+    rangeStart = monthStart(safeDate);
+    rangeEndExclusive = nextMonthStart(safeDate);
+    label = formatMonth(rangeStart);
   }
 
   return {
-    start: istDateStartToUtc(rangeStart),
-    end: istDateStartToUtc(rangeEndExclusive),
+    start: istStartToUtc(rangeStart),
+    end: istStartToUtc(rangeEndExclusive),
     startDate: rangeStart,
-    endDate: addDaysToYmd(rangeEndExclusive, -1),
+    endDate: addDays(rangeEndExclusive, -1),
     label,
   };
 }

@@ -7,43 +7,30 @@ import type {
   PerformanceReportData,
   PerformanceReportFilters,
   PerformanceReportMetricRow,
-  PerformanceReportRow,
 } from "@/types/performance-report";
 
 const HEADER_FILL = "FF9F1239";
 const HEADER_TEXT = "FFFFFFFF";
 const SUBTLE_FILL = "FFF8FAFC";
 const TOTAL_FILL = "FFF1F5F9";
-const GRAND_TOTAL_FILL = "FFE2E8F0";
 const BORDER_COLOR = "FFE2E8F0";
 
 const humanize = (value: string) =>
   value
-    ? value
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    ? value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
     : "All";
 
-function formatDate(value: string | null) {
+const formatDate = (value: string | null) => {
   if (!value) return "";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-IN");
-}
+};
 
 function styleHeader(row: ExcelJS.Row) {
-  row.height = 24;
+  row.height = 25;
   row.font = { bold: true, color: { argb: HEADER_TEXT } };
-  row.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: HEADER_FILL },
-  };
-  row.alignment = { vertical: "middle" };
-}
-
-function styleTotal(row: ExcelJS.Row, fill: string) {
-  row.font = { bold: true, color: { argb: "FF0F172A" } };
-  row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
+  row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: HEADER_FILL } };
+  row.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
 }
 
 function styleWorksheet(sheet: ExcelJS.Worksheet) {
@@ -59,11 +46,7 @@ function styleWorksheet(sheet: ExcelJS.Worksheet) {
       cell.alignment = { vertical: "middle", wrapText: true };
     });
     if (rowNumber > 1 && rowNumber % 2 === 0 && !row.font?.bold) {
-      row.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: SUBTLE_FILL },
-      };
+      row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: SUBTLE_FILL } };
     }
   });
   styleHeader(sheet.getRow(1));
@@ -77,28 +60,59 @@ function styleWorksheet(sheet: ExcelJS.Worksheet) {
 
 function metricValues(row: PerformanceReportMetricRow) {
   return {
-    totalWalkins: row.totalWalkins,
-    leadsCreated: row.leadsCreated,
-    leads: row.leads,
-    qualifiedLeads: row.qualifiedLeads,
-    lostLeads: row.lostLeads,
-    students: row.students,
-    droppedStudents: row.droppedStudents,
-    loanLogins: row.loanLogins,
+    walkIns: row.walkIns,
+    references: row.references,
+    activeWalkIns: row.activeWalkIns,
+    dropHoldDif: row.dropHoldDif,
+    applications: row.applications,
+    sameDayApplications: row.sameDayApplications,
+    oldWalkInApplications: row.oldWalkInApplications,
+    universityApplications: row.universityApplications,
+    offers: row.offers,
+    casApplied: row.casApplied,
+    casReceived: row.casReceived,
+    visaApplied: row.visaApplied,
+    visaApproved: row.visaApproved,
+    loanApplications: row.loanApplications,
+    outsideLoan: row.outsideLoan,
     loanApproved: row.loanApproved,
-    applicationConversions:
-      `${row.applicationConversions} (${row.applicationConversionRate}%)`,
-
-    visaConversions:
-      `${row.visaConversions} (${row.visaConversionRate}%)`,
+    loanDisbursed: row.loanDisbursed,
     target: row.target,
     achieved: row.achieved,
-    targetCompletionPercentage: `${row.targetCompletionPercentage}%`,
-    applications: row.applications,
-    offers: row.offers,
-    casReceived: row.casReceived,
+    leadConversion: `${row.leadToStudentConversionPercentage}%`,
+    universityConversion: `${row.universityApplicationConversionPercentage}%`,
+    visaConversion: `${row.visaConversionPercentage}%`,
+    loanConversion: `${row.loanConversionPercentage}%`,
+    targetCompletion: `${row.targetCompletionPercentage}%`,
   };
 }
+
+const metricColumns: Partial<ExcelJS.Column>[] = [
+  { header: "Walk-ins", key: "walkIns", width: 12 },
+  { header: "Reference", key: "references", width: 12 },
+  { header: "Active Walk-ins", key: "activeWalkIns", width: 14 },
+  { header: "Drops / Hold / DIF", key: "dropHoldDif", width: 17 },
+  { header: "Applications", key: "applications", width: 13 },
+  { header: "Same Day Apps", key: "sameDayApplications", width: 15 },
+  { header: "Old Walk-in Apps", key: "oldWalkInApplications", width: 17 },
+  { header: "University Applied", key: "universityApplications", width: 17 },
+  { header: "Offers", key: "offers", width: 11 },
+  { header: "CAS Applied", key: "casApplied", width: 13 },
+  { header: "CAS Received", key: "casReceived", width: 14 },
+  { header: "Visa Applied", key: "visaApplied", width: 13 },
+  { header: "Visa Approved", key: "visaApproved", width: 14 },
+  { header: "Loan Applications", key: "loanApplications", width: 17 },
+  { header: "OS-LOAN / O-FUND", key: "outsideLoan", width: 18 },
+  { header: "Loan Approved", key: "loanApproved", width: 14 },
+  { header: "Loan Disbursed", key: "loanDisbursed", width: 15 },
+  { header: "Target", key: "target", width: 10 },
+  { header: "Achieved", key: "achieved", width: 11 },
+  { header: "Lead Conversion %", key: "leadConversion", width: 16 },
+  { header: "University Conversion %", key: "universityConversion", width: 19 },
+  { header: "Visa Conversion %", key: "visaConversion", width: 16 },
+  { header: "Loan Conversion %", key: "loanConversion", width: 16 },
+  { header: "Target Completion %", key: "targetCompletion", width: 18 },
+];
 
 function addSummary(
   workbook: ExcelJS.Workbook,
@@ -107,41 +121,40 @@ function addSummary(
 ) {
   const sheet = workbook.addWorksheet("Summary");
   sheet.columns = [
-    { header: "Metric", key: "metric", width: 40 },
+    { header: "Metric", key: "metric", width: 42 },
     { header: "Value", key: "value", width: 24 },
   ];
-  const rows: Array<[string, string | number]> = [
+  const summaryRows: Array<[string, string | number]> = [
     ["Generated At", new Date(report.generatedAt).toLocaleString("en-IN")],
-    ["Total Walk-ins", report.summary.totalPipelineRecords],
-    ["Active Walk-ins", report.summary.totalLeads],
-    ["Drop Walk-ins", report.summary.lostLeads],
-    ["Applications", report.summary.totalStudents],
-    ["Dropped Applications", report.summary.droppedStudents],
-    ["Walk-ins Added", report.summary.totalLeadsCreated],
-    ["Loan Logins", report.summary.loanLogins],
+    ["Walk-ins", report.summary.walkIns],
+    ["Reference (all sources except Walk-in)", report.summary.references],
+    ["Applications (lead converted to student)", report.summary.applications],
+    ["Same Day Apps", report.summary.sameDayApplications],
+    ["Old Walk-in Apps", report.summary.oldWalkInApplications],
+    ["University Applied", report.summary.universityApplications],
+    ["Drops / Hold / DIF", report.summary.dropHoldDif],
+    ["Loan Applications", report.summary.loanApplications],
+    ["OS-LOAN / O-FUND", report.summary.outsideLoan],
     ["Loan Approved", report.summary.loanApproved],
-    ["Application Conversions", report.summary.applicationConversions],
-    [
-      "Application Conversion Rate",
-      `${report.summary.applicationConversionRate}%`,
-    ],
-    ["Visa Conversions", report.summary.visaConversions],
-    ["Visa Conversion Rate", `${report.summary.visaConversionRate}%`],
-    ["Visa Approval Target", report.summary.totalTarget],
-    ["Target Achieved (Visa Approved)", report.summary.totalAchieved],
+    ["Loan Disbursed", report.summary.loanDisbursed],
+    ["CAS Applied", report.summary.casApplied],
+    ["CAS Received", report.summary.casReceived],
+    ["Visa Applied", report.summary.visaApplied],
+    ["Visa Approved", report.summary.visaApproved],
+    ["Target", report.summary.target],
+    ["Achieved", report.summary.achieved],
+    ["Lead to Student Conversion", `${report.summary.leadToStudentConversionPercentage}%`],
+    ["University Application Conversion", `${report.summary.universityApplicationConversionPercentage}%`],
+    ["Visa Conversion", `${report.summary.visaConversionPercentage}%`],
+    ["Loan Conversion", `${report.summary.loanConversionPercentage}%`],
     ["Target Completion", `${report.summary.targetCompletionPercentage}%`],
-    ["Target Assignments", report.summary.targetAssignments],
-    ["University Applications", report.summary.totalApplications],
-    ["Offer Applications", report.summary.offerApplications],
-    ["CAS Received", report.summary.casReceivedStudents],
-    ["Visa Approved", report.summary.visaApprovedStudents],
   ];
-  rows.forEach(([metric, value]) => sheet.addRow({ metric, value }));
+  summaryRows.forEach(([metric, value]) => sheet.addRow({ metric, value }));
   styleWorksheet(sheet);
 
   const filterSheet = workbook.addWorksheet("Applied Filters");
   filterSheet.columns = [
-    { header: "Filter", key: "filter", width: 34 },
+    { header: "Filter", key: "filter", width: 32 },
     { header: "Value", key: "value", width: 44 },
   ];
   const filterRows: Array<[string, string]> = [
@@ -160,242 +173,118 @@ function addSummary(
     ["Loan Status", humanize(filters.loanStatus)],
     ["NBFC / Bank", filters.nbfc || "All"],
     ["Fintech Assignee ID", filters.fintechAssigneeId || "All"],
-    ["Lifecycle Date Range", humanize(filters.datePreset)],
-    ["Custom Start Date", filters.startDate || "Not Set"],
-    ["Custom End Date", filters.endDate || "Not Set"],
+    ["Date Preset", humanize(filters.datePreset)],
+    ["Start Date", filters.startDate || "Not Set"],
+    ["End Date", filters.endDate || "Not Set"],
   ];
-  filterRows.forEach(([filter, value]) =>
-    filterSheet.addRow({ filter, value }),
-  );
+  filterRows.forEach(([filter, value]) => filterSheet.addRow({ filter, value }));
   styleWorksheet(filterSheet);
 }
 
-function addPipeline(
-  workbook: ExcelJS.Workbook,
-  name: string,
-  rows: PerformanceReportRow[],
-) {
-  const sheet = workbook.addWorksheet(name);
-  sheet.columns = [
-    { header: "Record Type", key: "recordType", width: 16 },
-    { header: "Walk-in Number", key: "leadNumber", width: 18 },
-    { header: "Applicant Name", key: "studentName", width: 24 },
-    { header: "Email", key: "emailId", width: 30 },
-    { header: "Mobile", key: "mobileNumber", width: 18 },
-    { header: "Branch", key: "branchName", width: 24 },
-    { header: "Current Owner", key: "counselorName", width: 24 },
-    { header: "Source", key: "source", width: 20 },
-    { header: "Country", key: "countryName", width: 20 },
-    { header: "Intake", key: "intakeName", width: 20 },
-    { header: "Course", key: "courseName", width: 28 },
-    { header: "Lifecycle Status", key: "lifecycleStatus", width: 22 },
-    { header: "Current Stage", key: "currentStage", width: 22 },
-    { header: "Created Date", key: "createdAt", width: 18 },
-    { header: "Application Conversion Date", key: "convertedAt", width: 24 },
-    { header: "Next Follow-up", key: "nextFollowup", width: 18 },
-    { header: "University Applications", key: "applicationsCount", width: 22 },
-    { header: "Latest University", key: "latestUniversityName", width: 34 },
-    {
-      header: "Latest Application Date",
-      key: "latestApplicationDate",
-      width: 22,
-    },
-    {
-      header: "Latest Application Status",
-      key: "latestApplicationStatus",
-      width: 24,
-    },
-    { header: "Latest Offer Status", key: "latestOfferStatus", width: 22 },
-    { header: "CAS Status", key: "casStatus", width: 18 },
-    { header: "Visa Status", key: "visaStatus", width: 18 },
-    { header: "Loan Login", key: "loanLogin", width: 16 },
-    { header: "Loan Status", key: "loanStatus", width: 20 },
-    { header: "Loan Approved", key: "loanApproved", width: 18 },
-    { header: "NBFC / Bank", key: "nbfc", width: 22 },
-    { header: "Fintech Assignee", key: "fintechAssigneeName", width: 24 },
+function addPerformanceSheets(workbook: ExcelJS.Workbook, report: PerformanceReportData) {
+  const branch = workbook.addWorksheet("Branch Performance");
+  branch.columns = [
+    { header: "Branch", key: "branch", width: 28 },
+    ...metricColumns,
   ];
-  rows.forEach((row) =>
+  report.branchPerformance.forEach((row) => branch.addRow({ branch: row.branch, ...metricValues(row) }));
+  if (report.branchPerformance.length) {
+    const totalRow = branch.addRow({ branch: "Grand Total", ...metricValues(calculatePerformanceTotals(report.branchPerformance)) });
+    totalRow.font = { bold: true };
+    totalRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: TOTAL_FILL } };
+  }
+  styleWorksheet(branch);
+
+  const counselor = workbook.addWorksheet("User Performance");
+  counselor.columns = [
+    { header: "Branch", key: "branch", width: 25 },
+    { header: "User", key: "counselor", width: 26 },
+    ...metricColumns,
+  ];
+  for (const group of groupCounselorPerformance(report.counselorPerformance)) {
+    group.rows.forEach((row) => counselor.addRow({ branch: row.branch, counselor: row.counselor, ...metricValues(row) }));
+    const totalRow = counselor.addRow({ branch: group.branch, counselor: "Branch Total", ...metricValues(group.totals) });
+    totalRow.font = { bold: true };
+    totalRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: TOTAL_FILL } };
+  }
+  styleWorksheet(counselor);
+}
+
+function addRecordSheets(workbook: ExcelJS.Workbook, report: PerformanceReportData) {
+  const sheet = workbook.addWorksheet("Pipeline Records");
+  sheet.columns = [
+    { header: "Type", key: "recordType", width: 12 },
+    { header: "Lead Number", key: "leadNumber", width: 16 },
+    { header: "Student", key: "studentName", width: 24 },
+    { header: "Mobile", key: "mobileNumber", width: 16 },
+    { header: "Email", key: "emailId", width: 28 },
+    { header: "Branch", key: "branchName", width: 22 },
+    { header: "Owner", key: "counselorName", width: 22 },
+    { header: "Source", key: "source", width: 18 },
+    { header: "Reference", key: "reference", width: 12 },
+    { header: "Application Timing", key: "applicationTiming", width: 18 },
+    { header: "Country", key: "countryName", width: 20 },
+    { header: "Intake", key: "intakeName", width: 18 },
+    { header: "Course", key: "courseName", width: 28 },
+    { header: "Lifecycle Status", key: "lifecycleStatus", width: 18 },
+    { header: "Current Stage", key: "currentStage", width: 20 },
+    { header: "Created / Converted", key: "createdAt", width: 18 },
+    { header: "University Applications", key: "applicationsCount", width: 18 },
+    { header: "Latest University", key: "latestUniversityName", width: 28 },
+    { header: "Application Status", key: "latestApplicationStatus", width: 18 },
+    { header: "CAS Status", key: "casStatus", width: 16 },
+    { header: "Visa Status", key: "visaStatus", width: 16 },
+    { header: "Loan Application", key: "loanApplication", width: 16 },
+    { header: "OS-LOAN / O-FUND", key: "outsideLoan", width: 18 },
+    { header: "Loan Status", key: "loanStatus", width: 18 },
+    { header: "Loan Approved", key: "loanApproved", width: 15 },
+    { header: "Loan Disbursed", key: "loanDisbursed", width: 16 },
+    { header: "NBFC / Bank", key: "nbfc", width: 22 },
+    { header: "Fintech Assignee", key: "fintechAssigneeName", width: 22 },
+  ];
+  report.rows.forEach((row) =>
     sheet.addRow({
       ...row,
-      recordType: row.recordType === "lead" ? "Walk-in" : "Application",
+      reference: row.isReference ? "Yes" : "No",
+      applicationTiming: row.applicationTiming ? humanize(row.applicationTiming) : "",
       createdAt: formatDate(row.createdAt),
-      convertedAt: formatDate(row.convertedAt),
-      nextFollowup: formatDate(row.nextFollowup),
-      latestApplicationDate: formatDate(row.latestApplicationDate),
-      loanLogin: row.loanLogin ? "Yes" : "No",
+      loanApplication: row.loanApplication ? "Yes" : "No",
+      outsideLoan: row.outsideLoan ? "Yes" : "No",
       loanApproved: row.loanApproved ? "Yes" : "No",
+      loanDisbursed: row.loanDisbursed ? "Yes" : "No",
     }),
   );
   styleWorksheet(sheet);
-}
 
-function addApplications(
-  workbook: ExcelJS.Workbook,
-  report: PerformanceReportData,
-) {
-  const sheet = workbook.addWorksheet("University Applications");
-  sheet.columns = [
+  if (!report.applicationRows) return;
+  const applications = workbook.addWorksheet("University Applications");
+  applications.columns = [
     { header: "Application ID", key: "applicationId", width: 38 },
-    { header: "Walk-in Number", key: "leadNumber", width: 18 },
-    { header: "Applicant Name", key: "studentName", width: 24 },
-    { header: "Branch", key: "branchName", width: 24 },
-    { header: "Current Owner", key: "counselorName", width: 24 },
+    { header: "Lead Number", key: "leadNumber", width: 16 },
+    { header: "Student", key: "studentName", width: 24 },
+    { header: "Branch", key: "branchName", width: 22 },
+    { header: "Owner", key: "counselorName", width: 22 },
+    { header: "Source", key: "source", width: 18 },
     { header: "Country", key: "countryName", width: 20 },
-    { header: "University", key: "universityName", width: 34 },
+    { header: "University", key: "universityName", width: 30 },
     { header: "Course", key: "courseName", width: 28 },
-    { header: "Intake", key: "intakeName", width: 20 },
-    { header: "Portal", key: "portal", width: 20 },
-    { header: "Application Date", key: "applicationDate", width: 20 },
-    { header: "Application Status", key: "applicationStatus", width: 22 },
-    { header: "Offer Status", key: "offerStatus", width: 20 },
-    { header: "CAS Status", key: "casStatus", width: 18 },
-    { header: "Visa Status", key: "visaStatus", width: 18 },
-    { header: "Loan Status", key: "loanStatus", width: 20 },
-    { header: "NBFC / Bank", key: "nbfc", width: 20 },
-    { header: "Fintech Assignee", key: "fintechAssigneeName", width: 24 },
+    { header: "Intake", key: "intakeName", width: 18 },
+    { header: "Applied Date", key: "applicationDate", width: 18 },
+    { header: "Application Status", key: "applicationStatus", width: 18 },
+    { header: "Offer Status", key: "offerStatus", width: 18 },
+    { header: "CAS Status", key: "casStatus", width: 16 },
+    { header: "Visa Status", key: "visaStatus", width: 16 },
+    { header: "Loan Status", key: "loanStatus", width: 18 },
+    { header: "Disbursed", key: "disbursed", width: 12 },
   ];
-  (report.applicationRows ?? []).forEach((row) =>
-    sheet.addRow({ ...row, applicationDate: formatDate(row.applicationDate) }),
+  report.applicationRows.forEach((row) =>
+    applications.addRow({
+      ...row,
+      applicationDate: formatDate(row.applicationDate),
+      disbursed: row.disbursed ? "Yes" : "No",
+    }),
   );
-  styleWorksheet(sheet);
-}
-
-function performanceColumns(first: string, second?: string) {
-  return [
-    { header: first, key: "branch", width: 28 },
-    ...(second ? [{ header: second, key: "counselor", width: 28 }] : []),
-    { header: "Total Walk-ins", key: "totalWalkins", width: 18 },
-    { header: "Walk-ins Added", key: "leadsCreated", width: 18 },
-    { header: "Active Walk-ins", key: "leads", width: 18 },
-    { header: "Qualified Walk-ins", key: "qualifiedLeads", width: 20 },
-    { header: "Drop Walk-ins", key: "lostLeads", width: 18 },
-    { header: "Applications", key: "students", width: 18 },
-    { header: "Dropped Applications", key: "droppedStudents", width: 22 },
-    { header: "Loan Logins", key: "loanLogins", width: 16 },
-    { header: "Loan Approved", key: "loanApproved", width: 18 },
-    {
-      header: "Application Conversions (No. / %)",
-      key: "applicationConversions",
-      width: 28,
-    },
-    {
-      header: "Visa Conversions (No. / %)",
-      key: "visaConversions",
-      width: 25,
-    },
-    { header: "Visa Approval Target", key: "target", width: 20 },
-    { header: "Target Achieved (Visa Approved)", key: "achieved", width: 24 },
-    {
-      header: "Target Completion",
-      key: "targetCompletionPercentage",
-      width: 20,
-    },
-    { header: "University Applications", key: "applications", width: 24 },
-    { header: "Offers", key: "offers", width: 16 },
-    { header: "CAS Received", key: "casReceived", width: 18 },
-  ];
-}
-
-function addBranch(workbook: ExcelJS.Workbook, report: PerformanceReportData) {
-  const sheet = workbook.addWorksheet("Branch Performance");
-  sheet.columns = performanceColumns("Branch");
-  report.branchPerformance.forEach((row) =>
-    sheet.addRow({ branch: row.branch, ...metricValues(row) }),
-  );
-  const total = calculatePerformanceTotals(report.branchPerformance);
-  const totalRow = sheet.addRow({
-    branch: "Grand Total",
-    ...metricValues(total),
-  });
-  styleWorksheet(sheet);
-  styleTotal(totalRow, GRAND_TOTAL_FILL);
-}
-
-function addCounselor(
-  workbook: ExcelJS.Workbook,
-  report: PerformanceReportData,
-) {
-  const sheet = workbook.addWorksheet("User Performance");
-  sheet.columns = performanceColumns("Branch", "User");
-  const groups = groupCounselorPerformance(report.counselorPerformance);
-  for (const group of groups) {
-    group.rows.forEach((row) =>
-      sheet.addRow({
-        branch: row.branch,
-        counselor: row.counselor,
-        ...metricValues(row),
-      }),
-    );
-    const subtotal = sheet.addRow({
-      branch: `${group.branch} Total`,
-      counselor: "",
-      ...metricValues(group.totals),
-    });
-    styleTotal(subtotal, TOTAL_FILL);
-  }
-  const grandTotal = sheet.addRow({
-    branch: "Grand Total",
-    counselor: "All Branches",
-    ...metricValues(calculatePerformanceTotals(report.counselorPerformance)),
-  });
-  styleWorksheet(sheet);
-  styleTotal(grandTotal, GRAND_TOTAL_FILL);
-}
-
-function addMonthly(workbook: ExcelJS.Workbook, report: PerformanceReportData) {
-  const sheet = workbook.addWorksheet("Monthly Volume");
-  sheet.columns = [
-    { header: "Month", key: "label", width: 18 },
-    { header: "Walk-ins", key: "leads", width: 16 },
-    { header: "Applications", key: "students", width: 18 },
-    { header: "University Applications", key: "applications", width: 24 },
-    { header: "Loan Logins", key: "loanLogins", width: 16 },
-    { header: "Loan Approved", key: "loanApproved", width: 18 },
-    { header: "Visa Conversions", key: "visaConversions", width: 20 },
-  ];
-  sheet.addRows(report.monthlyVolume);
-  styleWorksheet(sheet);
-}
-
-function addCountry(workbook: ExcelJS.Workbook, report: PerformanceReportData) {
-  const sheet = workbook.addWorksheet("Country Demand");
-  sheet.columns = [
-    { header: "Country", key: "country", width: 24 },
-    { header: "Walk-ins", key: "leads", width: 16 },
-    { header: "Applications", key: "students", width: 18 },
-    { header: "University Applications", key: "applications", width: 24 },
-  ];
-  sheet.addRows(report.countryDemand);
-  styleWorksheet(sheet);
-}
-
-function addLeadSource(
-  workbook: ExcelJS.Workbook,
-  report: PerformanceReportData,
-) {
-  const sheet = workbook.addWorksheet("Walk-in Sources");
-  sheet.columns = [
-    { header: "Source", key: "source", width: 26 },
-    { header: "Walk-ins", key: "leads", width: 16 },
-    { header: "Applications", key: "students", width: 18 },
-    { header: "Total", key: "total", width: 16 },
-  ];
-  sheet.addRows(report.leadSourceBreakdown);
-  styleWorksheet(sheet);
-}
-
-function addStatus(
-  workbook: ExcelJS.Workbook,
-  name: string,
-  rows: Array<{ status: string; count: number }>,
-) {
-  const sheet = workbook.addWorksheet(name);
-  sheet.columns = [
-    { header: "Status", key: "status", width: 28 },
-    { header: "Count", key: "count", width: 16 },
-  ];
-  sheet.addRows(rows);
-  styleWorksheet(sheet);
+  styleWorksheet(applications);
 }
 
 export async function buildPerformanceReportWorkbook(
@@ -403,19 +292,12 @@ export async function buildPerformanceReportWorkbook(
   filters: PerformanceReportFilters,
 ): Promise<Uint8Array> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "VSource CRM";
+  workbook.creator = "Vsource CRM";
   workbook.created = new Date();
   addSummary(workbook, report, filters);
-  addPipeline(workbook, "Walk-ins and Applications", report.rows);
-  addApplications(workbook, report);
-  addBranch(workbook, report);
-  addCounselor(workbook, report);
-  addMonthly(workbook, report);
-  addCountry(workbook, report);
-  addLeadSource(workbook, report);
-  addStatus(workbook, "Walk-in Status", report.leadStatusBreakdown);
-  addStatus(workbook, "Application Status", report.applicationStatusBreakdown);
-  addStatus(workbook, "Visa Status", report.visaStatusBreakdown);
-  addStatus(workbook, "Loan Status", report.loanStatusBreakdown);
-  return new Uint8Array(await workbook.xlsx.writeBuffer());
+  addPerformanceSheets(workbook, report);
+  addRecordSheets(workbook, report);
+  const buffer = await workbook.xlsx.writeBuffer();
+  // writeBuffer may return a Buffer; ensure a Uint8Array is returned
+  return Uint8Array.from(buffer as any);
 }

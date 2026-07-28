@@ -15,16 +15,12 @@ export function countPerformanceReportFilters(
 
 export function humanizeReportStatus(value: string): string {
   return value
-    ? value
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    ? value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
     : "Not Set";
 }
 
 export function formatReportDate(value: string | null): string {
   if (!value) return "Not Set";
   const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "Not Set"
-    : date.toLocaleDateString("en-IN");
+  return Number.isNaN(date.getTime()) ? "Not Set" : date.toLocaleDateString("en-IN");
 }

@@ -20,9 +20,7 @@ export async function GET(req: NextRequest) {
       PERMISSIONS.READ,
     );
     const filters = parsePerformanceReportFilters(req.nextUrl.searchParams);
-    const { page, limit } = parsePerformanceReportPagination(
-      req.nextUrl.searchParams,
-    );
+    const { page, limit } = parsePerformanceReportPagination(req.nextUrl.searchParams);
     const report = await getPerformanceReport(
       filters,
       page,
