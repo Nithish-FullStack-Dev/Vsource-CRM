@@ -16,6 +16,7 @@ import {
   notifyLeadStatusChanged,
   notifyLeadAssigned,
   notifyLeadFollowupScheduled,
+  notifyLoanEvent,
 } from "@/lib/notification.service";
 import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 
@@ -148,6 +149,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         studentName: true,
         leadNumber: true,
         branchId: true,
+        fintechAssigneeId: true,
         counselors: {
           select: {
             counselorId: true,
@@ -173,7 +175,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       uniqueCounselorIds?.filter(
         (counselorId) => !previousCounselorIds.includes(counselorId),
       ) ?? [];
-
+    const fintechAssigned =
+      fintechAssigneeId && fintechAssigneeId !== existingLead.fintechAssigneeId;
     const lead = await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const updateData: Prisma.LeadUpdateInput = {
         ...leadData,
@@ -375,7 +378,20 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           tx,
         );
       }
-
+      if (fintechAssigned) {
+        await notifyLoanEvent(
+          {
+            id: updatedLead.id,
+            fullName: updatedLead.studentName ?? "Unknown Applicant",
+            branchId: updatedLead.branchId,
+            counselorId: updatedLead.counselors[0]?.counselorId ?? null,
+            fintechAssigneeId,
+          },
+          "LOAN_CREATED",
+          currentUser.id,
+          tx,
+        );
+      }
       if (followupDate) {
         await notifyLeadFollowupScheduled(
           leadForNotification,

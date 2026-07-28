@@ -18,7 +18,11 @@ import { LeadStatus, LeadType } from "@/generated/prisma/enums";
 import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { Prisma } from "@/generated/prisma/client";
-import { notifyLeadCreated } from "@/lib/notification.service";
+import {
+  notifyLeadCreated,
+  notifyLoanAssignment,
+  notifyLoanEvent,
+} from "@/lib/notification.service";
 import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 
 export async function GET(req: NextRequest) {
@@ -363,7 +367,19 @@ export async function POST(req: NextRequest) {
         currentUser.id,
         tx,
       );
-
+      if (createdLead.loanRequirement && fintechId) {
+        await notifyLoanAssignment(
+          {
+            leadId: createdLead.id,
+            leadNumber: createdLead.leadNumber,
+            studentName: createdLead.studentName,
+            branchId: createdLead.branchId,
+            fintechAssigneeId: fintechId,
+          },
+          currentUser.id,
+          tx,
+        );
+      }
       return createdLead;
     });
 
