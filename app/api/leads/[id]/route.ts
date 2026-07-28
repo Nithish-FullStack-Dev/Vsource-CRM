@@ -220,7 +220,18 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         },
         data: updateData,
       });
+      await tx.loanApplication.updateMany({
+        where: {
+          leadId: id,
+        },
+        data: {
+          fintechAssigneeId: leadData.loanRequirement
+            ? (fintechAssigneeId ?? null)
+            : null,
 
+          counselorId: uniqueCounselorIds?.[0] ?? undefined,
+        },
+      });
       if (uniqueCounselorIds !== undefined) {
         await tx.leadCounselor.deleteMany({
           where: {

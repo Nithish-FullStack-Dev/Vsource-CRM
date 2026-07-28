@@ -412,12 +412,11 @@ export default function AllLeadsPage() {
                   <SelectGroup>
                     <SelectLabel>Status</SelectLabel>
                     <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="qualified">Qualified</SelectItem>
-                    <SelectItem value="converted">Converted</SelectItem>
-                    <SelectItem value="lost">Lost</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="NEW">NEW</SelectItem>
+                    <SelectItem value="VISA_APPLICATION">
+                      VISA APPLICATION
+                    </SelectItem>
+                    <SelectItem value="DROP">DROP</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
