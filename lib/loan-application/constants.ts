@@ -64,13 +64,7 @@ export const EDUCATION_LOANS = [
  */
 export const BANK_PROCESS_LOANS = [
   "Education Loan",
-  "Study Abroad Loan",
   "Domestic Education Loan",
-  "Personal Loan",
-  "Home Loan",
-  "Business Loan",
-  "Loan Against Property",
-  "Other",
 ] as const;
 
 // lib/loan-application/constants.ts
@@ -255,11 +249,6 @@ export const getLoanTabs = (
 
   /**
    * Co-Applicant
-   *
-   * Education Loan now includes:
-   * - Education Loan
-   * - Study Abroad Loan
-   * - Domestic Education Loan
    */
   if (
     isEducationLoan(loanCategory) ||
@@ -274,19 +263,7 @@ export const getLoanTabs = (
   }
 
   /**
-   * Financial tab
-   */
-  tabs.push({
-    key: "financial",
-    label: "Financial",
-  });
-
-  /**
-   * CIBIL consultation
-   */
-
-  /**
-   * Complete bank processing workflow
+   * Bank processing workflow
    */
   if (
     BANK_PROCESS_LOANS.includes(
@@ -299,16 +276,8 @@ export const getLoanTabs = (
         label: "Banks",
       },
       {
-        key: "sanction",
-        label: "Sanction",
-      },
-      {
-        key: "disbursement",
-        label: "Disbursement",
-      },
-      {
-        key: "deposit",
-        label: "Deposit",
+        key: "lendingPartner",
+        label: "Lending Partner",
       },
     );
   }

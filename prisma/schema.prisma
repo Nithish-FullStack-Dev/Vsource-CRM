@@ -565,7 +565,10 @@ model Bank {
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   loanApplications LoanBankApplication[]
-  sanctions        LoanSanction[]
+  sanctionedLoans  LoanApplication[]     @relation("LoanSanctionBank")
+
+  depositLoans   LoanApplication[] @relation("LoanDepositBank")
+  disbursedLoans LoanApplication[] @relation("LoanDisbursedBank")
 
   @@index([status])
   @@index([name])
@@ -660,8 +663,8 @@ model UniversityScholarship {
 }
 
 model LoanApplication {
-  id                       String                @id @default(uuid())
-  applicationId            String                @unique
+  id                       String    @id @default(uuid())
+  applicationId            String    @unique
   fullName                 String
   mobile                   String
   altMobile                String?
@@ -688,7 +691,7 @@ model LoanApplication {
   remarks                  String?
   applicantCategory        String
   loanCategory             String
-  loanStatus               String                @default("New Enquiry")
+  loanStatus               String    @default("New Enquiry")
   qualification            String?
   graduationStatus         String?
   percentage               String?
@@ -701,16 +704,16 @@ model LoanApplication {
   employeeId               String?
   totalExperience          String?
   currentCompanyExperience String?
-  monthlySalary            Decimal?              @db.Decimal(12, 2)
-  annualIncome             Decimal?              @db.Decimal(12, 2)
-  existingEmi              Decimal?              @db.Decimal(12, 2)
+  monthlySalary            Decimal?  @db.Decimal(12, 2)
+  annualIncome             Decimal?  @db.Decimal(12, 2)
+  existingEmi              Decimal?  @db.Decimal(12, 2)
   employerAddress          String?
   businessName             String?
   businessType             String?
   registrationType         String?
   registrationNumber       String?
   yearsInBusiness          String?
-  annualTurnover           Decimal?              @db.Decimal(12, 2)
+  annualTurnover           Decimal?  @db.Decimal(12, 2)
   businessAddress          String?
   studyDestination         String?
   country                  String?
@@ -721,12 +724,12 @@ model LoanApplication {
   intake                   String?
   admissionStatus          String?
   offerLetterReceived      String?
-  tuitionFee               Decimal?              @db.Decimal(12, 2)
-  livingExpenses           Decimal?              @db.Decimal(12, 2)
-  otherExpenses            Decimal?              @db.Decimal(12, 2)
-  totalCourseCost          Decimal?              @db.Decimal(12, 2)
-  ownContribution          Decimal?              @db.Decimal(12, 2)
-  requiredLoanAmount       Decimal?              @db.Decimal(12, 2)
+  tuitionFee               Decimal?  @db.Decimal(12, 2)
+  livingExpenses           Decimal?  @db.Decimal(12, 2)
+  otherExpenses            Decimal?  @db.Decimal(12, 2)
+  totalCourseCost          Decimal?  @db.Decimal(12, 2)
+  ownContribution          Decimal?  @db.Decimal(12, 2)
+  requiredLoanAmount       Decimal?  @db.Decimal(12, 2)
   loanPreference           String?
   collateralAvailable      String?
   loanPurpose              String?
@@ -734,39 +737,51 @@ model LoanApplication {
   cibilScore               Int?
   propertyType             String?
   propertyLocation         String?
-  propertyValue            Decimal?              @db.Decimal(12, 2)
-  downPayment              Decimal?              @db.Decimal(12, 2)
-  sanctionedAmount         Decimal?              @db.Decimal(12, 2)
-  disbursedAmount          Decimal?              @db.Decimal(12, 2)
-  depositAmount            Decimal?              @db.Decimal(12, 2)
+  propertyValue            Decimal?  @db.Decimal(12, 2)
+  downPayment              Decimal?  @db.Decimal(12, 2)
+  sanctionedAmount         Decimal?  @db.Decimal(12, 2)
+  disbursedAmount          Decimal?  @db.Decimal(12, 2)
+  depositAmount            Decimal?  @db.Decimal(12, 2)
   depositDate              DateTime?
   depositReference         String?
-  depositBank              String?
+  depositBankId            String?
+  disbursedBankId          String?
+  depositBank              Bank?     @relation("LoanDepositBank", fields: [depositBankId], references: [id])
+  sanctionBank             Bank?     @relation("LoanSanctionBank", fields: [sanctionBankId], references: [id])
+  disbursedBank            Bank?     @relation("LoanDisbursedBank", fields: [disbursedBankId], references: [id])
   depositRemarks           String?
-  createdAt                DateTime              @default(now())
-  updatedAt                DateTime              @updatedAt
-  leadId                   String?               @unique
-  depositStatus            String?               @default("Pending")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  leadId                   String?   @unique
+  depositStatus            String?   @default("Pending")
   createdById              String?
-  activities               LoanActivity[]
-  branch                   Branch                @relation(fields: [branchId], references: [id])
-  counselor                User?                 @relation("LoanApplicationCounselor", fields: [counselorId], references: [id])
-  createdBy                User?                 @relation("LoanApplicationCreatedBy", fields: [createdById], references: [id])
-  fintechAssignee          User?                 @relation("LoanApplicationFintech", fields: [fintechAssigneeId], references: [id])
-  lead                     Lead?                 @relation(fields: [leadId], references: [id])
-  bankApplications         LoanBankApplication[]
-  coApplicants             LoanCoApplicant[]
-  disbursement             LoanDisbursement?
-  documents                LoanDocument[]
-  followUps                LoanFollowUp[]
-  sanction                 LoanSanction?
-  documentMasters          LoanDocumentMaster[]  @relation("LoanApplicationDocumentMasters")
+
+  sanctionBankId String?
+  sanctionDate   DateTime?
+
+  disbursementStatus String?
+  disbursementDate   DateTime?
+
+  activities       LoanActivity[]
+  branch           Branch                @relation(fields: [branchId], references: [id])
+  counselor        User?                 @relation("LoanApplicationCounselor", fields: [counselorId], references: [id])
+  createdBy        User?                 @relation("LoanApplicationCreatedBy", fields: [createdById], references: [id])
+  fintechAssignee  User?                 @relation("LoanApplicationFintech", fields: [fintechAssigneeId], references: [id])
+  lead             Lead?                 @relation(fields: [leadId], references: [id])
+  bankApplications LoanBankApplication[]
+  coApplicants     LoanCoApplicant[]
+  documents        LoanDocument[]
+  followUps        LoanFollowUp[]
+  documentMasters  LoanDocumentMaster[]  @relation("LoanApplicationDocumentMasters")
 
   @@index([branchId])
   @@index([counselorId])
   @@index([fintechAssigneeId])
   @@index([loanStatus])
   @@index([loanCategory])
+  @@index([sanctionBankId])
+  @@index([depositBankId])
+  @@index([disbursedBankId])
 }
 
 model LoanBankApplication {
@@ -791,57 +806,10 @@ model LoanBankApplication {
   rejectionReason String?
   application     LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   bank            Bank            @relation(fields: [bankId], references: [id])
-  sanction        LoanSanction?
 
   @@index([applicationId])
   @@index([bankId])
   @@index([status])
-}
-
-model LoanSanction {
-  id                String               @id @default(uuid())
-  applicationId     String               @unique
-  bankApplicationId String?              @unique
-  bankId            String
-  sanctionNo        String?
-  sanctionDate      DateTime?
-  sanctionedAmount  Decimal?             @db.Decimal(12, 2)
-  roi               Decimal?             @db.Decimal(5, 2)
-  tenure            Int?
-  emi               Decimal?             @db.Decimal(12, 2)
-  moratorium        String?
-  processingFee     Decimal?             @db.Decimal(12, 2)
-  insuranceAmount   Decimal?             @db.Decimal(12, 2)
-  sanctionLetter    String?
-  expiryDate        DateTime?
-  remarks           String?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  disbursement      LoanDisbursement?
-  application       LoanApplication      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  bankApplication   LoanBankApplication? @relation(fields: [bankApplicationId], references: [id])
-  bank              Bank                 @relation(fields: [bankId], references: [id])
-
-  @@index([bankId])
-}
-
-model LoanDisbursement {
-  id                    String          @id @default(uuid())
-  applicationId         String          @unique
-  sanctionId            String          @unique
-  disbursementDate      DateTime?
-  disbursedAmount       Decimal?        @db.Decimal(12, 2)
-  disbursementReference String?
-  accountNumber         String?
-  transactionId         String?
-  beneficiary           String?
-  paymentMode           String?
-  remarks               String?
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
-  disbursementStatus    String          @default("Yes")
-  application           LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  sanction              LoanSanction    @relation(fields: [sanctionId], references: [id], onDelete: Cascade)
 }
 
 model LoanCoApplicant {
