@@ -513,7 +513,75 @@ export async function notifyLeadAssigned(
     handleNotificationError("notifyLeadAssigned", error, tx);
   }
 }
+export async function notifyLoanAssignment(
+  loan: {
+    leadId: string;
+    leadNumber: string;
+    studentName?: string | null;
+    branchId: string;
+    fintechAssigneeId: string;
+  },
+  actorId: string,
+  tx?: Prisma.TransactionClient,
+): Promise<void> {
+  try {
+    const recipients = await resolveRecipients(
+      loan.branchId,
+      actorId,
+      [loan.fintechAssigneeId],
+      tx,
+    );
 
+    const { actorName, branchName } = await getActorAndBranchName(
+      actorId,
+      loan.branchId,
+      tx,
+    );
+
+    const applicant = loan.studentName?.trim()
+      ? `${loan.studentName} (${loan.leadNumber})`
+      : loan.leadNumber;
+
+    await writeOutboxEntries(
+      recipients,
+      {
+        eventKey: "LOAN_CREATED",
+
+        getTitles: (roleName) => ({
+          title: isGlobalAdminRole(roleName)
+            ? `Loan Assigned by ${actorName}${
+                branchName ? ` (${branchName})` : ""
+              }`
+            : "New Loan Assigned",
+        }),
+
+        defaultMessage: `You have been assigned to the loan application for ${applicant}.`,
+
+        entityType: "lead",
+
+        entityId: loan.leadId,
+
+        branchId: loan.branchId,
+
+        actorId,
+
+        actionUrl: `/loan-application/all`,
+
+        priority: "HIGH",
+
+        metadata: {
+          fintechAssigneeId: loan.fintechAssigneeId,
+          leadNumber: loan.leadNumber,
+        },
+
+        dedupeKey: `LOAN_ASSIGNED:${loan.leadId}:${loan.fintechAssigneeId}`,
+      },
+      tx,
+    );
+  } catch (error) {
+    handleNotificationError("notifyLoanAssignment", error, tx);
+  }
+}
 export async function notifyLeadStatusChanged(
   lead: {
     id: string;
@@ -1172,12 +1240,10 @@ export async function notifyLoanEvent(
      * Add assigned staff as explicit recipients for assignment-related
      * loan events when required.
      */
-    const explicitRecipientIds =
-      event === "LOAN_CREATED"
-        ? [loan.counselorId, loan.fintechAssigneeId].filter(
-            (id): id is string => typeof id === "string" && id.length > 0,
-          )
-        : [];
+    const explicitRecipientIds = [
+      loan.counselorId,
+      loan.fintechAssigneeId,
+    ].filter((id): id is string => typeof id === "string" && id.length > 0);
 
     const recipients = await resolveRecipients(
       loan.branchId,
