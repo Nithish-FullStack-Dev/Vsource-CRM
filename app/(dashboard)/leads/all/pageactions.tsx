@@ -948,6 +948,10 @@ export default function PageActions(props: PageActionsProps) {
                         setEditingLead({
                           ...editingLead,
                           loanRequirement: value === "yes",
+                          fintechAssigneeId:
+                            value === "yes"
+                              ? editingLead.fintechAssigneeId
+                              : null,
                         })
                       }
                       className="flex h-10 items-center gap-6"
@@ -1204,37 +1208,39 @@ export default function PageActions(props: PageActionsProps) {
                       )}
                     </div>
                   </div>
-                  <div className="grid gap-2 sm:col-span-2">
-                    <Label>Fintech Assignee</Label>
+                  {editingLead.loanRequirement && (
+                    <div className="grid gap-2 sm:col-span-2">
+                      <Label>Fintech Assignee</Label>
 
-                    <Select
-                      value={editingLead.fintechAssigneeId ?? ""}
-                      onValueChange={(value) =>
-                        setEditingLead({
-                          ...editingLead,
-                          fintechAssigneeId: value,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Fintech Assignee" />
-                      </SelectTrigger>
+                      <Select
+                        value={editingLead.fintechAssigneeId ?? ""}
+                        onValueChange={(value) =>
+                          setEditingLead({
+                            ...editingLead,
+                            fintechAssigneeId: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Fintech Assignee" />
+                        </SelectTrigger>
 
-                      <SelectContent>
-                        {fintechUsers.map(
-                          (user: {
-                            id: string;
-                            name: string;
-                            role?: { name: string };
-                          }) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.name}
-                            </SelectItem>
-                          ),
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        <SelectContent>
+                          {fintechUsers.map(
+                            (user: {
+                              id: string;
+                              name: string;
+                              role?: { name: string };
+                            }) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.name}
+                              </SelectItem>
+                            ),
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {/* Preferred Country */}
                   <div className="grid gap-1.5">
                     <Label
