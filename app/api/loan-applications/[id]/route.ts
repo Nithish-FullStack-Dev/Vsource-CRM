@@ -72,8 +72,6 @@ const loanApplicationInclude = {
     },
   },
 
-  disbursement: true,
-
   bankApplications: {
     include: {
       bank: {
@@ -106,16 +104,6 @@ const loanApplicationInclude = {
     },
     orderBy: {
       createdAt: "desc",
-    },
-  },
-
-  sanction: {
-    include: {
-      bank: {
-        select: {
-          name: true,
-        },
-      },
     },
   },
 

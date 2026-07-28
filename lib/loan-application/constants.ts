@@ -4,17 +4,17 @@ import { LoanDocumentCategory } from "@/generated/prisma/enums";
 
 export const APPLICANT_CATEGORIES = [
   "Student",
-  "Salaried",
-  "Self Employed",
+  // "Salaried",
+  // "Self Employed",
 ] as const;
 
 export const LOAN_CATEGORIES = [
   "Education Loan",
   "Study Abroad Loan",
   "Domestic Education Loan",
-  "Personal Loan",
-  "Home Loan",
-  "Business Loan",
+  // "Personal Loan",
+  // "Home Loan",
+  // "Business Loan",
 ] as const;
 
 export const LOAN_STATUSES = [
@@ -217,10 +217,6 @@ export const getLoanTabs = (
       key: "basic",
       label: "Basic",
     },
-    {
-      key: "documents",
-      label: "Documents",
-    },
   ];
 
   /**
@@ -247,6 +243,21 @@ export const getLoanTabs = (
     });
   }
 
+  tabs.push(
+    {
+      key: "documents",
+      label: "Documents",
+    },
+    {
+      key: "banks",
+      label: "Lending Partner",
+    },
+    {
+      key: "leading_patner",
+      label: "Financial",
+    },
+  );
+
   /**
    * Co-Applicant
    */
@@ -265,22 +276,6 @@ export const getLoanTabs = (
   /**
    * Bank processing workflow
    */
-  if (
-    BANK_PROCESS_LOANS.includes(
-      loanCategory as (typeof BANK_PROCESS_LOANS)[number],
-    )
-  ) {
-    tabs.push(
-      {
-        key: "banks",
-        label: "Banks",
-      },
-      {
-        key: "lendingPartner",
-        label: "Lending Partner",
-      },
-    );
-  }
 
   /**
    * Final remarks/activity/follow-up tab

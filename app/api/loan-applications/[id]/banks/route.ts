@@ -203,14 +203,6 @@ export async function GET(
                 status: true,
               },
             },
-            sanction: {
-              select: {
-                id: true,
-                sanctionNo: true,
-                sanctionDate: true,
-                sanctionedAmount: true,
-              },
-            },
           },
           orderBy: {
             createdAt: "desc",

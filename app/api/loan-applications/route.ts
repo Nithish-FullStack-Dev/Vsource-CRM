@@ -13,7 +13,7 @@ import {
 } from "@/lib/loan-application/server";
 import { getAuthorizedUser, ROLES } from "@/lib/rbac";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
-import { notifyLeadCreated, notifyLoanEvent } from "@/lib/notification.service";
+import { notifyLoanEvent } from "@/lib/notification.service";
 import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 /* -------------------------------------------------------------------------- */
 /*                                  INCLUDE                                   */
@@ -41,33 +41,6 @@ const loanApplicationInclude = {
       id: true,
       name: true,
       email: true,
-    },
-  },
-
-  sanction: {
-    include: {
-      bank: {
-        select: {
-          id: true,
-          name: true,
-          status: true,
-        },
-      },
-
-      bankApplication: {
-        select: {
-          id: true,
-          applicationNo: true,
-          applicationDate: true,
-          appliedAmount: true,
-        },
-      },
-    },
-  },
-
-  disbursement: {
-    select: {
-      disbursedAmount: true,
     },
   },
 
