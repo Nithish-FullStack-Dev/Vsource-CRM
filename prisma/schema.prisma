@@ -565,10 +565,6 @@ model Bank {
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   loanApplications LoanBankApplication[]
-  sanctionedLoans  LoanApplication[]     @relation("LoanSanctionBank")
-
-  depositLoans   LoanApplication[] @relation("LoanDepositBank")
-  disbursedLoans LoanApplication[] @relation("LoanDisbursedBank")
 
   @@index([status])
   @@index([name])
@@ -744,20 +740,24 @@ model LoanApplication {
   depositAmount            Decimal?  @db.Decimal(12, 2)
   depositDate              DateTime?
   depositReference         String?
-  depositBankId            String?
-  disbursedBankId          String?
-  depositBank              Bank?     @relation("LoanDepositBank", fields: [depositBankId], references: [id])
-  sanctionBank             Bank?     @relation("LoanSanctionBank", fields: [sanctionBankId], references: [id])
-  disbursedBank            Bank?     @relation("LoanDisbursedBank", fields: [disbursedBankId], references: [id])
-  depositRemarks           String?
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
-  leadId                   String?   @unique
-  depositStatus            String?   @default("Pending")
-  createdById              String?
+  depositBankId            String?   @unique
+  disbursedBankId          String?   @unique
+  sanctionBankId           String?   @unique
 
-  sanctionBankId String?
-  sanctionDate   DateTime?
+  sanctionBankApplication LoanBankApplication? @relation("LoanSanctionBank", fields: [sanctionBankId], references: [id])
+
+  depositBankApplication LoanBankApplication? @relation("LoanDepositBank", fields: [depositBankId], references: [id])
+
+  disbursedBankApplication LoanBankApplication? @relation("LoanDisbursedBank", fields: [disbursedBankId], references: [id])
+
+  depositRemarks String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  leadId         String?  @unique
+  depositStatus  String?  @default("Pending")
+  createdById    String?
+
+  sanctionDate DateTime?
 
   disbursementStatus String?
   disbursementDate   DateTime?
@@ -806,6 +806,10 @@ model LoanBankApplication {
   rejectionReason String?
   application     LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   bank            Bank            @relation(fields: [bankId], references: [id])
+
+  sanctionedLoan LoanApplication? @relation("LoanSanctionBank")
+  depositedLoan  LoanApplication? @relation("LoanDepositBank")
+  disbursedLoan  LoanApplication? @relation("LoanDisbursedBank")
 
   @@index([applicationId])
   @@index([bankId])
