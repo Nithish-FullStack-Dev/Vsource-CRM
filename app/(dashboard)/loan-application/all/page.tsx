@@ -345,14 +345,10 @@ export default function LoanApplicationsPage() {
                         {formatINR(a.requiredLoanAmount)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        {a?.sanction?.sanctionedAmount
-                          ? `₹${a?.sanction?.sanctionedAmount}`
-                          : "—"}
+                        {a?.sanctionedAmount ? `₹${a?.sanctionedAmount}` : "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        {a?.disbursement?.disbursedAmount
-                          ? `₹${a?.disbursement?.disbursedAmount}`
-                          : "—"}
+                        {a?.disbursedAmount ? `₹${a?.disbursedAmount}` : "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <StatusBadge

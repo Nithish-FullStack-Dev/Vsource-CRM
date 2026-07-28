@@ -1,3 +1,5 @@
+// app\(dashboard)\loan-application\all\[id]\_components\types.ts
+
 export type BankApplication = {
   id?: string;
 
@@ -44,56 +46,6 @@ export type BankApplication = {
   updatedAt?: string | Date | null;
 };
 
-export type LoanSanction = {
-  id?: string;
-
-  applicationId?: string;
-
-  bankApplicationId?: string | null;
-
-  bankId?: string;
-
-  bank?: {
-    id: string;
-    name: string;
-    status?: boolean;
-  } | null;
-
-  bankApplication?: {
-    id: string;
-    applicationNo?: string | null;
-    applicationDate?: string | Date | null;
-  } | null;
-
-  sanctionNo?: string | null;
-
-  sanctionDate?: string | Date | null;
-
-  sanctionedAmount?: string | null;
-
-  roi?: number | string | null;
-
-  tenure?: number | null;
-
-  emi?: number | string | null;
-
-  moratorium?: string | null;
-
-  processingFee?: number | string | null;
-
-  insuranceAmount?: number | string | null;
-
-  sanctionLetter?: string | null;
-
-  expiryDate?: string | Date | null;
-
-  remarks?: string | null;
-
-  createdAt?: string | Date | null;
-
-  updatedAt?: string | Date | null;
-};
-
 export type CoApplicant = {
   id?: string;
 
@@ -127,38 +79,6 @@ export type CoApplicant = {
   cibilScore?: number | null;
 
   createdAt?: string | Date | null;
-  updatedAt?: string | Date | null;
-};
-
-export type LoanDisbursement = {
-  id?: string;
-
-  applicationId?: string;
-
-  sanctionId?: string;
-
-  sanction?: LoanSanction | null;
-
-  disbursementDate?: string | Date | null;
-
-  disbursedAmount?: number | string | null;
-
-  disbursementReference?: string | null;
-
-  disbursementStatus: string;
-
-  accountNumber?: string | null;
-
-  transactionId?: string | null;
-
-  beneficiary?: string | null;
-
-  paymentMode?: string | null;
-
-  remarks?: string | null;
-
-  createdAt?: string | Date | null;
-
   updatedAt?: string | Date | null;
 };
 
@@ -211,6 +131,8 @@ export type LoanDocumentRecord = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type DecimalValue = string | number | null;
 
 export type LoanApplication = {
   id: string;
@@ -305,7 +227,6 @@ export type LoanApplication = {
   propertyValue?: number | null;
   downPayment?: number | null;
 
-  sanctionedAmount?: number | null;
   disbursedAmount?: number | null;
   depositAmount?: number | null;
   depositDate?: string | Date | null;
@@ -314,9 +235,18 @@ export type LoanApplication = {
   depositRemarks?: string | null;
   depositStatus?: string | "Pending";
 
-  disbursement: LoanDisbursement;
+  sanctionBankId?: string | null;
+  sanctionedAmount?: DecimalValue;
+  sanctionDate?: string | Date | null;
 
-  sanction?: LoanSanction | null;
+  disbursementStatus?: string | null;
+  disbursementDate?: string | Date | null;
+  disbursedBankId?: string | null;
+  depositBankId?: string | null;
+
+  sanctionBankApplication?: BankApplication | null;
+  disbursedBankApplication?: BankApplication | null;
+
   coApplicants?: CoApplicant[];
   bankApplications?: BankApplication[];
   followUps?: FollowUp[];

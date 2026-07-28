@@ -254,7 +254,7 @@ export const loanApplicationBaseSchema = z.object({
 
   depositReference: optionalString,
 
-  depositBank: optionalString,
+  depositBankId: optionalString,
 
   depositRemarks: optionalString,
 });
@@ -843,4 +843,25 @@ export type FinancialEditInput = z.input<
 
 export type FinancialEditValues = z.output<
   ReturnType<typeof createFinancialEditSchema>
+>;
+
+export const updateLoanLendingPartnerSchema = z.object({
+  requiredLoanAmount: optionalNumber,
+
+  sanctionBankId: optionalString,
+  sanctionedAmount: optionalNumber,
+  sanctionDate: optionalDate,
+
+  disbursementStatus: optionalString,
+  disbursementDate: optionalDate,
+  disbursedBankId: optionalString,
+
+  depositAmount: optionalNumber,
+  depositDate: optionalDate,
+  depositBankId: optionalString,
+  depositStatus: optionalString,
+});
+
+export type UpdateLoanLendingPartnerValues = z.infer<
+  typeof updateLoanLendingPartnerSchema
 >;

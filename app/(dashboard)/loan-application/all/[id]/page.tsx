@@ -52,7 +52,7 @@ import {
 import { useAuth } from "@/store";
 import { MODULES } from "@/lib/module-codes";
 import { usePageTitle } from "@/store/page-title";
-import LendingPatner from "./_components/LendingPatner";
+import { LendingPatner } from "./_components/LendingPatner";
 
 const icons: Record<string, React.ElementType> = {
   basic: User,
@@ -61,12 +61,9 @@ const icons: Record<string, React.ElementType> = {
   employment: User,
   business: Landmark,
   coapplicant: Users,
-  financial: CreditCard,
+  leading_patner: CreditCard,
   cibil: CreditCard,
   banks: Landmark,
-  sanction: FileText,
-  disbursement: CreditCard,
-  deposit: CreditCard,
   followups: CalendarPlus,
   activity: FileText,
 };
@@ -160,7 +157,9 @@ export default function LoanApplicationProfilePage() {
           canDelete={canDelete}
         />
       ),
-      Lending_Patner: <LendingPatner />,
+      leading_patner: (
+        <LendingPatner applicant={a as any} canUpdate={canUpdate} />
+      ),
       remarks: (
         <RemarksTab
           applicant={a as any}

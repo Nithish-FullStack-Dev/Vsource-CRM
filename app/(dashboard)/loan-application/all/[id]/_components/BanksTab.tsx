@@ -387,14 +387,14 @@ export function BanksTab({
         <DataTable
           columns={[
             "Bank / NBFC",
-            "Application No",
+            // "Application No",
             "Application Date",
             "Applied Amount",
-            "Loan Type",
-            "ROI",
-            "Tenure",
+            // "Loan Type",
+            // "ROI",
+            // "Tenure",
             "Status",
-            "Remarks",
+            // "Remarks",
             "Actions",
           ]}
           rows={rows.map((row, index) => (
@@ -413,18 +413,18 @@ export function BanksTab({
                       {getBankName(row)}
                     </p>
 
-                    {row.branch && (
+                    {/* {row.branch && (
                       <p className="text-xs text-muted-foreground">
                         {row.branch}
                       </p>
-                    )}
+                    )} */}
                   </div>
                 </div>
               </td>
 
-              <td className="px-4 py-3 font-mono text-xs text-slate-500">
+              {/* <td className="px-4 py-3 font-mono text-xs text-slate-500">
                 {row.applicationNo || "—"}
-              </td>
+              </td> */}
 
               <td className="px-4 py-3 text-slate-500">
                 {formatDate(row.applicationDate)}
@@ -438,7 +438,7 @@ export function BanksTab({
                 )}
               </td>
 
-              <td className="px-4 py-3 text-slate-500">
+              {/* <td className="px-4 py-3 text-slate-500">
                 {row.loanType || "—"}
               </td>
 
@@ -452,17 +452,17 @@ export function BanksTab({
                 {row.tenure !== null && row.tenure !== undefined
                   ? `${row.tenure} months`
                   : "—"}
-              </td>
+              </td> */}
 
               <td className="px-4 py-3">
                 <StatusBadge status={row.status} />
               </td>
 
-              <td className="max-w-[240px] px-4 py-3 text-slate-500">
+              {/* <td className="max-w-[240px] px-4 py-3 text-slate-500">
                 <span className="line-clamp-2" title={row.remarks ?? undefined}>
                   {row.remarks || "—"}
                 </span>
-              </td>
+              </td> */}
 
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -594,13 +594,13 @@ export function BanksTab({
                 )}
               </FormField>
 
-              <FormField label="Bank Branch" error={errors.branch}>
+              {/* <FormField label="Bank Branch" error={errors.branch}>
                 <Input
                   placeholder="Enter bank branch"
                   disabled={isSaving}
                   {...register("branch")}
                 />
-              </FormField>
+              </FormField> */}
 
               <FormField
                 label="Application Date"
@@ -625,7 +625,7 @@ export function BanksTab({
                 />
               </FormField>
 
-              <FormField label="Rate of Interest (%)" error={errors.roi}>
+              {/* <FormField label="Rate of Interest (%)" error={errors.roi}>
                 <Input
                   type="number"
                   min="0"
@@ -636,9 +636,9 @@ export function BanksTab({
                   {...register("roi")}
                   onKeyDown={preventNegativeInput}
                 />
-              </FormField>
+              </FormField> */}
 
-              <FormField label="Tenure (Months)" error={errors.tenure}>
+              {/* <FormField label="Tenure (Months)" error={errors.tenure}>
                 <Input
                   type="number"
                   min="0"
@@ -648,9 +648,9 @@ export function BanksTab({
                   {...register("tenure")}
                   onKeyDown={preventNegativeInput}
                 />
-              </FormField>
+              </FormField> */}
 
-              <FormField label="Processing Fee" error={errors.processingFee}>
+              {/* <FormField label="Processing Fee" error={errors.processingFee}>
                 <Input
                   type="number"
                   min="0"
@@ -660,9 +660,9 @@ export function BanksTab({
                   {...register("processingFee")}
                   onKeyDown={preventNegativeInput}
                 />
-              </FormField>
+              </FormField> */}
 
-              <FormField
+              {/* <FormField
                 label="Insurance Amount"
                 error={errors.insuranceAmount}
               >
@@ -675,9 +675,9 @@ export function BanksTab({
                   {...register("insuranceAmount")}
                   onKeyDown={preventNegativeInput}
                 />
-              </FormField>
+              </FormField> */}
 
-              <FormField label="Application Status" error={errors.status}>
+              <FormField label="Bank Status" error={errors.status}>
                 <Controller
                   name="status"
                   control={control}
@@ -715,14 +715,14 @@ export function BanksTab({
               </FormField> */}
             </div>
 
-            <FormField label="Remarks" error={errors.remarks}>
+            {/* <FormField label="Remarks" error={errors.remarks}>
               <Textarea
                 rows={4}
                 placeholder="Enter additional remarks"
                 disabled={isSaving}
                 {...register("remarks")}
               />
-            </FormField>
+            </FormField> */}
 
             {saveError && (
               <div
