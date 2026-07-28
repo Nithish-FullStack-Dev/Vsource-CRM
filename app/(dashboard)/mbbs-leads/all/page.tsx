@@ -36,23 +36,15 @@ import { MODULES } from "@/lib/module-codes";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 const statusStyle: Record<MbbsLeadStatus, string> = {
-  draft:
-    "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
-  new: "bg-info/15 text-info border-info/20",
-  contacted: "bg-warning/15 text-warning border-warning/20",
-  qualified: "bg-primary/10 text-primary border-primary/20",
-  converted: "bg-success/15 text-success border-success/20",
-  lost: "bg-muted text-muted-foreground border-border",
+  NEW: "bg-info/15 text-info border-info/20",
+  VISA_APPLICATION: "bg-success/15 text-success border-success/20",
+  DROP: "bg-muted text-muted-foreground border-border",
 };
 
-const statusTabs: Array<MbbsLeadStatus | "all"> = [
-  "all",
-  "draft",
-  "new",
-  "contacted",
-  "qualified",
-  "converted",
-  "lost",
+const statusTabs: Array<MbbsLeadStatus | "NEW"> = [
+  "NEW",
+  "VISA_APPLICATION",
+  "DROP",
 ];
 
 const branchOptions = [
@@ -406,7 +398,7 @@ export default function AllLeadsPage() {
             onClick={() => setStatus(tab)}
             className="whitespace-nowrap transition-all duration-200"
           >
-            {tab === "all"
+            {tab === "NEW"
               ? "All Leads"
               : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </Button>

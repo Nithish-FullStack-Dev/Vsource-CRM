@@ -181,24 +181,35 @@ export type ActivityLog = {
   createdAt?: string | Date | null;
 };
 
-export type LoanDocumentRecord = {
-  id: string;
-  originalFileName?: string | null;
-  fileName?: string | null;
-  fileUrl?: string | null;
-  documentType?: string | null;
-  fileSize?: number | null;
-  remarks?: string | null;
-  createdAt?: string | Date | null;
-};
+export type LoanDocumentCategory = "KYC" | "OPTIONAL" | "OTHER";
 
 export type LoanDocumentChecklistItem = {
+  id: string;
   code: string;
   name: string;
-  required?: boolean;
-  isOptional?: boolean;
-  isComplete?: boolean;
-  documents?: LoanDocumentRecord[];
+  category: LoanDocumentCategory;
+  required: boolean;
+  isSystem: boolean;
+  isOptional: boolean;
+  isComplete: boolean;
+  documents: LoanDocumentRecord[];
+};
+
+export type LoanDocumentRecord = {
+  id: string;
+  applicationId: string;
+  documentMasterId: string;
+  documentCode: string;
+  documentType: string;
+  originalFileName: string;
+  storedFileName: string;
+  fileUrl: string;
+  mimeType: string;
+  fileSize: number;
+  remarks?: string | null;
+  uploadedAt: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type LoanApplication = {

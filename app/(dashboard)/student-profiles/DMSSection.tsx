@@ -15,6 +15,7 @@ import {
   Upload,
   UploadCloud,
   X,
+  Plus,
 } from "lucide-react";
 import {
   ChangeEvent,
@@ -27,6 +28,7 @@ import {
   useState,
 } from "react";
 import {
+  useCreateStudentDocumentType,
   useDeleteStudentDocument,
   useStudentDocuments,
   useUpdateStudentDocument,
@@ -194,32 +196,88 @@ export function DMSSection({ studentId }: DMSSectionProps) {
   const [editingDocument, setEditingDocument] =
     useState<StudentDocumentRecord | null>(null);
 
+  const createDocumentTypeMutation = useCreateStudentDocumentType(studentId);
+
+  const [activeTab, setActiveTab] = useState<"checklist" | "others">(
+    "checklist",
+  );
+
+  const [newDocumentName, setNewDocumentName] = useState("");
+  const [newDocumentRequired, setNewDocumentRequired] = useState(false);
+  const [documentTypeError, setDocumentTypeError] = useState("");
+
   const checklist = documentsQuery.data?.checklist ?? [];
+
+  const visibleChecklist = useMemo(() => {
+    if (activeTab === "others") {
+      return checklist.filter(
+        (item) => item.isSystem === false || item.module === "OTHER",
+      );
+    }
+
+    return checklist.filter(
+      (item) => item.isSystem !== false && item.module !== "OTHER",
+    );
+  }, [activeTab, checklist]);
+
   const selectedItem = useMemo(
     () => checklist.find((item) => item.code === selectedItemCode) ?? null,
     [checklist, selectedItemCode],
   );
 
   const selectedIndex = useMemo(
-    () => checklist.findIndex((item) => item.code === selectedItemCode),
-    [checklist, selectedItemCode],
+    () => visibleChecklist.findIndex((item) => item.code === selectedItemCode),
+    [visibleChecklist, selectedItemCode],
   );
 
   const activeDocument = selectedItem?.documents?.[0] ?? null;
   useEffect(() => {
-    if (checklist.length === 0) {
+    if (visibleChecklist.length === 0) {
       setSelectedItemCode(null);
+      clearUploadForm();
       return;
     }
 
-    const selectedExists = checklist.some(
+    const selectedExists = visibleChecklist.some(
       (item) => item.code === selectedItemCode,
     );
 
     if (!selectedExists) {
-      setSelectedItemCode(checklist[0]?.code ?? null);
+      setSelectedItemCode(visibleChecklist[0]?.code ?? null);
+      clearUploadForm();
     }
-  }, [checklist, selectedItemCode]);
+  }, [visibleChecklist, selectedItemCode]);
+
+  const handleCreateDocumentType = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    const name = newDocumentName.trim();
+
+    if (name.length < 2) {
+      setDocumentTypeError("Enter a valid document name.");
+      return;
+    }
+
+    setDocumentTypeError("");
+
+    try {
+      const createdDocumentType = await createDocumentTypeMutation.mutateAsync({
+        name,
+        required: newDocumentRequired,
+      });
+
+      setNewDocumentName("");
+      setNewDocumentRequired(false);
+
+      await documentsQuery.refetch();
+
+      setSelectedItemCode(createdDocumentType.code);
+    } catch (error) {
+      setDocumentTypeError(getErrorMessage(error));
+    }
+  };
 
   const clearUploadForm = () => {
     setSelectedFile(null);
@@ -354,16 +412,20 @@ export function DMSSection({ studentId }: DMSSectionProps) {
   };
 
   const goToChecklistItem = (direction: -1 | 1) => {
-    if (checklist.length === 0) return;
+    if (visibleChecklist.length === 0) return;
 
     const currentIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
     const nextIndex = Math.min(
       Math.max(currentIndex + direction, 0),
-      checklist.length - 1,
+      visibleChecklist.length - 1,
     );
-    const nextItem = checklist[nextIndex];
 
-    if (nextItem) selectChecklistItem(nextItem);
+    const nextItem = visibleChecklist[nextIndex];
+
+    if (nextItem) {
+      selectChecklistItem(nextItem);
+    }
   };
 
   const currentPosition = selectedIndex >= 0 ? selectedIndex + 1 : 0;
@@ -412,22 +474,126 @@ export function DMSSection({ studentId }: DMSSectionProps) {
   return (
     <div className="grid min-h-[720px] grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-[720px] xl:grid-cols-[420px_minmax(0,1fr)]">
       <aside className="flex min-h-[520px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
+        <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
+          <div className="grid grid-cols-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("checklist");
+                clearUploadForm();
+              }}
+              className={`rounded-xl px-4 py-2.5 text-xs font-black transition ${
+                activeTab === "checklist"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+              }`}
+            >
+              Checklist
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("others");
+                clearUploadForm();
+              }}
+              className={`rounded-xl px-4 py-2.5 text-xs font-black transition ${
+                activeTab === "others"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+              }`}
+            >
+              Others
+            </button>
+          </div>
+
+          {activeTab === "others" && canUpdate(MODULES.STUDENT_PROFILES) ? (
+            <form
+              onSubmit={handleCreateDocumentType}
+              className="mt-4 rounded-[18px] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900"
+            >
+              <label className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
+                New document type
+              </label>
+
+              <input
+                type="text"
+                value={newDocumentName}
+                onChange={(event) => {
+                  setNewDocumentName(event.target.value);
+                  setDocumentTypeError("");
+                }}
+                maxLength={100}
+                placeholder="Example: Sponsor Affidavit"
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-red-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+              />
+
+              <label className="mt-3 flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={newDocumentRequired}
+                  onChange={(event) =>
+                    setNewDocumentRequired(event.target.checked)
+                  }
+                  className="h-4 w-4 rounded border-slate-300 accent-red-500"
+                />
+
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                  Make this document mandatory
+                </span>
+              </label>
+
+              {documentTypeError ? (
+                <p className="mt-2 text-[11px] font-semibold text-rose-500">
+                  {documentTypeError}
+                </p>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={
+                  createDocumentTypeMutation.isPending ||
+                  !newDocumentName.trim()
+                }
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-xs font-black text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {createDocumentTypeMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Add Document Type
+                  </>
+                )}
+              </button>
+            </form>
+          ) : null}
+        </div>
+
         <div className="relative min-h-0 flex-1 overflow-y-auto px-7 pb-7 pt-2 [scrollbar-color:rgb(148_163_184)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 [&::-webkit-scrollbar-track]:bg-transparent">
           <div className="pointer-events-none absolute bottom-8 left-[36px] top-3 w-px bg-slate-300 dark:bg-slate-700" />
 
-          {checklist.length === 0 ? (
+          {visibleChecklist.length === 0 ? (
             <div className="relative rounded-[22px] border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
               <FileText className="mx-auto h-9 w-9 text-slate-300" />
               <p className="mt-3 text-sm font-black text-slate-600 dark:text-slate-300">
-                No checklist items found
+                {activeTab === "others"
+                  ? "No other document types added"
+                  : "No checklist items found"}
               </p>
+
               <p className="mt-1 text-xs text-slate-400">
-                Document folders will appear here when available.
+                {activeTab === "others"
+                  ? "Use the form above to add a student-specific document."
+                  : "Document folders will appear here when available."}
               </p>
             </div>
           ) : (
             <div className="relative space-y-3">
-              {checklist.map((item) => {
+              {visibleChecklist.map((item) => {
                 const itemDocuments = item.documents ?? [];
                 const itemDocument = itemDocuments[0] ?? null;
                 const isSelected = item.code === selectedItemCode;
@@ -552,13 +718,14 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                   <ChevronLeft className="h-5 w-5" />
                 </button>
                 <div className="rounded-xl bg-slate-50 px-4 py-3 text-[11px] font-black text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                  Checklist: {currentPosition} / {checklist.length}
+                  Checklist: {currentPosition} / {visibleChecklist.length}
                 </div>
                 <button
                   type="button"
                   onClick={() => goToChecklistItem(1)}
                   disabled={
-                    selectedIndex < 0 || selectedIndex >= checklist.length - 1
+                    selectedIndex < 0 ||
+                    selectedIndex >= visibleChecklist.length - 1
                   }
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
                   aria-label="Next checklist item"

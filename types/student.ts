@@ -185,7 +185,7 @@ export type StudentDocumentChecklistItem = {
     | "LOAN_COLLATERAL"
     | "VISA";
 
-  module: "ADMISSION" | "LOAN" | "VISA";
+  module: "ADMISSION" | "LOAN" | "OTHER";
 
   requiredCount: number;
 
@@ -198,6 +198,12 @@ export type StudentDocumentChecklistItem = {
   isComplete: boolean;
 
   documents: StudentDocumentRecord[];
+
+  documentMasterId?: string | null;
+
+  required?: boolean;
+  isOptional?: boolean;
+  isSystem?: boolean;
 };
 
 export type StudentDocumentSummary = {

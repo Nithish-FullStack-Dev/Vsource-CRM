@@ -24,11 +24,28 @@ export async function GET(
     const { id: studentId } = await params;
 
     const student = await db.student.findUnique({
-      where: { id: studentId },
+      where: {
+        id: studentId,
+      },
       select: {
         id: true,
         documents: {
-          orderBy: { uploadedAt: "desc" },
+          orderBy: {
+            uploadedAt: "desc",
+          },
+        },
+        documentMasters: {
+          where: {
+            isActive: true,
+          },
+          orderBy: [
+            {
+              sortOrder: "asc",
+            },
+            {
+              createdAt: "asc",
+            },
+          ],
         },
       },
     });
@@ -37,20 +54,50 @@ export async function GET(
       return errorResponse("Student not found", 404);
     }
 
-    const checklist = STUDENT_DOCUMENT_CHECKLIST.map((item) => {
+    const systemChecklist = STUDENT_DOCUMENT_CHECKLIST.map((item) => {
       const documents = student.documents.filter(
-        (document) => document.documentCode === item.code,
+        (document) =>
+          document.documentCode === item.code && !document.documentMasterId,
       );
 
       return {
         ...item,
+        documentMasterId: null,
+        isSystem: true,
+        isOptional: false,
         isMandatory: true,
-        module: item.category.startsWith("LOAN") ? "LOAN" : "ADMISSION",
+        module: item.category.startsWith("LOAN")
+          ? ("LOAN" as const)
+          : ("ADMISSION" as const),
         documents,
         uploadedCount: documents.length,
         isComplete: documents.length >= item.requiredCount,
       };
     });
+
+    const customChecklist = student.documentMasters.map((master) => {
+      const documents = student.documents.filter(
+        (document) => document.documentMasterId === master.id,
+      );
+
+      return {
+        code: master.code,
+        name: master.name,
+        category: "OTHER",
+        documentMasterId: master.id,
+        requiredCount: master.required ? 1 : 0,
+        required: master.required,
+        isMandatory: master.required,
+        isOptional: !master.required,
+        isSystem: false,
+        module: "OTHER" as const,
+        documents,
+        uploadedCount: documents.length,
+        isComplete: documents.length > 0,
+      };
+    });
+
+    const checklist = [...systemChecklist, ...customChecklist];
 
     const totalRequiredUploads = checklist.reduce(
       (total, item) => total + item.requiredCount,
@@ -107,13 +154,28 @@ export async function POST(
       return errorResponse("Document file is required", 400);
     }
 
-    const checklistItem = STUDENT_DOCUMENT_CHECKLIST.find(
+    const systemChecklistItem = STUDENT_DOCUMENT_CHECKLIST.find(
       (item) => item.code === documentCode,
     );
 
-    if (!checklistItem) {
+    const customDocumentMaster = systemChecklistItem
+      ? null
+      : await db.studentDocumentMaster.findFirst({
+          where: {
+            studentId,
+            code: documentCode,
+            isActive: true,
+          },
+        });
+
+    if (!systemChecklistItem && !customDocumentMaster) {
       return errorResponse("Invalid document type", 400);
     }
+
+    const documentName =
+      systemChecklistItem?.name ||
+      customDocumentMaster?.name ||
+      "Student Document";
 
     const student = await db.student.findUnique({
       where: { id: studentId },
@@ -136,7 +198,7 @@ export async function POST(
 
     const storedFileName = buildStudentDocumentFileName({
       studentName: student.studentName,
-      documentName: checklistItem.name,
+      documentName,
       branchCode: student.branch?.code || "branch",
       extension,
     });
@@ -159,8 +221,9 @@ export async function POST(
     const document = await db.studentDocument.create({
       data: {
         studentId,
-        documentCode: checklistItem.code,
-        documentType: checklistItem.name,
+        documentCode,
+        documentType: documentName,
+        documentMasterId: customDocumentMaster?.id || null,
         originalFileName: file.name,
         storedFileName,
         fileUrl: `/uploads/students/${storedFileName}`,
