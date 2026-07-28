@@ -1,5 +1,7 @@
 // lib/loan-application/constants.ts
 
+import { LoanDocumentCategory } from "@/generated/prisma/enums";
+
 export const APPLICANT_CATEGORIES = [
   "Student",
   "Salaried",
@@ -71,22 +73,135 @@ export const BANK_PROCESS_LOANS = [
   "Other",
 ] as const;
 
+// lib/loan-application/constants.ts
+
 export const LOAN_DOCUMENT_CHECKLIST = [
-  { code: "photo", name: "Applicant Photo", required: true },
-  { code: "aadhaar", name: "Aadhaar Card", required: true },
-  { code: "pan", name: "PAN Card", required: true },
-  { code: "address_proof", name: "Address Proof", required: true },
-  { code: "bank_statement", name: "Bank Statement", required: true },
-  { code: "income_proof", name: "Income Proof", required: true },
-  { code: "itr", name: "ITR / Form 16", required: false },
-  { code: "offer_letter", name: "Offer Letter", required: false },
-  { code: "fee_structure", name: "Fee Structure", required: false },
-  { code: "property_documents", name: "Property Documents", required: false },
-  { code: "cibil_report", name: "CIBIL Report", required: false },
-  { code: "sanction_letter", name: "Sanction Letter", required: false },
-  { code: "disbursement_proof", name: "Disbursement Proof", required: false },
-  { code: "deposit_receipt", name: "Deposit Receipt", required: false },
-] as const;
+  {
+    code: "photo",
+    name: "Passport Size Photo",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "aadhaar",
+    name: "Student Aadhaar Card",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "pan",
+    name: "Student PAN Card",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "faadhaar",
+    name: "Father Aadhaar Card",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "fpan",
+    name: "Father PAN Card",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "maadhaar",
+    name: "Mother Aadhaar Card",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "mpan",
+    name: "Mother PAN Card",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "property_tax",
+    name: "Property Tax",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "electricity_bill",
+    name: "Electricity Bill",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "gas_bill",
+    name: "Gas Bill",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "bank_statement",
+    name: "6 Months Latest Bank Statement",
+    category: "KYC",
+    required: true,
+  },
+  {
+    code: "income_certificate",
+    name: "Agriculture Income Certificate",
+    category: "OPTIONAL",
+    required: true,
+  },
+  {
+    code: "salary_payslips",
+    name: "3 Months Salary Payslips",
+    category: "OPTIONAL",
+    required: false,
+  },
+  {
+    code: "itr",
+    name: "2 Years Latest ITR's",
+    category: "OPTIONAL",
+    required: false,
+  },
+  {
+    code: "rental_agreement",
+    name: "Rental Agreements",
+    category: "OPTIONAL",
+    required: false,
+  },
+  {
+    code: "pension_payslips",
+    name: "3 Months Latest Pension Payslips",
+    category: "OPTIONAL",
+    required: false,
+  },
+  {
+    code: "abroad_payslips",
+    name: "Abroad 3 Months Payslips",
+    category: "OPTIONAL",
+    required: false,
+  },
+  {
+    code: "abroad_bankstatement",
+    name: "Abroad 6 Months Latest Bank Statement",
+    category: "OPTIONAL",
+    required: false,
+  },
+  {
+    code: "passport_certificate",
+    name: "Passport Certificate",
+    category: "OPTIONAL",
+    required: false,
+  },
+  {
+    code: "visa_certificate",
+    name: "Visa Certificate",
+    category: "OPTIONAL",
+    required: false,
+  },
+] as const satisfies ReadonlyArray<{
+  code: string;
+  name: string;
+  category: Extract<LoanDocumentCategory, "KYC" | "OPTIONAL">;
+  required: boolean;
+}>;
 
 export const isEducationLoan = (loan?: string | null) =>
   Boolean(

@@ -13,6 +13,7 @@ import {
   Upload,
   UploadCloud,
   X,
+  Plus,
 } from "lucide-react";
 import {
   type ChangeEvent,
@@ -82,7 +83,8 @@ function getSafeFileUrl(value?: string | null) {
 
 function isOptionalItem(item?: LoanDocumentChecklistItem | null) {
   if (!item) return false;
-  return item.isOptional ?? item.required === false;
+
+  return item.category === "OPTIONAL";
 }
 
 function getErrorMessage(error: unknown) {
@@ -168,7 +170,14 @@ export function DocumentsTab({
 }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  type DocumentTab = "KYC" | "OPTIONAL" | "OTHER";
 
+  const [activeTab, setActiveTab] = useState<DocumentTab>("KYC");
+
+  const [showAddDocument, setShowAddDocument] = useState(false);
+  const [customDocumentName, setCustomDocumentName] = useState("");
+  const [customDocumentRequired, setCustomDocumentRequired] = useState(false);
+  const [customDocumentError, setCustomDocumentError] = useState("");
   const [selectedItemCode, setSelectedItemCode] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [remarks, setRemarks] = useState("");
@@ -192,38 +201,48 @@ export function DocumentsTab({
 
   const checklist = documentsQuery.data?.checklist ?? [];
 
+  const filteredChecklist = useMemo(
+    () => checklist.filter((item) => item.category === activeTab),
+    [checklist, activeTab],
+  );
+
   const selectedItem = useMemo(
-    () => checklist.find((item) => item.code === selectedItemCode) ?? null,
-    [checklist, selectedItemCode],
+    () =>
+      filteredChecklist.find((item) => item.code === selectedItemCode) ?? null,
+    [filteredChecklist, selectedItemCode],
   );
 
   const selectedIndex = useMemo(
-    () => checklist.findIndex((item) => item.code === selectedItemCode),
-    [checklist, selectedItemCode],
+    () => filteredChecklist.findIndex((item) => item.code === selectedItemCode),
+    [filteredChecklist, selectedItemCode],
   );
 
   const activeDocument = selectedItem?.documents?.[0] ?? null;
 
   useEffect(() => {
-    if (!checklist.length) {
+    if (!filteredChecklist.length) {
       setSelectedItemCode(null);
       return;
     }
 
-    if (!checklist.some((item) => item.code === selectedItemCode)) {
-      setSelectedItemCode(checklist[0]?.code ?? null);
+    if (!filteredChecklist.some((item) => item.code === selectedItemCode)) {
+      setSelectedItemCode(filteredChecklist[0]?.code ?? null);
     }
-  }, [checklist, selectedItemCode]);
+  }, [filteredChecklist, selectedItemCode]);
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedItem?.code || !selectedFile) return;
+      if (!selectedItem?.id || !selectedFile) return;
 
       const formData = new FormData();
 
       formData.append("documentCode", selectedItem.code);
       formData.append("file", selectedFile);
       formData.append("remarks", remarks);
+
+      if (selectedItem.category === "OTHER") {
+        formData.append("documentMasterId", selectedItem.id);
+      }
 
       await axios.post(
         `${apiBase}/loan-applications/${applicationId}/documents`,
@@ -291,6 +310,68 @@ export function DocumentsTab({
     },
     onError: (error) => setFileError(getErrorMessage(error)),
   });
+
+  const createDocumentMasterMutation = useMutation({
+    mutationFn: async (payload: { name: string; required: boolean }) => {
+      const { data } = await axios.post(
+        `${apiBase}/loan-applications/${applicationId}/document-masters`,
+        payload,
+        {
+          withCredentials: true,
+        },
+      );
+
+      return data?.data ?? data;
+    },
+
+    onSuccess: async (createdMaster) => {
+      setShowAddDocument(false);
+      setCustomDocumentName("");
+      setCustomDocumentRequired(false);
+      setCustomDocumentError("");
+
+      await queryClient.invalidateQueries({
+        queryKey: ["loan-application-documents", applicationId],
+      });
+
+      setActiveTab("OTHER");
+
+      if (createdMaster?.code) {
+        setSelectedItemCode(createdMaster.code);
+      }
+    },
+
+    onError: (error) => {
+      if (axios.isAxiosError(error)) {
+        setCustomDocumentError(
+          error.response?.data?.message ?? "Failed to add custom document.",
+        );
+        return;
+      }
+
+      setCustomDocumentError("Failed to add custom document.");
+    },
+  });
+
+  const handleCreateCustomDocument = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    const name = customDocumentName.trim();
+
+    if (name.length < 2) {
+      setCustomDocumentError("Enter a valid document name.");
+      return;
+    }
+
+    setCustomDocumentError("");
+
+    await createDocumentMasterMutation.mutateAsync({
+      name,
+      required: customDocumentRequired,
+    });
+  };
 
   const isSaving = uploadMutation.isPending || updateMutation.isPending;
 
@@ -377,6 +458,11 @@ export function DocumentsTab({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (!selectedItem?.id) {
+      setFileError("Select a checklist item first.");
+      return;
+    }
+
     if (!selectedItem?.code) {
       setFileError("Select a checklist item first.");
       return;
@@ -408,20 +494,24 @@ export function DocumentsTab({
   };
 
   const goToChecklistItem = (direction: -1 | 1) => {
-    if (!checklist.length) return;
+    if (!filteredChecklist.length) return;
 
     const currentIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
     const nextIndex = Math.min(
       Math.max(currentIndex + direction, 0),
-      checklist.length - 1,
+      filteredChecklist.length - 1,
     );
 
-    const nextItem = checklist[nextIndex];
+    const nextItem = filteredChecklist[nextIndex];
 
-    if (nextItem) selectChecklistItem(nextItem);
+    if (nextItem) {
+      selectChecklistItem(nextItem);
+    }
   };
 
   const currentPosition = selectedIndex >= 0 ? selectedIndex + 1 : 0;
+
   const activeFileName =
     activeDocument?.originalFileName?.trim() ||
     `${selectedItem?.name?.trim() || "Document"} file pending`;
@@ -474,10 +564,139 @@ export function DocumentsTab({
   return (
     <div className="grid min-h-[720px] grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-[720px] xl:grid-cols-[420px_minmax(0,1fr)]">
       <aside className="flex min-h-[520px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
+        <div className="border-b border-slate-200 p-4 dark:border-slate-800">
+          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("KYC");
+                setShowAddDocument(false);
+              }}
+              className={`rounded-xl px-3 py-2.5 text-[11px] font-black transition ${
+                activeTab === "KYC"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+              }`}
+            >
+              KYC
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("OPTIONAL");
+                setShowAddDocument(false);
+              }}
+              className={`rounded-xl px-3 py-2.5 text-[11px] font-black transition ${
+                activeTab === "OPTIONAL"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+              }`}
+            >
+              Optional
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("OTHER")}
+              className={`rounded-xl px-3 py-2.5 text-[11px] font-black transition ${
+                activeTab === "OTHER"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+              }`}
+            >
+              Others
+            </button>
+          </div>
+
+          {activeTab === "OTHER" && canUpdate(MODULES.LOAN_APPLICATION) && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddDocument((current) => !current);
+                setCustomDocumentError("");
+              }}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-rose-300 bg-rose-50 px-4 py-2.5 text-[11px] font-black text-rose-600 transition hover:border-rose-400 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950/20 dark:text-rose-400"
+            >
+              {showAddDocument ? (
+                <X className="h-4 w-4" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+
+              {showAddDocument ? "Cancel" : "Add Custom Document"}
+            </button>
+          )}
+
+          {activeTab === "OTHER" && showAddDocument && (
+            <form
+              onSubmit={handleCreateCustomDocument}
+              className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900"
+            >
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                Document Name
+              </label>
+
+              <input
+                type="text"
+                value={customDocumentName}
+                onChange={(event) => {
+                  setCustomDocumentName(event.target.value);
+                  setCustomDocumentError("");
+                }}
+                maxLength={100}
+                placeholder="e.g. Sponsor Affidavit"
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-rose-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+              />
+
+              <label className="mt-3 flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={customDocumentRequired}
+                  onChange={(event) =>
+                    setCustomDocumentRequired(event.target.checked)
+                  }
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                  Required document
+                </span>
+              </label>
+
+              {customDocumentError && (
+                <p className="mt-2 text-[10px] font-bold text-rose-500">
+                  {customDocumentError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={
+                  createDocumentMasterMutation.isPending ||
+                  customDocumentName.trim().length < 2
+                }
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-[11px] font-black text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {createDocumentMasterMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Add Document
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+        </div>
         <div className="relative min-h-0 flex-1 overflow-y-auto px-7 pb-7 pt-2 [scrollbar-color:rgb(148_163_184)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 [&::-webkit-scrollbar-track]:bg-transparent">
           <div className="pointer-events-none absolute bottom-8 left-[36px] top-3 w-px bg-slate-300 dark:bg-slate-700" />
 
-          {!checklist.length ? (
+          {!filteredChecklist.length ? (
             <div className="relative rounded-[22px] border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
               <FileText className="mx-auto h-9 w-9 text-slate-300" />
 
@@ -491,7 +710,7 @@ export function DocumentsTab({
             </div>
           ) : (
             <div className="relative space-y-3">
-              {checklist.map((item) => {
+              {filteredChecklist.map((item) => {
                 const itemDocuments = item.documents ?? [];
                 const itemDocument = itemDocuments[0] ?? null;
                 const isSelected = item.code === selectedItemCode;
@@ -536,9 +755,11 @@ export function DocumentsTab({
                       ) : (
                         <p className="mt-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.08em] text-rose-500">
                           <AlertCircle className="h-3 w-3" />
-                          {isOptionalItem(item)
+                          {item.category === "OPTIONAL"
                             ? "Optional document"
-                            : "Missing checklist item"}
+                            : item.category === "OTHER" && !item.required
+                              ? "Optional custom document"
+                              : "Missing checklist item"}
                         </p>
                       )}
                     </div>
@@ -618,14 +839,15 @@ export function DocumentsTab({
                 </button>
 
                 <div className="rounded-xl bg-slate-50 px-4 py-3 text-[11px] font-black text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                  Checklist: {currentPosition} / {checklist.length}
+                  Checklist: {currentPosition} / {filteredChecklist.length}
                 </div>
 
                 <button
                   type="button"
                   onClick={() => goToChecklistItem(1)}
                   disabled={
-                    selectedIndex < 0 || selectedIndex >= checklist.length - 1
+                    selectedIndex < 0 ||
+                    selectedIndex >= filteredChecklist.length - 1
                   }
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
                 >

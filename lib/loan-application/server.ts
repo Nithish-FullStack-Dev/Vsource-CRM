@@ -1,7 +1,9 @@
 // lib\loan-application\server.ts
+import { LoanDocumentMaster, LoanDocument } from "@/generated/prisma/client";
 import db from "@/lib/prisma";
 import type { LoanApplicationPayload } from "@/schemas/loan-application/loan-application.schema";
-import { LOAN_DOCUMENT_CHECKLIST } from "@/lib/loan-application/constants";
+import { LOAN_DOCUMENT_CHECKLIST } from "./constants";
+
 const toDate = (v?: string | Date | null) => (v ? new Date(v) : null);
 const money = (v?: number | null) => (typeof v === "number" ? v : null);
 const num = (v: unknown) => {
@@ -156,14 +158,50 @@ export function serializeLoanApplication(r: any) {
   }));
   return b;
 }
-export function buildDocumentChecklist(documents: any[]) {
-  return LOAN_DOCUMENT_CHECKLIST.map((item) => {
-    const docs = documents.filter((d) => d.documentCode === item.code);
+
+export function buildDocumentChecklist(
+  documents: LoanDocument[],
+  customMasters: LoanDocumentMaster[],
+) {
+  // KYC and OPTIONAL always come from the static constant.
+  const staticChecklist = LOAN_DOCUMENT_CHECKLIST.map((item) => {
+    const matchedDocuments = documents.filter(
+      (document) => document.documentCode === item.code,
+    );
+
     return {
-      ...item,
-      isOptional: item.required === false,
-      isComplete: docs.length > 0,
-      documents: docs,
+      // Static items do not come from LoanDocumentMaster.
+      // The code acts as the checklist identifier.
+      id: item.code,
+      code: item.code,
+      name: item.name,
+      category: item.category,
+      required: item.required,
+      isSystem: true,
+      isOptional: !item.required,
+      isComplete: matchedDocuments.length > 0,
+      documents: matchedDocuments,
     };
   });
+
+  // OTHER always comes from application-specific LoanDocumentMaster records.
+  const otherChecklist = customMasters.map((master) => {
+    const matchedDocuments = documents.filter(
+      (document) => document.documentMasterId === master.id,
+    );
+
+    return {
+      id: master.id,
+      code: master.code,
+      name: master.name,
+      category: "OTHER" as const,
+      required: master.required,
+      isSystem: false,
+      isOptional: !master.required,
+      isComplete: matchedDocuments.length > 0,
+      documents: matchedDocuments,
+    };
+  });
+
+  return [...staticChecklist, ...otherChecklist];
 }

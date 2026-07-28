@@ -13,6 +13,22 @@ export const STUDENT_DOCUMENT_KEYS = {
     [...STUDENT_DOCUMENT_KEYS.all, studentId] as const,
 };
 
+type CreateStudentDocumentTypePayload = {
+  name: string;
+  required: boolean;
+};
+
+type CreatedStudentDocumentType = {
+  id: string;
+  studentId: string;
+  code: string;
+  name: string;
+  required: boolean;
+  isSystem: false;
+  isOptional: boolean;
+  module: "OTHER";
+};
+
 export function useStudentDocuments(studentId: string) {
   return useQuery({
     queryKey: STUDENT_DOCUMENT_KEYS.detail(studentId),
@@ -100,6 +116,33 @@ export function useDeleteStudentDocument(studentId: string) {
       toast.error(
         error instanceof Error ? error.message : "Unable to delete document",
       );
+    },
+  });
+}
+
+export function useCreateStudentDocumentType(studentId: string) {
+  return useMutation({
+    mutationFn: async (
+      payload: CreateStudentDocumentTypePayload,
+    ): Promise<CreatedStudentDocumentType> => {
+      const response = await fetch(
+        `/api/students/${studentId}/documents/types`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Unable to create document type");
+      }
+
+      return result.data;
     },
   });
 }
