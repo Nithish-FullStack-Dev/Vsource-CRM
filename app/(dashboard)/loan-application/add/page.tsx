@@ -119,14 +119,17 @@ type UniversityCourse = {
     name: string;
   } | null;
 };
-const APPLICANT_CATEGORIES = ["Student", "Salaried", "Self Employed"] as const;
+const APPLICANT_CATEGORIES = [
+  "Student",
+  //  "Salaried", "Self Employed"
+] as const;
 
 const LOAN_CATEGORIES = [
   "Study Abroad Loan",
   "Domestic Education Loan",
-  "Personal Loan",
-  "Home Loan",
-  "Business Loan",
+  // "Personal Loan",
+  // "Home Loan",
+  // "Business Loan",
 ] as const;
 
 const EDUCATION_LOANS = [

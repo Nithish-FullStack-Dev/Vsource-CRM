@@ -8,6 +8,7 @@ import {
 } from "@/lib/loan-application/server";
 
 import { updateLoanApplicationSchema } from "@/schemas/loan-application/loan-application.schema";
+import { triggerNotificationProcessor } from "@/lib/socket/trigger-processor";
 type Ctx = {
   params: Promise<{
     id: string;
@@ -682,7 +683,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
 
     const data = await buildLoanApplicationResponse(updated);
+    const accessToken = req.cookies.get("access_token")?.value;
 
+    if (accessToken) {
+      await triggerNotificationProcessor(accessToken);
+    }
     return NextResponse.json({
       message: "Loan application updated successfully",
       data,
