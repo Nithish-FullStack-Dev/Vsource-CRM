@@ -34,11 +34,6 @@ type MutableIntakeGroup = {
   rowMap: Map<string, DirectorReportRow>;
   branchTotalMap: Map<string, DirectorReportRow>;
 };
-type IntakeProgressItem = {
-  label: string;
-  done: number;
-  pending: number;
-};
 const numberFormat = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 1,
 });
@@ -391,173 +386,6 @@ function sumDirectorRows(rows: DirectorReportRow[], fallbackName: string): Direc
   total.targetCompletionPercentage = calculatePercentage(total.achieved, total.target);
   return total;
 }
-function buildIntakeProgress(
-  row: DirectorReportRow,
-): IntakeProgressItem[] {
-  return [
-    {
-      label: "DROP",
-      done: row.studentDropInactive,
-      pending: 0,
-    },
-    {
-      label: "OSL-OF",
-      done: row.outsideLoan,
-      pending: 0,
-    },
-    {
-      label: "LOAN LOGINS",
-      done: row.loanApplications,
-      pending: Math.max(
-        row.applications -
-          row.outsideLoan -
-          row.loanApplications,
-        0,
-      ),
-    },
-    {
-      label: "LOAN APPROVAL",
-      done: row.loanApproved,
-      pending: Math.max(
-        row.loanApplications -
-          row.loanApproved,
-        0,
-      ),
-    },
-    {
-      label: "DISBURSEMENT",
-      done: row.loanDisbursed,
-      pending: Math.max(
-        row.loanApproved -
-          row.loanDisbursed,
-        0,
-      ),
-    },
-    {
-      label: "DEPOSIT",
-      done: row.depositPaid,
-      pending: Math.max(
-        row.applications -
-          row.depositPaid,
-        0,
-      ),
-    },
-    {
-      label: "CAS",
-      done: row.casReceived,
-      pending: Math.max(
-        row.casApplied -
-          row.casReceived,
-        0,
-      ),
-    },
-    {
-      label: "VISA",
-      done: row.visaApproved,
-      pending: Math.max(
-        row.visaApplied -
-          row.visaApproved,
-        0,
-      ),
-    },
-  ];
-}
-
-function IntakeDonePendingSummary({
-  totals,
-}: {
-  totals: DirectorReportTableTotals;
-}) {
-  const groups = [
-    totals.grandTotal,
-    ...totals.branchRows,
-  ];
-
-  return (
-    <div className="border-t border-border/60 bg-muted/10 p-4">
-      <div className="mb-4">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">
-          Intake Done / Pending Summary
-        </h3>
-
-        <p className="mt-1 text-xs text-muted-foreground">
-          Branch-wise completed and pending
-          student progress.
-        </p>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-        {groups.map((group) => {
-          const items =
-            buildIntakeProgress(group);
-
-          const isGrandTotal =
-            group.branchId ===
-              "__grand_total__" ||
-            group.counselorId ===
-              "__grand_total__" ||
-            group.branchName ===
-              "All Branches";
-
-          const branchTitle = isGrandTotal
-            ? "ALL BRANCHES"
-            : group.branchName ||
-              "UNKNOWN BRANCH";
-
-          return (
-            <div
-              key={`${group.intakeId ?? "all"}:${group.branchId}:${group.rowId}`}
-              className="overflow-hidden rounded-lg border border-border/60 bg-card shadow-sm"
-            >
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="bg-amber-600 text-white">
-                    <th className="w-24 border-r border-amber-700 px-3 py-2.5 text-center font-bold">
-                      DONE
-                    </th>
-
-                    <th className="border-r border-amber-700 px-3 py-2.5 text-center font-bold uppercase">
-                      {branchTitle}
-                    </th>
-
-                    <th className="w-24 px-3 py-2.5 text-center font-bold">
-                      PENDING
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {items.map((item) => (
-                    <tr
-                      key={item.label}
-                      className="border-t border-border/50 transition-colors hover:bg-muted/40"
-                    >
-                      <td className="border-r border-border/50 px-3 py-2 text-center font-semibold tabular-nums text-foreground">
-                        {integerFormat.format(
-                          item.done,
-                        )}
-                      </td>
-
-                      <td className="border-r border-border/50 px-3 py-2 text-center font-semibold uppercase text-foreground">
-                        {item.label}
-                      </td>
-
-                      <td className="px-3 py-2 text-center font-semibold tabular-nums text-foreground">
-                        {integerFormat.format(
-                          item.pending,
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 function createMissingBranchTotals(rows: DirectorReportRow[], existingTotals: DirectorReportRow[]): DirectorReportRow[] {
   const totalMap = new Map<string, DirectorReportRow>();
   for (const total of existingTotals) {
@@ -660,16 +488,7 @@ const COL_WIDTHS = {
 const LEFT_BRANCH = 0;
 const LEFT_SNO = COL_WIDTHS.branch;
 const LEFT_USER = COL_WIDTHS.branch + COL_WIDTHS.sno;
-function ExcelReportTable({
-  id,
-  superHeaderDate,
-  superHeaderTitle,
-  columns,
-  rows,
-  totals,
-  defaultOpen = false,
-  showIntakeProgress = false,
-}: {
+function ExcelReportTable({ id, superHeaderDate, superHeaderTitle, columns, rows, totals, defaultOpen = false, }: {
   id: string;
   superHeaderDate: string;
   superHeaderTitle: string;
@@ -677,7 +496,6 @@ function ExcelReportTable({
   rows: DirectorReportRow[];
   totals: DirectorReportTableTotals;
   defaultOpen?: boolean;
-  showIntakeProgress?: boolean;
 }) {
   const { isOpen, setIsOpen } = useHashAwareAccordion(id, defaultOpen);
   const tableGroups = useMemo<TableGroup[]>(() => {
@@ -881,17 +699,9 @@ function ExcelReportTable({
             </Fragment>);
           }))}
         </tbody>
-            </table>
-    </div>
-  )}
-
-  {isOpen && showIntakeProgress && (
-    <IntakeDonePendingSummary
-      totals={totals}
-    />
-  )}
-</section>
-  );
+      </table>
+    </div>)}
+  </section>);
 }
 function comparisonTone(value: number): string {
   if (value > 0) {
@@ -1146,7 +956,10 @@ export default function DirectorReportClient() {
       href: "#all-time-report",
       label: "Overall",
     },
-  
+    {
+      href: "#comparisons",
+      label: "Comparisons",
+    },
   ];
   const weeklyHeaderDate = data?.weeklyTotals
     ?.grandTotal?.periodLabel ||
@@ -1264,40 +1077,18 @@ export default function DirectorReportClient() {
           .toUpperCase()} MONTH REPORT`} columns={MONTHLY_WEEKLY_COLUMNS} rows={data.currentMonthRows} totals={data.currentMonthTotals} />
 
         <div id="intake-report" className="scroll-mt-20">
-          {intakes.length === 0 ? (<ExcelReportTable
-  id="intake-empty"
-  superHeaderDate="INTAKE REPORT"
-  superHeaderTitle="INTAKE SUMMARY"
-  columns={INTAKE_COLUMNS}
-  rows={[]}
-  totals={{
-    branchRows: [],
-    grandTotal: sumDirectorRows(
-      [],
-      "Grand Total",
-    ),
-  }}
-  showIntakeProgress
-/>) : (<div className="space-y-6">
+          {intakes.length === 0 ? (<ExcelReportTable id="intake-empty" superHeaderDate="INTAKE REPORT" superHeaderTitle="INTAKE SUMMARY" columns={INTAKE_COLUMNS} rows={[]} totals={{
+            branchRows: [],
+            grandTotal: sumDirectorRows([], "Grand Total"),
+          }} />) : (<div className="space-y-6">
             {intakes.map((intake, index) => {
               const grandTotal = sumDirectorRows(intake.branchTotals, "Grand Total");
               grandTotal.intakeName =
                 intake.name;
-              return (<ExcelReportTable
-  key={intake.key}
-  id={`intake-section-${index}`}
-  superHeaderDate="INTAKE REPORT"
-  superHeaderTitle={`${intake.name.toUpperCase()} INTAKE SUMMARY`}
-  columns={INTAKE_COLUMNS}
-  rows={intake.rows}
-  totals={{
-    branchRows:
-      intake.branchTotals,
-    grandTotal,
-  }}
-  defaultOpen
-  showIntakeProgress
-/>);
+              return (<ExcelReportTable key={intake.key} id={`intake-section-${index}`} superHeaderDate="INTAKE REPORT" superHeaderTitle={`${intake.name.toUpperCase()} SUMMARY`} columns={INTAKE_COLUMNS} rows={intake.rows} totals={{
+                branchRows: intake.branchTotals,
+                grandTotal,
+              }} defaultOpen />);
             })}
           </div>)}
         </div>
@@ -1306,14 +1097,14 @@ export default function DirectorReportClient() {
           <ExcelReportTable id="all-time-report" superHeaderDate="OVERALL" superHeaderTitle="ALL TIME PERFORMANCE" columns={MONTHLY_WEEKLY_COLUMNS} rows={data.allTimeRows} totals={data.allTimeTotals} />
         </div>
 
-        <div  className="mt-8 scroll-mt-20 pt-6">
+        <div id="comparisons" className="mt-8 scroll-mt-20 pt-6">
           <h2 className="mb-5 flex items-center gap-2 text-lg font-bold uppercase tracking-wider text-foreground">
             <Target className="size-5 text-red-600" />
 
             Performance Comparisons
           </h2>
 
-          <div id="comparisons" className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <ComparisonTable id="week-comparison" title="WEEK OVER WEEK" rows={data.weekComparison} />
 
             <ComparisonTable id="month-comparison" title="MONTH OVER MONTH" rows={data.monthComparison} />

@@ -129,9 +129,9 @@ function MetricHeaders() {
       <th className="px-3 py-3 text-right">Application Drop / Inactive</th>
       <th className="px-3 py-3 text-right">Same Day Apps</th>
       <th className="px-3 py-3 text-right">Old Walk-in Apps</th>
-      <th className="px-3 py-3 text-right">Lead → Student %</th>
+      <th className="px-3 py-3 text-right">Walk-in → Visa App %</th>
       <th className="px-3 py-3 text-right">University Applied</th>
-      <th className="px-3 py-3 text-right">Student → University %</th>
+      <th className="px-3 py-3 text-right">Visa App → Uni Applied %</th>
       <th className="px-3 py-3 text-right">Offers</th>
       <th className="px-3 py-3 text-right">Loan Applications</th>
       <th className="px-3 py-3 text-right">OS-LOAN / O-FUND</th>
@@ -142,7 +142,7 @@ function MetricHeaders() {
       <th className="px-3 py-3 text-right">CAS Received</th>
       <th className="px-3 py-3 text-right">Visa Applied</th>
       <th className="px-3 py-3 text-right">Visa Approved</th>
-      <th className="px-3 py-3 text-right">Student → Visa %</th>
+      <th className="px-3 py-3 text-right">Visa App → Visa Approved %</th>
       <th className="px-3 py-3 text-right">Target</th>
       <th className="px-3 py-3 text-right">Achieved</th>
       <th className="px-3 py-3 text-right">Target %</th>
@@ -274,7 +274,6 @@ export default function PerformancePage() {
             </div>
           }
         />
-
         <ReportFilterSheet
           value={filters}
           options={filterQuery.data}
@@ -292,109 +291,33 @@ export default function PerformancePage() {
           <Card><CardContent className="p-8 text-center text-destructive">{reportQuery.error.message}</CardContent></Card>
         ) : report ? (
           <>
-            <Section
-  value="summary"
-  title="Performance Summary"
-  description="Summary of walk-ins, applications, drops, university applications, loans, visa approvals and targets."
-  icon={BarChart3}
->
-  <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-5">
-    <SummaryCard
-      title="Walk-ins"
-      value={report.summary.walkIns}
-      description="Walk-in records created in the selected period"
-      icon={Users}
-    />
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryCard title="Walk-ins" value={report.summary.walkIns} description="Walk-in records created in the selected period" icon={Users} />
+              <SummaryCard title="Reference" value={report.summary.references} description="Every walk-in source except Walk-in" icon={UserCheck} />
+              <SummaryCard title="Applications" value={report.summary.applications} description={`${report.summary.leadToStudentConversionPercentage}% walkin-to-Visa App conversion`} icon={GraduationCap} />
+              <SummaryCard title="Same Day Apps" value={report.summary.sameDayApplications} description="Converted on the same IST calendar day" icon={CalendarClock} />
+              <SummaryCard title="Old Walk-in Apps" value={report.summary.oldWalkInApplications} description="Converted on a later IST calendar day" icon={CalendarClock} />
+              <SummaryCard title="University Applied" value={report.summary.universityApplications} description={`${report.summary.universityApplicationConversionPercentage}% of applications`} icon={FileCheck2} />
+              <SummaryCard
+                title="Walk-in Drop / Lost"
+                value={report.summary.walkInDropLost}
+                description="Walk-ins whose status is Drop or Lost"
+                icon={Users}
+              />
+              <SummaryCard
+                title="Application Drop / Inactive"
+                value={report.summary.studentDropInactive}
+                description="Converted Visa App whose status is Drop or Inactive"
+                icon={GraduationCap}
+              />
+              <SummaryCard title="Loan Applications" value={report.summary.loanApplications} description="Loan form submitted or loan requirement marked Yes" icon={Landmark} />
+              <SummaryCard title="OS-LOAN / O-FUND" value={report.summary.outsideLoan} description="Loan requirement marked No in Walk-in form" icon={Landmark} />
+              <SummaryCard title="Loan Approved" value={report.summary.loanApproved} description={`${report.summary.loanConversionPercentage}% of loan applications`} icon={Landmark} />
+              <SummaryCard title="Visa Approved" value={report.summary.visaApproved} description={`${report.summary.visaConversionPercentage}% of converted applications`} icon={GraduationCap} />
+              <SummaryCard title="Target Completion" value={`${report.summary.targetCompletionPercentage}%`} description={`${report.summary.achieved.toLocaleString("en-IN")} achieved of ${report.summary.target.toLocaleString("en-IN")}`} icon={BarChart3} />
+            </div>
 
-    <SummaryCard
-      title="Reference"
-      value={report.summary.references}
-      description="Every source except Walk-in"
-      icon={UserCheck}
-    />
-
-    <SummaryCard
-      title="Applications"
-      value={report.summary.applications}
-      description={`${report.summary.leadToStudentConversionPercentage}% walkin-to-application conversion`}
-      icon={GraduationCap}
-    />
-
-    <SummaryCard
-      title="Same Day Apps"
-      value={report.summary.sameDayApplications}
-      description="Converted on the same IST calendar day"
-      icon={CalendarClock}
-    />
-
-    <SummaryCard
-      title="Old Walk-in Apps"
-      value={report.summary.oldWalkInApplications}
-      description="Converted on a later IST calendar day"
-      icon={CalendarClock}
-    />
-
-    <SummaryCard
-      title="University Applied"
-      value={report.summary.universityApplications}
-      description={`${report.summary.universityApplicationConversionPercentage}% of applications`}
-      icon={FileCheck2}
-    />
-
-    <SummaryCard
-      title="Walk-in Drop / Lost"
-      value={report.summary.walkInDropLost}
-      description="Walk-ins whose walkin status is Drop or Lost"
-      icon={Users}
-    />
-
-    <SummaryCard
-      title="Application Drop / Inactive"
-      value={report.summary.studentDropInactive}
-      description="Converted visa application whose status is Drop or Inactive"
-      icon={GraduationCap}
-    />
-
-    <SummaryCard
-      title="Loan Applications"
-      value={report.summary.loanApplications}
-      description="Loan form submitted or loan requirement marked Yes"
-      icon={Landmark}
-    />
-
-    <SummaryCard
-      title="OS-LOAN / O-FUND"
-      value={report.summary.outsideLoan}
-      description="Loan requirement marked No in lead form"
-      icon={Landmark}
-    />
-
-    <SummaryCard
-      title="Loan Approved"
-      value={report.summary.loanApproved}
-      description={`${report.summary.loanConversionPercentage}% of loan applications`}
-      icon={Landmark}
-    />
-
-    <SummaryCard
-      title="Visa Approved"
-      value={report.summary.visaApproved}
-      description={`${report.summary.visaConversionPercentage}% of converted applications`}
-      icon={GraduationCap}
-    />
-
-    <SummaryCard
-      title="Target Completion"
-      value={`${report.summary.targetCompletionPercentage}%`}
-      description={`${report.summary.achieved.toLocaleString(
-        "en-IN",
-      )} achieved of ${report.summary.target.toLocaleString("en-IN")}`}
-      icon={BarChart3}
-    />
-  </div>
-</Section>
-
-            <Section value="branch" title="Branch Performance" description="Branch-wise business metrics without double counting converted lead events." icon={TableProperties} >
+            <Section value="branch" title="Branch Performance" description="Branch-wise business metrics without double counting converted Walk-in events." icon={TableProperties} defaultOpen>
               <div className="overflow-x-auto rounded-lg border">
                 <table className="min-w-[3300px] w-full text-sm">
                   <thead className="bg-muted text-xs"><tr><th className="px-4 py-3 text-left">Branch</th><MetricHeaders /></tr></thead>
@@ -406,7 +329,7 @@ export default function PerformancePage() {
               </div>
             </Section>
 
-            <Section value="users" title="User Performance" description="Walk-in owner, converted-by user and fintech owner attribution are retained." icon={Users} defaultOpen>
+            <Section value="users" title="User Performance" description="Walk-in owner, converted-by user and fintech owner attribution are retained." icon={Users}>
               <div className="space-y-4">
                 {counselorGroups.map((group) => (
                   <div key={group.branchId} className="overflow-x-auto rounded-lg border">
@@ -451,7 +374,7 @@ export default function PerformancePage() {
               <div className="overflow-x-auto rounded-lg border">
                 <table className="min-w-[1700px] w-full text-sm">
                   <thead className="bg-muted text-xs"><tr>
-                    <th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Lead No.</th><th className="px-4 py-3 text-left">Student</th><th className="px-4 py-3 text-left">Branch / Owner</th><th className="px-4 py-3 text-left">Source</th><th className="px-4 py-3 text-left">Status</th><th className="px-4 py-3 text-left">University</th><th className="px-4 py-3 text-left">Loan</th><th className="px-4 py-3 text-left">Created / Converted</th>
+                    <th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Walk-in No.</th><th className="px-4 py-3 text-left">Visa App</th><th className="px-4 py-3 text-left">Branch / Owner</th><th className="px-4 py-3 text-left">Source</th><th className="px-4 py-3 text-left">Status</th><th className="px-4 py-3 text-left">University</th><th className="px-4 py-3 text-left">Loan</th><th className="px-4 py-3 text-left">Created / Converted</th>
                   </tr></thead>
                   <tbody>
                     {report.rows.map((row) => (

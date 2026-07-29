@@ -585,7 +585,7 @@ function buildEvents(
   for (const loan of loans) {
     const values = emptyValues();
     values.loanApplications = 1;
-    values.loanApproved = isLoanApproved(loan.loanStatus, loan.sanctionedAmount) ? 1 : 0;
+    values.loanApproved = isLoanApproved(loan.loanStatus) ? 1 : 0;
     values.loanDisbursed = isLoanDisbursed(loan.loanStatus, loan.disbursementStatus, loan.disbursedAmount) ? 1 : 0;
     values.appliedAmount = toReportNumber(loan.requiredLoanAmount);
     values.sanctionedAmount = toReportNumber(loan.sanctionedAmount);

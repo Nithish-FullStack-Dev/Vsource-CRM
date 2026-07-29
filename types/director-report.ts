@@ -203,7 +203,7 @@ export const DEFAULT_DIRECTOR_REPORT_FILTERS: DirectorReportFilters = {
   loanStatus: "",
   nbfc: "",
   fintechAssigneeId: "",
-  datePreset: "all",
+  datePreset: "this_month",
   startDate: "",
   endDate: "",
 };

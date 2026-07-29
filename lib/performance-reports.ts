@@ -331,7 +331,7 @@ function loanSnapshot(student: ReportStudent) {
     status,
     applied: Boolean(student.lead.loanRequirement || loan),
     outside: !student.lead.loanRequirement,
-    approved: Boolean(loan && isLoanApproved(loan.loanStatus, loan.sanctionedAmount)),
+    approved: Boolean(loan && isLoanApproved(loan.loanStatus)),
     disbursed: Boolean(
       loan
         ? isLoanDisbursed(loan.loanStatus, loan.disbursementStatus, loan.disbursedAmount)
@@ -380,7 +380,7 @@ function mapLeadRow(lead: ReportLead): PerformanceReportRow {
     loanStatus: clean(loan?.loanStatus),
     loanApplication: Boolean(lead.loanRequirement || loan),
     outsideLoan: !lead.loanRequirement,
-    loanApproved: Boolean(loan && isLoanApproved(loan.loanStatus, loan.sanctionedAmount)),
+    loanApproved: Boolean(loan && isLoanApproved(loan.loanStatus)),
     loanDisbursed: Boolean(
       loan && isLoanDisbursed(loan.loanStatus, loan.disbursementStatus, loan.disbursedAmount),
     ),

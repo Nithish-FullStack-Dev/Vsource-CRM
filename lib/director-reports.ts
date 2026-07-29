@@ -572,7 +572,7 @@ function parseFilters(searchParams: URLSearchParams): DirectorReportFilters {
     loanStatus: value("loanStatus"),
     nbfc: value("nbfc"),
     fintechAssigneeId: value("fintechAssigneeId"),
-    datePreset: presets.includes(datePreset) ? datePreset : "all",
+    datePreset: presets.includes(datePreset) ? datePreset : "this_month",
     startDate: value("startDate"),
     endDate: value("endDate"),
   };
