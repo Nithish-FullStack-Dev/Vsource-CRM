@@ -156,6 +156,12 @@ export async function GET(req: NextRequest) {
                   loanCategory: true,
                   depositStatus: true,
                   depositDate: true,
+                  disbursedAmount: true,
+                  disbursementDate: true,
+                  disbursementStatus: true,
+                  sanctionDate: true,
+                  sanctionedAmount: true,
+                  
 
                   fintechAssignee: {
                     select: {
@@ -164,23 +170,6 @@ export async function GET(req: NextRequest) {
                     },
                   },
 
-                  sanction: {
-                    select: {
-                      bank: {
-                        select: {
-                          id: true,
-                          name: true,
-                        },
-                      },
-                    },
-                  },
-
-                  disbursement: {
-                    select: {
-                      disbursementDate: true,
-                      disbursementStatus: true,
-                    },
-                  },
                 },
               },
             },
