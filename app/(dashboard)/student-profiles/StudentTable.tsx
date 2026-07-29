@@ -443,10 +443,9 @@ export function StudentTable({
                     ).toLocaleDateString("en-IN")
                   : "Not set";
                 const disbursedDate = student?.lead?.loanApplication
-                  ?.disbursement?.disbursementDate
+                  ?.disbursementDate
                   ? new Date(
-                      student?.lead?.loanApplication?.disbursement
-                        ?.disbursementDate,
+                      student?.lead?.loanApplication?.disbursementDate,
                     ).toLocaleDateString("en-IN")
                   : "Not set";
 
@@ -663,7 +662,8 @@ export function StudentTable({
                       className={`${normalCellClass} font-bold text-slate-600 dark:text-slate-300`}
                     >
                       {getText(
-                        student?.lead?.loanApplication?.sanction?.bank?.name,
+                        student?.lead?.loanApplication?.sanctionBankApplication
+                          ?.bank?.name,
                         "Not selected",
                       )}
                     </td>

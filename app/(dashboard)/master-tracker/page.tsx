@@ -816,14 +816,14 @@ export default function ApplicationsTrackerPage() {
 
           <InfoRow
             label="SANCTIONED BANK / NBFC"
-            value={loan?.sanction?.bank?.name || "-"}
+            value={loan?.sanctionBankApplication?.bank?.name || "-"}
           />
 
           <InfoRow label="Loan Status" value={formatStatus(loan?.loanStatus)} />
 
           <InfoRow
             label="Disbursed"
-            value={loan?.disbursement?.disbursementStatus ? "Yes" : "No"}
+            value={loan?.disbursementStatus ? "Yes" : "No"}
           />
         </>
       );

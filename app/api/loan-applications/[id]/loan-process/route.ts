@@ -26,6 +26,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
         depositDate: true,
         loanStatus: true,
         loanCategory: true,
+        disbursementDate: true,
+        disbursementStatus: true,
+        sanctionBankApplication: {
+          select: {
+            bank: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 

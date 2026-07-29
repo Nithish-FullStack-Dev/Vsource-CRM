@@ -51,11 +51,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         disbursementDate: values.disbursementDate
           ? new Date(values.disbursementDate)
           : null,
-        disbursedBankId: values.disbursedBankId ?? null,
+        disbursedBank: values.disbursedBank ?? null,
 
         depositAmount: values.depositAmount ?? null,
         depositDate: values.depositDate ? new Date(values.depositDate) : null,
-        depositBankId: values.depositBankId ?? null,
+        depositBank: values.depositBank ?? null,
         depositStatus: values.depositStatus ?? null,
       },
     });

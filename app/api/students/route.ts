@@ -161,7 +161,15 @@ export async function GET(req: NextRequest) {
                   disbursementStatus: true,
                   sanctionDate: true,
                   sanctionedAmount: true,
-                  
+                  sanctionBankApplication: {
+                    select: {
+                      bank: {
+                        select: {
+                          name: true,
+                        },
+                      },
+                    },
+                  },
 
                   fintechAssignee: {
                     select: {
@@ -169,7 +177,6 @@ export async function GET(req: NextRequest) {
                       name: true,
                     },
                   },
-
                 },
               },
             },

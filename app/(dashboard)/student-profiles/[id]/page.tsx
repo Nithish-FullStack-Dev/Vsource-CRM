@@ -316,7 +316,7 @@ export default function Home() {
       currentIndex = 5;
 
       // STEP 5 - Disbursed
-      if (loan.disbursement?.disbursementStatus !== "Yes") {
+      if (loan?.disbursementStatus !== "Yes") {
         return { currentIndex, completedIndexes };
       }
 
