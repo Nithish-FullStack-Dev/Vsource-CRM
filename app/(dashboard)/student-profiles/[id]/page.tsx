@@ -475,29 +475,6 @@ export default function Home() {
     );
   };
 
-  const handleAddTimeline = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!followupDate) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-
-    try {
-      await createTimelineMutation.mutateAsync({
-        type: timelineType,
-        description: description.trim() || undefined,
-        followupDate: followupDate || undefined,
-      });
-
-      setDescription("");
-      setFollowupDate("");
-      setTimelineType("note");
-    } catch (error) {
-      toast.error("Failed to add timeline.");
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-sm font-semibold text-slate-500">

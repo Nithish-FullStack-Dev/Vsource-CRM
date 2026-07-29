@@ -4,36 +4,16 @@ import { FormEvent, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarClock,
-  CreditCard,
-  FileCheck2,
-  FileStack,
-  FileText,
   History,
   Info,
   LucideIcon,
   PhoneCall,
   Plus,
-  RefreshCw,
-  ShieldCheck,
   StickyNote,
   Users2,
-  Wallet,
 } from "lucide-react";
-import { MODULES } from "@/lib/module-codes";
 
-export type TimelineType =
-  | "note"
-  | "followup"
-  | "call"
-  | "meeting"
-  | "status_change"
-  | "document"
-  | "application"
-  | "offer_letter"
-  | "loan"
-  | "visa"
-  | "payment"
-  | "info";
+export type TimelineType = "note" | "followup" | "call" | "meeting" | "info";
 
 export interface TimelineItem {
   id: string;
@@ -89,44 +69,6 @@ const TIMELINE_META: Record<TimelineType, TimelineMeta> = {
     icon: Users2,
     accent:
       "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
-  },
-  status_change: {
-    label: "Status Change",
-    icon: RefreshCw,
-    accent:
-      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  },
-  document: {
-    label: "Document",
-    icon: FileStack,
-    accent: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  },
-  application: {
-    label: "Application",
-    icon: FileText,
-    accent: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
-  },
-  offer_letter: {
-    label: "Offer Letter",
-    icon: FileCheck2,
-    accent: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
-  },
-  loan: {
-    label: "Loan",
-    icon: Wallet,
-    accent:
-      "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  },
-  visa: {
-    label: "Visa",
-    icon: ShieldCheck,
-    accent:
-      "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
-  },
-  payment: {
-    label: "Payment",
-    icon: CreditCard,
-    accent: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
   },
   info: {
     label: "Info",

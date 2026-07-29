@@ -86,6 +86,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const existingBankApplication = await db.loanBankApplication.findUnique({
+      where: {
+        applicationId_bankId: {
+          applicationId,
+          bankId: validatedData.bankId,
+        },
+      },
+    });
+
+    if (existingBankApplication) {
+      return NextResponse.json(
+        {
+          message: `${bank.name} has already been added to this loan application.`,
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
     const created = await db.$transaction(async (transaction) => {
       const bankApplication = await transaction.loanBankApplication.create({
         data: {
@@ -93,33 +113,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
           bankId: validatedData.bankId,
 
-          branch: validatedData.branch ?? null,
-
-          applicationNo: validatedData.applicationNo ?? null,
-
           applicationDate: toOptionalDate(validatedData.applicationDate),
 
           appliedAmount: toDecimal(validatedData.appliedAmount),
 
-          loanType: validatedData.loanType ?? null,
-
-          roi: toDecimal(validatedData.roi),
-
-          tenure: validatedData.tenure ?? null,
-
-          processingFee: toDecimal(validatedData.processingFee),
-
-          insuranceAmount: toDecimal(validatedData.insuranceAmount),
-
-          moratorium: validatedData.moratorium ?? null,
-
-          loginExecutive: validatedData.loginExecutive ?? null,
-
           status: validatedData.status ?? null,
-
-          rejectionReason: validatedData.rejectionReason ?? null,
-
-          remarks: validatedData.remarks ?? null,
         },
 
         include: {
