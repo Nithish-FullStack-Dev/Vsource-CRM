@@ -419,7 +419,7 @@ export default function PageActions(props: PageActionsProps) {
                     </h3>
 
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Student personal and lead information
+                      Application information
                     </p>
                   </div>
 
@@ -794,10 +794,10 @@ export default function PageActions(props: PageActionsProps) {
                 {/* CRM INFORMATION */}
                 <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
                   <div className="border-b bg-muted/30 px-5 py-4">
-                    <h3 className="text-base font-semibold">CRM Information</h3>
+                    <h3 className="text-base font-semibold">Information</h3>
 
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Lead status, follow-up and remarks
+                      Walkin status, follow-up and remarks
                     </p>
                   </div>
 
@@ -900,7 +900,7 @@ export default function PageActions(props: PageActionsProps) {
                           </p>
 
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Follow-up notes have not been added for this lead.
+                            Follow-up notes have not been added for this walkin.
                           </p>
                         </div>
                       </div>
@@ -927,7 +927,7 @@ export default function PageActions(props: PageActionsProps) {
               <div className="space-y-5">
                 <SheetHeader className="pb-4 border-b border-border">
                   <SheetTitle className="text-lg font-bold">
-                    Modify Lead Parameters
+                    Modify walkin Parameters
                   </SheetTitle>
                   <SheetDescription>
                     Synchronize profile record variables for Serial Number:{" "}
@@ -1370,7 +1370,7 @@ export default function PageActions(props: PageActionsProps) {
                       htmlFor="edit-source"
                       className="text-sm font-medium"
                     >
-                      Lead Source
+                      Walkin Source
                     </Label>
                     <Select
                       value={editingLead.source || ""}
@@ -1385,12 +1385,12 @@ export default function PageActions(props: PageActionsProps) {
                         id="edit-source"
                         className="w-full bg-white h-11 border-slate-200 rounded-xl"
                       >
-                        <SelectValue placeholder="Select Lead Source" />
+                        <SelectValue placeholder="Select walkin Source" />
                       </SelectTrigger>
                       <SelectContent>
                         {lead_sourcesLoad ? (
                           <SelectItem value="loading" disabled>
-                            loading lead source...
+                            loading walkin source...
                           </SelectItem>
                         ) : (
                           (lead_sources || []).map(
@@ -2310,7 +2310,7 @@ export default function PageActions(props: PageActionsProps) {
                   {isUpdating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating Lead...
+                      Updating Walkin...
                     </>
                   ) : (
                     "Save Updates"
