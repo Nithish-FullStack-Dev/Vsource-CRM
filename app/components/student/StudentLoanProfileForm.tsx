@@ -189,7 +189,7 @@ export function StudentLoanProfileSection({
 
               <DetailItem
                 label="Sanctioned Bank / NBFC"
-                value={profile.sanction?.bank?.name || "-"}
+                value={profile.sanctionBankApplication?.bank?.name || "-"}
                 icon={Landmark}
                 isDarkMode={isDarkMode}
               />
@@ -202,13 +202,6 @@ export function StudentLoanProfileSection({
               />
 
               <DetailItem
-                label="Deposit Status"
-                value={formatStatus(profile?.depositStatus)}
-                icon={CreditCard}
-                isDarkMode={isDarkMode}
-              />
-
-              <DetailItem
                 label="Loan Category"
                 value={formatStatus(profile?.loanCategory)}
                 icon={CreditCard}
@@ -216,8 +209,8 @@ export function StudentLoanProfileSection({
               />
 
               <DetailItem
-                label="Loan Category"
-                value={formatStatus(profile?.disbursement?.disbursementStatus)}
+                label="Deposit Status"
+                value={formatStatus(profile?.depositStatus)}
                 icon={CreditCard}
                 isDarkMode={isDarkMode}
               />
@@ -234,12 +227,17 @@ export function StudentLoanProfileSection({
               />
 
               <DetailItem
+                label="Disbursement Status"
+                value={formatStatus(profile?.disbursementStatus)}
+                icon={CreditCard}
+                isDarkMode={isDarkMode}
+              />
+
+              <DetailItem
                 label="Disbursed Date"
                 value={
-                  profile?.disbursement?.disbursementDate
-                    ? new Date(
-                        profile?.disbursement?.disbursementDate,
-                      ).toLocaleDateString()
+                  profile?.disbursementDate
+                    ? new Date(profile?.disbursementDate).toLocaleDateString()
                     : "-"
                 }
                 icon={CheckCircle2}

@@ -9,14 +9,12 @@ interface LoanProcess {
   depositDate?: Date | null;
   loanStatus?: string | null;
   loanCategory?: string | null;
-  sanction: {
-    bank: {
-      name?: string | null;
-    };
-  };
-  disbursement: {
-    disbursementDate?: Date | null;
-    disbursementStatus: string;
+  disbursementDate?: Date | null;
+  disbursementStatus: string;
+  sanctionBankApplication?: {
+    bank?: {
+      name?: string;
+    } | null;
   };
 }
 
