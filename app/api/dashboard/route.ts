@@ -556,9 +556,9 @@ export async function GET(request: NextRequest) {
         id: counselor.counselorId,
         name: counselor.counselor,
         branch: counselor.branch,
-        walkins: counselor.totalWalkins,
-        leadsCreated: counselor.leadsCreated,
-        students: counselor.students,
+        walkins: counselor.walkIns,
+        leadsCreated: counselor.walkIns,
+        students: counselor.applications,
         applications: counselor.applications,
         offers: counselor.offers,
         casReceived: counselor.casReceived,
@@ -568,7 +568,7 @@ export async function GET(request: NextRequest) {
         targetCompletionPercentage: counselor.targetCompletionPercentage,
         conversionRate: calculateVisaConversionRate(
           counselor.visaApproved,
-          counselor.totalWalkins,
+          counselor.walkIns,
         ),
       }));
 
@@ -600,20 +600,20 @@ export async function GET(request: NextRequest) {
             change: 0,
           },
           offers: {
-            value: performanceReport.summary.offerApplications,
+            value: performanceReport.summary.offers,
           },
           casReceived: {
-            value: performanceReport.summary.casReceivedStudents,
+            value: performanceReport.summary.casReceived,
           },
           visaApproved: {
-            value: performanceReport.summary.visaApprovedStudents,
+            value: performanceReport.summary.visaApproved,
           },
           targetAchievement: {
             value: performanceReport.summary.targetCompletionPercentage,
           },
           conversionRate: {
             value: calculateVisaConversionRate(
-              performanceReport.summary.visaApprovedStudents,
+              performanceReport.summary.visaApproved,
               currentLeads,
             ),
           },

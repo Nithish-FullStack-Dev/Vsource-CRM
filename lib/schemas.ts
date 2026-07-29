@@ -196,7 +196,12 @@ export const LeadCreateSchema = z.object({
   loanRequirement: z.boolean().default(false),
 
   counselorIds: z.array(z.string().uuid()).optional(),
-  fintechAssigneeId: z.string().uuid().nullable().optional(),
+  fintechAssigneeId: z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) {
+      return null;
+    }
+    return value;
+  }, z.string().uuid().nullable().optional()),
 });
 
 export const LeadUpdateSchema = LeadCreateSchema.partial()
