@@ -498,41 +498,11 @@ export const optionalCibil = z.preprocess(
 export const bankApplicationSchema = z.object({
   bankId: z.string().min(1, "Please select a bank or NBFC"),
 
-  branch: optionalString,
-
-  applicationNo: optionalString,
-
   applicationDate: z.string().optional().or(z.literal("")),
 
   appliedAmount: optionalNumber,
 
-  loanType: optionalString,
-
-  roi: z.preprocess((value) => {
-    if (value === "" || value === null || value === undefined) {
-      return undefined;
-    }
-
-    const parsedValue = Number(value);
-
-    return Number.isNaN(parsedValue) ? value : parsedValue;
-  }, z.number().min(0, "ROI cannot be negative").max(100, "ROI cannot exceed 100").optional()),
-
-  tenure: optionalInteger,
-
-  processingFee: optionalNumber,
-
-  insuranceAmount: optionalNumber,
-
-  moratorium: optionalString,
-
-  loginExecutive: optionalString,
-
   status: optionalString,
-
-  rejectionReason: optionalString,
-
-  remarks: optionalString,
 });
 
 export type BankApplicationFormInput = z.input<typeof bankApplicationSchema>;

@@ -117,33 +117,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         data: {
           bankId: validatedData.bankId,
 
-          branch: validatedData.branch,
-
-          applicationNo: validatedData.applicationNo,
-
           applicationDate: toOptionalDate(validatedData.applicationDate),
 
           appliedAmount: toOptionalDecimal(validatedData.appliedAmount),
 
-          loanType: validatedData.loanType,
-
-          roi: toOptionalDecimal(validatedData.roi),
-
-          tenure: validatedData.tenure,
-
-          processingFee: toOptionalDecimal(validatedData.processingFee),
-
-          insuranceAmount: toOptionalDecimal(validatedData.insuranceAmount),
-
-          moratorium: validatedData.moratorium,
-
-          loginExecutive: validatedData.loginExecutive,
-
           status: validatedData.status,
-
-          rejectionReason: validatedData.rejectionReason,
-
-          remarks: validatedData.remarks,
         },
 
         include: {
