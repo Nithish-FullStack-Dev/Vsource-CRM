@@ -87,13 +87,6 @@ function normalizeTimelineType(value?: string | null): TimelineType {
     "followup",
     "call",
     "meeting",
-    "status_change",
-    "document",
-    "application",
-    "offer_letter",
-    "loan",
-    "visa",
-    "payment",
     "info",
   ];
 

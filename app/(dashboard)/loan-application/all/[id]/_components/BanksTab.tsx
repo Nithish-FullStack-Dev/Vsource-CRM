@@ -72,20 +72,9 @@ type BankApplicationRow = NonNullable<
 
 const EMPTY_FORM_VALUES: BankApplicationFormInput = {
   bankId: "",
-  branch: "",
-  applicationNo: "",
   applicationDate: "",
   appliedAmount: "",
-  loanType: "",
-  roi: "",
-  tenure: "",
-  processingFee: "",
-  insuranceAmount: "",
-  moratorium: "",
-  loginExecutive: "",
   status: "",
-  rejectionReason: "",
-  remarks: "",
 };
 
 const BANK_APPLICATION_STATUSES = [
@@ -99,7 +88,6 @@ const BANK_APPLICATION_STATUSES = [
   "Withdrawn",
   "Closed",
 ] as const;
-
 
 function getDateInputValue(value?: string | Date | null): string {
   if (!value) {
@@ -159,33 +147,11 @@ function getEditFormValues(row: BankApplicationRow): BankApplicationFormInput {
   return {
     bankId: row.bankId ?? row.bank?.id ?? "",
 
-    branch: row.branch ?? "",
-
-    applicationNo: row.applicationNo ?? "",
-
     applicationDate: getDateInputValue(row.applicationDate),
 
     appliedAmount: toInputNumber(row.appliedAmount),
 
-    loanType: row.loanType ?? "",
-
-    roi: toInputNumber(row.roi),
-
-    tenure: toInputNumber(row.tenure),
-
-    processingFee: toInputNumber(row.processingFee),
-
-    insuranceAmount: toInputNumber(row.insuranceAmount),
-
-    moratorium: row.moratorium ?? "",
-
-    loginExecutive: row.loginExecutive ?? "",
-
     status: row.status ?? "",
-
-    rejectionReason: row.rejectionReason ?? "",
-
-    remarks: row.remarks ?? "",
   };
 }
 
@@ -677,7 +643,7 @@ export function BanksTab({
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select application status" />
+                        <SelectValue placeholder="Select Bank Status" />
                       </SelectTrigger>
 
                       <SelectContent>

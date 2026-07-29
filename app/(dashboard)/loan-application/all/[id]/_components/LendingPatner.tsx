@@ -45,6 +45,7 @@ import { useUpdateLoanLendingPartner } from "@/hooks/loan-application/useLoanLen
 import { formatINR } from "./config";
 import { InfoCard, InfoGrid, TabHeader } from "./ProfileUI";
 import type { BankApplication, LoanApplication } from "./types";
+import { useLoanBanks } from "@/hooks/loan-application/useLoanApplications";
 
 type LendingPatnerProps = {
   applicant: LoanApplication;
@@ -160,7 +161,8 @@ const getDefaultValues = (
 
   disbursementDate: toInputDate(applicant.disbursementDate) || undefined,
   disbursedAmount:
-    applicant.disbursedAmount === null || applicant.disbursedAmount === undefined
+    applicant.disbursedAmount === null ||
+    applicant.disbursedAmount === undefined
       ? undefined
       : Number(applicant.disbursedAmount),
 
@@ -395,7 +397,7 @@ function EditLendingPartnerDialog({
 }: EditLendingPartnerDialogProps) {
   const update = useUpdateLoanLendingPartner();
 
-  const bankApplications = applicant.bankApplications ?? [];
+  const { data: bankApplications = [], isLoading } = useLoanBanks(applicant.id);
 
   const {
     register,
@@ -463,7 +465,7 @@ function EditLendingPartnerDialog({
 
       disbursementDate: normalizeOptionalString(values.disbursementDate),
 
-       disbursedAmount: toNumberOrNull(values.disbursedAmount),
+      disbursedAmount: toNumberOrNull(values.disbursedAmount),
 
       disbursedBank: normalizeOptionalString(values.disbursedBank),
     };
@@ -475,6 +477,20 @@ function EditLendingPartnerDialog({
 
     onOpenChange(false);
   };
+
+  const preventNegativeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
@@ -526,6 +542,7 @@ function EditLendingPartnerDialog({
                     className="pl-9"
                     placeholder="Enter required loan amount"
                     disabled={update.isPending}
+                    onKeyDown={preventNegativeInput}
                   />
                 </div>
               </FormField>
@@ -609,6 +626,7 @@ function EditLendingPartnerDialog({
                     className="pl-9"
                     placeholder="Enter sanctioned amount"
                     disabled={update.isPending}
+                    onKeyDown={preventNegativeInput}
                   />
                 </div>
               </FormField>
@@ -709,6 +727,7 @@ function EditLendingPartnerDialog({
                     className="pl-9"
                     placeholder="Enter deposit amount"
                     disabled={update.isPending}
+                    onKeyDown={preventNegativeInput}
                   />
                 </div>
               </FormField>
@@ -740,6 +759,7 @@ function EditLendingPartnerDialog({
                     className="pl-9"
                     placeholder="Enter deposit amount"
                     disabled={update.isPending}
+                    onKeyDown={preventNegativeInput}
                   />
                 </div>
               </FormField>

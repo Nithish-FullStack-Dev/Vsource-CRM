@@ -309,19 +309,7 @@ export interface StudentTimeline {
 
   studentId: string;
 
-  type:
-    | "note"
-    | "followup"
-    | "call"
-    | "meeting"
-    | "status_change"
-    | "document"
-    | "application"
-    | "offer_letter"
-    | "loan"
-    | "visa"
-    | "payment"
-    | "info";
+  type: "note" | "followup" | "call" | "meeting" | "info";
 
   title?: string;
 
