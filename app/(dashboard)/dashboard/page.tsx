@@ -362,7 +362,7 @@ export default function Dashboard() {
         label: "Conversion Rate",
         value: formatPercentage(data.kpis.conversionRate.value),
         icon: UserRoundCheck,
-        description: "Walk-ins to visa approvals",
+        description: "Walk-ins to visa approved",
       },
     ];
   }, [data, selectedPeriodLabel]);
@@ -496,7 +496,8 @@ export default function Dashboard() {
                           Applications
                         </th>
                         <th className="px-4 py-3 text-right font-medium">
-                          Uni Applications                        </th>
+                          Uni Applications{" "}
+                        </th>
                         <th className="px-4 py-3 text-right font-medium">
                           Uni Offers
                         </th>
@@ -747,7 +748,9 @@ function TrackerColumn({ column }: { column: DashboardTrackerColumn }) {
           })
         ) : (
           <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed bg-background/60 p-4 text-center">
-            <span className="text-xs text-muted-foreground">No applications</span>
+            <span className="text-xs text-muted-foreground">
+              No applications
+            </span>
           </div>
         )}
 

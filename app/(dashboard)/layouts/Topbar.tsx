@@ -45,7 +45,9 @@ export function Topbar() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [setCommandOpen]);
-
+  const breadcrumbLabels: Record<string, string> = {
+    "student-profiles": "Visa Applications",
+  };
   const crumbs = pathname
     .split("/")
     .filter(Boolean)
@@ -83,7 +85,7 @@ export function Topbar() {
                         : "capitalize"
                     }
                   >
-                    {c.replace(/-/g, " ")}
+                   {breadcrumbLabels[c] ?? c.replace(/-/g, " ")}
                   </span>
 
                   {i < arr.length - 1 && (

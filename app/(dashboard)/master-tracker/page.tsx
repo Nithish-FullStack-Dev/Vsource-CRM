@@ -815,7 +815,7 @@ export default function ApplicationsTrackerPage() {
           />
 
           <InfoRow
-            label="SANCTIONED BANK / NBFC"
+            label="Sanctioned"
             value={loan?.sanctionBankApplication?.bank?.name || "-"}
           />
 
