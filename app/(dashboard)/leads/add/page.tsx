@@ -233,10 +233,16 @@ const leadFormSchema = z.object({
     },
     z.enum(["completed", "pursuing"]).optional(),
   ),
-  loanRequirement: z.boolean(),
+  loanRequirement: z.boolean().optional(),
   counselorIds: z.array(z.string()).optional(),
   loanNote: z.string().optional(),
-  fintechAssigneeId: z.string().uuid().nullable().optional(),
+  fintechAssigneeId: z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) {
+      return null;
+    }
+
+    return value;
+  }, z.string().uuid().nullable().optional()),
 });
 
 type LeadFormValues = z.input<typeof leadFormSchema>;
@@ -335,7 +341,7 @@ export default function AddLeadPage() {
       loanRequirement: false,
       counselorIds: [],
       loanNote: "",
-      fintechAssigneeId: "",
+      fintechAssigneeId: null,
 
       tenthPercentage: undefined,
       tenthYearOfPassing: undefined,
@@ -364,7 +370,18 @@ export default function AddLeadPage() {
       status: "NEW",
     },
   });
+  useEffect(() => {
+    console.log("Errors:", errors);
+  }, [errors]);
   const loanRequired = watch("loanRequirement");
+  useEffect(() => {
+    if (!loanRequired) {
+      setValue("fintechAssigneeId", null, {
+        shouldValidate: true,
+        shouldDirty: false,
+      });
+    }
+  }, [loanRequired, setValue]);
   const {
     fields: englishTestFields,
     append: appendEnglishTest,
@@ -809,7 +826,7 @@ export default function AddLeadPage() {
                                 disabled={
                                   !selectedBranchId || counselorsLoading
                                 }
-                                value={field.value ?? ""}
+                                value={(field.value as string) ?? ""}
                                 onValueChange={(value) => field.onChange(value)}
                               >
                                 <SelectTrigger>
