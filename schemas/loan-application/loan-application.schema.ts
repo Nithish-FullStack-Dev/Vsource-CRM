@@ -254,7 +254,7 @@ export const loanApplicationBaseSchema = z.object({
 
   depositReference: optionalString,
 
-  depositBankId: optionalString,
+  depositBank: optionalString,
 
   depositRemarks: optionalString,
 });
@@ -854,11 +854,11 @@ export const updateLoanLendingPartnerSchema = z.object({
 
   disbursementStatus: optionalString,
   disbursementDate: optionalDate,
-  disbursedBankId: optionalString,
+  disbursedBank: optionalString,
 
   depositAmount: optionalNumber,
   depositDate: optionalDate,
-  depositBankId: optionalString,
+  depositBank: optionalString,
   depositStatus: optionalString,
 });
 

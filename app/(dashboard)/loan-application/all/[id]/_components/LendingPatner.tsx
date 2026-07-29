@@ -6,7 +6,6 @@ import {
   Banknote,
   CalendarDays,
   CircleDollarSign,
-  FileText,
   IndianRupee,
   Landmark,
   Loader2,
@@ -36,8 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-
 import { MODULES } from "@/lib/module-codes";
 import {
   updateLoanLendingPartnerSchema,
@@ -77,10 +74,8 @@ type FormFieldProps = {
 type LendingPartnerFormValues = UpdateLoanLendingPartnerValues & {
   depositAmount?: number | null;
   depositDate?: string | null;
-  depositBankId?: string | null;
+  depositBank?: string | null;
   depositStatus?: string | null;
-  depositReference?: string | null;
-  depositRemarks?: string | null;
 };
 
 const EMPTY_SELECT_VALUE = "__none__";
@@ -157,19 +152,15 @@ const getDefaultValues = (
 
   depositDate: toInputDate(applicant.depositDate) || undefined,
 
-  depositBankId: applicant.depositBankId ?? undefined,
+  depositBank: applicant.depositBank ?? undefined,
 
   depositStatus: applicant.depositStatus ?? undefined,
-
-  depositReference: applicant.depositReference ?? undefined,
-
-  depositRemarks: applicant.depositRemarks ?? undefined,
 
   disbursementStatus: applicant.disbursementStatus ?? undefined,
 
   disbursementDate: toInputDate(applicant.disbursementDate) || undefined,
 
-  disbursedBankId: applicant.disbursedBankId ?? undefined,
+  disbursedBank: applicant.disbursedBank ?? undefined,
 });
 
 const getBankName = (bankApplication?: BankApplication | null) => {
@@ -262,15 +253,6 @@ export function LendingPatner({ applicant, canUpdate }: LendingPatnerProps) {
     applicant.sanctionBankApplication ??
     findBankApplication(bankApplications, applicant.sanctionBankId);
 
-  const depositBankApplication = findBankApplication(
-    bankApplications,
-    applicant.depositBankId,
-  );
-
-  const disbursedBankApplication =
-    applicant.disbursedBankApplication ??
-    findBankApplication(bankApplications, applicant.disbursedBankId);
-
   return (
     <>
       <div className="space-y-8">
@@ -347,7 +329,7 @@ export function LendingPatner({ applicant, canUpdate }: LendingPatnerProps) {
             <InfoCard
               icon={Landmark}
               label="Deposit Bank"
-              value={getBankName(depositBankApplication)}
+              value={applicant.depositBank}
             />
 
             <InfoCard
@@ -385,7 +367,7 @@ export function LendingPatner({ applicant, canUpdate }: LendingPatnerProps) {
             <InfoCard
               icon={Landmark}
               label="Disbursed Bank"
-              value={getBankName(disbursedBankApplication)}
+              value={applicant.disbursedBank}
             />
 
             <InfoCard
@@ -473,19 +455,15 @@ function EditLendingPartnerDialog({
 
       depositDate: normalizeOptionalString(values.depositDate),
 
-      depositBankId: normalizeOptionalString(values.depositBankId),
+      depositBank: normalizeOptionalString(values.depositBank),
 
       depositStatus: normalizeOptionalString(values.depositStatus),
-
-      depositReference: normalizeOptionalString(values.depositReference),
-
-      depositRemarks: normalizeOptionalString(values.depositRemarks),
 
       disbursementStatus: normalizeOptionalString(values.disbursementStatus),
 
       disbursementDate: normalizeOptionalString(values.disbursementDate),
 
-      disbursedBankId: normalizeOptionalString(values.disbursedBankId),
+      disbursedBank: normalizeOptionalString(values.disbursedBank),
     };
 
     await update.mutateAsync({
@@ -724,55 +702,14 @@ function EditLendingPartnerDialog({
               </FormField>
 
               <FormField
-                label="Deposit Bank Application"
-                error={errors.depositBankId?.message}
+                label="Deposit Bank"
+                error={errors.depositBank?.message}
               >
-                <Controller
-                  control={control}
-                  name="depositBankId"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value || EMPTY_SELECT_VALUE}
-                      onValueChange={(value) =>
-                        field.onChange(
-                          value === EMPTY_SELECT_VALUE ? null : value,
-                        )
-                      }
-                      disabled={update.isPending || bankOptions.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            bankOptions.length === 0
-                              ? "No Bank Applications"
-                              : "Select Bank Application"
-                          }
-                        />
-                      </SelectTrigger>
-
-                      <SelectContent>
-                        <SelectItem value={EMPTY_SELECT_VALUE}>
-                          Not Selected
-                        </SelectItem>
-
-                        {bankOptions.map((bankApplication) => (
-                          <SelectItem
-                            key={bankApplication.id}
-                            value={bankApplication.id}
-                          >
-                            {getBankApplicationLabel(bankApplication)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                <Input
+                  {...register("depositBank")}
+                  placeholder="Enter deposit bank"
+                  disabled={update.isPending}
                 />
-
-                {bankOptions.length === 0 && (
-                  <p className="text-xs font-medium text-amber-600">
-                    Add a bank application before selecting the deposit bank.
-                  </p>
-                )}
               </FormField>
             </FormSection>
 
@@ -832,55 +769,14 @@ function EditLendingPartnerDialog({
               </FormField>
 
               <FormField
-                label="Disbursed Bank Application"
-                error={errors.disbursedBankId?.message}
+                label="Disbursed Bank"
+                error={errors.disbursedBank?.message}
               >
-                <Controller
-                  control={control}
-                  name="disbursedBankId"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value || EMPTY_SELECT_VALUE}
-                      onValueChange={(value) =>
-                        field.onChange(
-                          value === EMPTY_SELECT_VALUE ? null : value,
-                        )
-                      }
-                      disabled={update.isPending || bankOptions.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            bankOptions.length === 0
-                              ? "No Bank Applications"
-                              : "Select Bank Application"
-                          }
-                        />
-                      </SelectTrigger>
-
-                      <SelectContent>
-                        <SelectItem value={EMPTY_SELECT_VALUE}>
-                          Not Selected
-                        </SelectItem>
-
-                        {bankOptions.map((bankApplication) => (
-                          <SelectItem
-                            key={bankApplication.id}
-                            value={bankApplication.id}
-                          >
-                            {getBankApplicationLabel(bankApplication)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                <Input
+                  {...register("disbursedBank")}
+                  placeholder="Enter disbursed bank"
+                  disabled={update.isPending}
                 />
-
-                {bankOptions.length === 0 && (
-                  <p className="text-xs font-medium text-amber-600">
-                    Add a bank application before selecting the disbursed bank.
-                  </p>
-                )}
               </FormField>
             </FormSection>
 

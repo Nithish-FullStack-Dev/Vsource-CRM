@@ -231,7 +231,6 @@ export type LoanApplication = {
   depositAmount?: number | null;
   depositDate?: string | Date | null;
   depositReference?: string | null;
-  depositBank?: string | null;
   depositRemarks?: string | null;
   depositStatus?: string | "Pending";
 
@@ -241,8 +240,8 @@ export type LoanApplication = {
 
   disbursementStatus?: string | null;
   disbursementDate?: string | Date | null;
-  disbursedBankId?: string | null;
-  depositBankId?: string | null;
+  disbursedBank?: string | null;
+  depositBank?: string | null;
 
   sanctionBankApplication?: BankApplication | null;
   disbursedBankApplication?: BankApplication | null;

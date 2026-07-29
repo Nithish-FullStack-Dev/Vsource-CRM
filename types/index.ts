@@ -119,21 +119,17 @@ export interface Lead {
   loanApplication?: {
     loanStatus?: string | null;
     loanCategory?: string | null;
-
+    disbursementStatus?: string | null;
+    disbursementDate?: string | null;
     depositStatus?: string | null;
     depositDate?: string | null;
     fintechAssignee?: {
       name: string;
     };
-    sanction?: {
+    sanctionBankApplication?: {
       bank?: {
         name?: string;
       } | null;
-    } | null;
-
-    disbursement?: {
-      disbursementStatus?: string | null;
-      disbursementDate?: string | null;
     } | null;
   } | null;
   createdAt: string;
