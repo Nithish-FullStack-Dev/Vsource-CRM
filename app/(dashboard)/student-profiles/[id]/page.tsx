@@ -426,7 +426,7 @@ export default function Home() {
     ) {
       try {
         await api.delete(`/students/${id}`);
-        toast.success("Student records deleted successfully.");
+        toast.success("Application records deleted successfully.");
         queryClient.invalidateQueries({ queryKey: STUDENTKEY.all });
 
         if (selectedStudentId === id) {

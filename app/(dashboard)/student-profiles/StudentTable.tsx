@@ -209,7 +209,7 @@ export function StudentTable({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by student name, email or mobile..."
+            placeholder="Search by applicant name, email or mobile..."
             className="pl-10"
           />
         </div>

@@ -1,3 +1,4 @@
+// app\(dashboard)\student-profiles\page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
