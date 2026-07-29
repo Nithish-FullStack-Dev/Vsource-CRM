@@ -855,6 +855,7 @@ export const updateLoanLendingPartnerSchema = z.object({
   disbursementStatus: optionalString,
   disbursementDate: optionalDate,
   disbursedBank: optionalString,
+  disbursedAmount: optionalNumber,
 
   depositAmount: optionalNumber,
   depositDate: optionalDate,

@@ -159,6 +159,10 @@ const getDefaultValues = (
   disbursementStatus: applicant.disbursementStatus ?? undefined,
 
   disbursementDate: toInputDate(applicant.disbursementDate) || undefined,
+  disbursedAmount:
+    applicant.disbursedAmount === null || applicant.disbursedAmount === undefined
+      ? undefined
+      : Number(applicant.disbursedAmount),
 
   disbursedBank: applicant.disbursedBank ?? undefined,
 });
@@ -170,10 +174,7 @@ const getBankName = (bankApplication?: BankApplication | null) => {
 const getBankApplicationLabel = (bankApplication: BankApplication) => {
   const bankName = bankApplication.bank?.name || "Unnamed Bank";
 
-  const applicationNumber =
-    bankApplication.applicationNo || "No application number";
-
-  return `${bankName} - ${applicationNumber}`;
+  return `${bankName}`;
 };
 
 const findBankApplication = (
@@ -305,44 +306,6 @@ export function LendingPatner({ applicant, canUpdate }: LendingPatnerProps) {
         <section className="space-y-5 border-t border-slate-200 pt-8 dark:border-slate-800">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Payment Information
-            </p>
-
-            <h2 className="mt-1 text-base font-black text-slate-900 dark:text-white">
-              Deposit Information
-            </h2>
-          </div>
-
-          <InfoGrid>
-            <InfoCard
-              icon={BadgeIndianRupee}
-              label="Deposit Amount"
-              value={formatINR(applicant.depositAmount)}
-            />
-
-            <InfoCard
-              icon={CalendarDays}
-              label="Deposit Date"
-              value={formatDate(applicant.depositDate)}
-            />
-
-            <InfoCard
-              icon={Landmark}
-              label="Deposit Bank"
-              value={applicant.depositBank}
-            />
-
-            <InfoCard
-              icon={Banknote}
-              label="Deposit Status"
-              value={applicant.depositStatus}
-            />
-          </InfoGrid>
-        </section>
-
-        <section className="space-y-5 border-t border-slate-200 pt-8 dark:border-slate-800">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               Loan Release
             </p>
 
@@ -374,6 +337,43 @@ export function LendingPatner({ applicant, canUpdate }: LendingPatnerProps) {
               icon={IndianRupee}
               label="Disbursed Amount"
               value={formatINR(applicant.disbursedAmount)}
+            />
+          </InfoGrid>
+        </section>
+        <section className="space-y-5 border-t border-slate-200 pt-8 dark:border-slate-800">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Payment Information
+            </p>
+
+            <h2 className="mt-1 text-base font-black text-slate-900 dark:text-white">
+              Deposit Information
+            </h2>
+          </div>
+
+          <InfoGrid>
+            <InfoCard
+              icon={BadgeIndianRupee}
+              label="Deposit Amount"
+              value={formatINR(applicant.depositAmount)}
+            />
+
+            <InfoCard
+              icon={CalendarDays}
+              label="Deposit Date"
+              value={formatDate(applicant.depositDate)}
+            />
+
+            <InfoCard
+              icon={Landmark}
+              label="Deposit Bank"
+              value={applicant.depositBank}
+            />
+
+            <InfoCard
+              icon={Banknote}
+              label="Deposit Status"
+              value={applicant.depositStatus}
             />
           </InfoGrid>
         </section>
@@ -462,6 +462,8 @@ function EditLendingPartnerDialog({
       disbursementStatus: normalizeOptionalString(values.disbursementStatus),
 
       disbursementDate: normalizeOptionalString(values.disbursementDate),
+
+       disbursedAmount: toNumberOrNull(values.disbursedAmount),
 
       disbursedBank: normalizeOptionalString(values.disbursedBank),
     };
@@ -626,6 +628,95 @@ function EditLendingPartnerDialog({
             <div className="border-t border-slate-200 dark:border-slate-800" />
 
             <FormSection
+              title="Disbursement Information"
+              description="Loan disbursement status, date and bank application."
+              icon={Send}
+            >
+              <FormField
+                label="Disbursement Status"
+                error={errors.disbursementStatus?.message}
+              >
+                <Controller
+                  control={control}
+                  name="disbursementStatus"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || EMPTY_SELECT_VALUE}
+                      onValueChange={(value) =>
+                        field.onChange(
+                          value === EMPTY_SELECT_VALUE ? null : value,
+                        )
+                      }
+                      disabled={update.isPending}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Disbursement Status" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        <SelectItem value={EMPTY_SELECT_VALUE}>
+                          Not Selected
+                        </SelectItem>
+
+                        {DISBURSEMENT_STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+
+              <FormField
+                label="Disbursement Date"
+                error={errors.disbursementDate?.message}
+              >
+                <Input
+                  {...register("disbursementDate")}
+                  type="date"
+                  disabled={update.isPending}
+                />
+              </FormField>
+
+              <FormField
+                label="Disbursed Bank"
+                error={errors.disbursedBank?.message}
+              >
+                <Input
+                  {...register("disbursedBank")}
+                  placeholder="Enter disbursed bank"
+                  disabled={update.isPending}
+                />
+              </FormField>
+              <FormField
+                label="Disbursed Amount"
+                error={errors.disbursedAmount?.message}
+              >
+                <div className="relative">
+                  <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                  <Input
+                    {...register("disbursedAmount", {
+                      setValueAs: (value) =>
+                        value === "" ? null : Number(value),
+                    })}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    className="pl-9"
+                    placeholder="Enter deposit amount"
+                    disabled={update.isPending}
+                  />
+                </div>
+              </FormField>
+            </FormSection>
+
+            <div className="border-t border-slate-200 dark:border-slate-800" />
+
+            <FormSection
               title="Deposit Information"
               description="Deposit amount, status, date, reference and bank application."
               icon={BadgeIndianRupee}
@@ -708,73 +799,6 @@ function EditLendingPartnerDialog({
                 <Input
                   {...register("depositBank")}
                   placeholder="Enter deposit bank"
-                  disabled={update.isPending}
-                />
-              </FormField>
-            </FormSection>
-
-            <div className="border-t border-slate-200 dark:border-slate-800" />
-
-            <FormSection
-              title="Disbursement Information"
-              description="Loan disbursement status, date and bank application."
-              icon={Send}
-            >
-              <FormField
-                label="Disbursement Status"
-                error={errors.disbursementStatus?.message}
-              >
-                <Controller
-                  control={control}
-                  name="disbursementStatus"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value || EMPTY_SELECT_VALUE}
-                      onValueChange={(value) =>
-                        field.onChange(
-                          value === EMPTY_SELECT_VALUE ? null : value,
-                        )
-                      }
-                      disabled={update.isPending}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Disbursement Status" />
-                      </SelectTrigger>
-
-                      <SelectContent>
-                        <SelectItem value={EMPTY_SELECT_VALUE}>
-                          Not Selected
-                        </SelectItem>
-
-                        {DISBURSEMENT_STATUS_OPTIONS.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </FormField>
-
-              <FormField
-                label="Disbursement Date"
-                error={errors.disbursementDate?.message}
-              >
-                <Input
-                  {...register("disbursementDate")}
-                  type="date"
-                  disabled={update.isPending}
-                />
-              </FormField>
-
-              <FormField
-                label="Disbursed Bank"
-                error={errors.disbursedBank?.message}
-              >
-                <Input
-                  {...register("disbursedBank")}
-                  placeholder="Enter disbursed bank"
                   disabled={update.isPending}
                 />
               </FormField>
