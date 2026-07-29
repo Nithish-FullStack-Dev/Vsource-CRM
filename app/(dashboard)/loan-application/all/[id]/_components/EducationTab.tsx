@@ -318,6 +318,54 @@ export function EducationTab({ applicant, canUpdate }: EducationTabProps) {
               value={applicant.offerLetterReceived}
             />
           </InfoGrid>
+          {applicant.studentApplications &&
+            applicant.studentApplications.length > 0 && (
+              <div className="mt-8">
+                <h3 className="mb-4 text-lg font-bold">
+                  University Applications
+                </h3>
+
+                <div className="overflow-hidden rounded-xl border">
+                  <table className="w-full">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="px-4 py-3 text-left">Country</th>
+                        <th className="px-4 py-3 text-left">University</th>
+                        <th className="px-4 py-3 text-left">Course</th>
+                        <th className="px-4 py-3 text-left">Status</th>
+                        <th className="px-4 py-3 text-left">Offer</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {applicant.studentApplications.map((application) => (
+                        <tr key={application.id} className="border-t">
+                          <td className="px-4 py-3">
+                            {application.country ?? "-"}
+                          </td>
+
+                          <td className="px-4 py-3 font-medium">
+                            {application.university ?? "-"}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {application.course ?? "-"}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {application.status ?? "-"}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {application.offerStatus ?? "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
         </section>
       </div>
 

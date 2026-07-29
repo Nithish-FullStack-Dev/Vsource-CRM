@@ -302,9 +302,9 @@ async function buildLoanApplicationResponse(row: LoanApplicationWithRelations) {
 
   const student = await getRelatedStudentData(row.leadId);
 
-  const selectedApplication = getSelectedStudentApplication(
-    student?.applications ?? [],
-  );
+  const applications = student?.applications ?? [];
+
+  const selectedApplication = getSelectedStudentApplication(applications);
 
   return {
     ...serialized,
@@ -372,6 +372,23 @@ async function buildLoanApplicationResponse(row: LoanApplicationWithRelations) {
     offerLetterReceived:
       selectedApplication?.offerStatus ?? row.offerLetterReceived ?? null,
     selectedStudentApplicationId: selectedApplication?.id ?? null,
+    studentApplications: applications.map((app) => ({
+      id: app.id,
+
+      country: app.countryName ?? app.country?.name ?? null,
+
+      university: app.universityName ?? app.university?.name ?? null,
+
+      course: app.courseName ?? app.course?.name ?? null,
+
+      intake: app.intakeName ?? app.intake?.name ?? null,
+
+      status: app.status,
+
+      offerStatus: app.offerStatus,
+
+      applicationDate: app.applicationDate,
+    })),
   };
 }
 export async function GET(_: NextRequest, ctx: Ctx) {

@@ -208,6 +208,23 @@ export type LoanApplication = {
   intake?: string | null;
   admissionStatus?: string | null;
   offerLetterReceived?: string | null;
+  studentApplications?: {
+    id: string;
+
+    country: string | null;
+
+    university: string | null;
+
+    course: string | null;
+
+    intake: string | null;
+
+    status: string | null;
+
+    offerStatus: string | null;
+
+    applicationDate: string | Date | null;
+  }[];
 
   tuitionFee?: number | null;
   livingExpenses?: number | null;

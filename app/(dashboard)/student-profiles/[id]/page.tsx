@@ -316,15 +316,22 @@ export default function Home() {
       currentIndex = 5;
 
       // STEP 5 - Disbursed
-      if (loan?.disbursementStatus !== "Yes") {
+      const disbursed =
+        loan?.disbursementStatus === "Fully Disbursed" ||
+        loan?.disbursementStatus === "Partially Disbursed" ||
+        !!loan?.disbursementDate;
+
+      if (!disbursed) {
         return { currentIndex, completedIndexes };
       }
 
       completedIndexes.add(5);
       currentIndex = 6;
-
       // STEP 6 - Deposit
-      if (loan.depositStatus !== "Paid") {
+      const depositCompleted =
+        loan.depositStatus === "Received" || loan.depositStatus === "Paid";
+
+      if (!depositCompleted) {
         return { currentIndex, completedIndexes };
       }
 

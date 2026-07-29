@@ -52,6 +52,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
           ? new Date(values.disbursementDate)
           : null,
         disbursedBank: values.disbursedBank ?? null,
+        disbursedAmount: values.disbursedAmount ?? null,
 
         depositAmount: values.depositAmount ?? null,
         depositDate: values.depositDate ? new Date(values.depositDate) : null,

@@ -89,9 +89,7 @@ const EMPTY_FORM_VALUES: BankApplicationFormInput = {
 };
 
 const BANK_APPLICATION_STATUSES = [
-  "Draft",
-  "Submitted",
-  "Logged In",
+  "Applied",
   "Under Review",
   "Documents Pending",
   "Credit Review",
@@ -102,15 +100,6 @@ const BANK_APPLICATION_STATUSES = [
   "Closed",
 ] as const;
 
-const LOAN_TYPES = [
-  "Education Loan",
-  "Personal Loan",
-  "Home Loan",
-  "Business Loan",
-  "Loan Against Property",
-  "Vehicle Loan",
-  "Other",
-] as const;
 
 function getDateInputValue(value?: string | Date | null): string {
   if (!value) {
