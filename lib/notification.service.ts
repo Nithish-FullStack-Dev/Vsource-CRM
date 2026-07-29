@@ -420,10 +420,10 @@ export async function notifyLeadCreated(
 
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `New Lead Created by ${actorName}${
+            ? `New Walkin Created by ${actorName}${
                 branchName ? ` (${branchName})` : ""
               }`
-            : "Lead Created Successfully",
+            : "Walkin Created Successfully",
         }),
 
         defaultMessage: `${leadLabel} has been created by ${actorName}.`,
@@ -485,10 +485,10 @@ export async function notifyLeadAssigned(
 
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Lead Assigned by ${actorName}${
+            ? `Walkin Assigned by ${actorName}${
                 branchName ? ` (${branchName})` : ""
               }`
-            : "Lead Assigned",
+            : "Walkin Assigned",
         }),
 
         defaultMessage: `${leadLabel} has been assigned by ${actorName}.`,
@@ -615,10 +615,10 @@ export async function notifyLeadStatusChanged(
 
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Lead Status Changed by ${actorName}${
+            ? `Walkin Status Changed by ${actorName}${
                 branchName ? ` (${branchName})` : ""
               }`
-            : "Lead Status Updated",
+            : "Walkin Status Updated",
         }),
 
         defaultMessage: `${leadLabel} status changed from ${formatStatus(
@@ -752,10 +752,10 @@ export async function notifyLeadConverted(
 
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Lead Converted by ${actorName}${
+            ? `Walkin Converted by ${actorName}${
                 branchName ? ` (${branchName})` : ""
               }`
-            : "Lead Converted",
+            : "Walkin Converted",
         }),
 
         defaultMessage: `${leadLabel} has been converted to a student profile by ${actorName}.`,
@@ -824,10 +824,10 @@ export async function notifyLeadFollowupScheduled(
 
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Lead Follow-up Scheduled by ${actorName}${
+            ? `Walkin Follow-up Scheduled by ${actorName}${
                 branchName ? ` (${branchName})` : ""
               }`
-            : "Lead Follow-up Scheduled",
+            : "Walkin Follow-up Scheduled",
         }),
 
         defaultMessage: `Follow-up for ${leadLabel} is scheduled for ${dateString}.${noteMessage}`,
@@ -894,10 +894,10 @@ export async function notifyStudentCreated(
 
         getTitles: (roleName) => ({
           title: isGlobalAdminRole(roleName)
-            ? `Student Created by ${actorName}${
+            ? `Visa Application Created by ${actorName}${
                 branchName ? ` (${branchName})` : ""
               }`
-            : "Student Profile Created",
+            : "Visa Application Profile Created",
         }),
 
         defaultMessage: `${student.studentName} has been added as a student by ${actorName}.`,
@@ -1146,7 +1146,7 @@ export async function notifyApplicationEvent(
     > = {
       PRIORITY_UCOL: {
         title: "Priority UCOL",
-        message: `Application submitted for ${student.studentName}.`,
+        message: `Offer letter received for ${student.studentName}.`,
         priority: "NORMAL",
       },
 
@@ -1158,13 +1158,13 @@ export async function notifyApplicationEvent(
 
       COL: {
         title: "COL",
-        message: `CAS received for ${student.studentName}.`,
+        message: `Offer letter received for ${student.studentName}.`,
         priority: "NORMAL",
       },
 
       UCOL: {
         title: "UCOL",
-        message: `Application rejected for ${student.studentName}.`,
+        message: `Offer letter received for ${student.studentName}.`,
         priority: "HIGH",
       },
     };
