@@ -1,12 +1,24 @@
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
-const DROP_HOLD_DIF = new Set([
+const WALK_IN_DROP_LOST = new Set([
   "drop",
   "dropped",
-  "inactive",
   "lost",
   "closed_lost",
   "lead_lost",
+]);
+
+const STUDENT_DROP_INACTIVE = new Set([
+  "drop",
+  "dropped",
+  "student_dropped",
+  "inactive",
+  "student_inactive",
+]);
+
+const LEGACY_DROP_HOLD_DIF = new Set([
+  ...WALK_IN_DROP_LOST,
+  ...STUDENT_DROP_INACTIVE,
   "hold",
   "on_hold",
   "dif",
@@ -42,8 +54,21 @@ export function isReferenceSource(value: unknown): boolean {
   return Boolean(source) && !isWalkInSource(source);
 }
 
+export function isWalkInDropLost(value: unknown): boolean {
+  return WALK_IN_DROP_LOST.has(normalizeReportValue(value));
+}
+
+export function isStudentDropInactive(value: unknown): boolean {
+  return STUDENT_DROP_INACTIVE.has(normalizeReportValue(value));
+}
+
+/**
+ * Backward-compatible helper for unrelated callers. New reporting code must
+ * use isWalkInDropLost or isStudentDropInactive so the two metrics remain
+ * separate.
+ */
 export function isDropHoldDif(value: unknown): boolean {
-  return DROP_HOLD_DIF.has(normalizeReportValue(value));
+  return LEGACY_DROP_HOLD_DIF.has(normalizeReportValue(value));
 }
 
 export function isUniversityApplied(value: unknown): boolean {
@@ -125,14 +150,14 @@ export function isSameIstDay(
 
 export function resolveStudentConversionDate(student: {
   createdAt: Date;
-  lead: { convertedAt: Date | null };
+  lead: { convertedAt: Date | null; };
 }): Date {
   return student.lead.convertedAt ?? student.createdAt;
 }
 
 export function isSameDayApplication(student: {
   createdAt: Date;
-  lead: { createdAt: Date; convertedAt: Date | null };
+  lead: { createdAt: Date; convertedAt: Date | null; };
 }): boolean {
   return isSameIstDay(
     student.lead.createdAt,
@@ -142,7 +167,7 @@ export function isSameDayApplication(student: {
 
 export function isOldWalkInApplication(student: {
   createdAt: Date;
-  lead: { createdAt: Date; convertedAt: Date | null };
+  lead: { createdAt: Date; convertedAt: Date | null; };
 }): boolean {
   return !isSameDayApplication(student);
 }

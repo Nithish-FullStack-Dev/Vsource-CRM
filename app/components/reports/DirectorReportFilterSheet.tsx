@@ -47,7 +47,7 @@ const dateOptions: DirectorReportFilterOption[] = [
 const scopeOptions: DirectorReportFilterOption[] = [
   { value: "all", label: "Walk-ins, Applications and Loans" },
   { value: "leads", label: "Walk-ins Only" },
-  { value: "students", label: "Applications Only" },
+  { value: "students", label: "Converted Students Only" },
 ];
 
 const toOptions = (values: string[]) =>
@@ -150,7 +150,7 @@ export function DirectorReportFilterSheet({ value, options, isLoading, onApply }
             <Select id="director-country" label="Country" value={draft.countryId} placeholder="All Countries" options={options?.countries ?? []} disabled={isLoading} onChange={(countryId) => setDraft((current) => ({ ...current, countryId, universityId: "" }))} />
             <Select id="director-intake" label="Intake" value={draft.intakeId} placeholder="All Intakes" options={options?.intakes ?? []} disabled={isLoading} onChange={(next) => set("intakeId", next)} />
             <Select id="director-university" label="University" value={draft.universityId} placeholder="All Universities" options={universities} disabled={isLoading || draft.recordScope === "leads"} onChange={(next) => set("universityId", next)} />
-            <Select id="director-app-status" label="Application Status" value={draft.applicationStatus} placeholder="All Application Statuses" options={toOptions(options?.applicationStatuses ?? [])} disabled={isLoading || draft.recordScope === "leads"} onChange={(next) => set("applicationStatus", next)} />
+            <Select id="director-app-status" label="University Application Status" value={draft.applicationStatus} placeholder="All University Application Statuses" options={toOptions(options?.applicationStatuses ?? [])} disabled={isLoading || draft.recordScope === "leads"} onChange={(next) => set("applicationStatus", next)} />
             <Select id="director-cas" label="CAS Status" value={draft.casStatus} placeholder="All CAS Statuses" options={toOptions(options?.casStatuses ?? [])} disabled={isLoading || draft.recordScope === "leads"} onChange={(next) => set("casStatus", next)} />
             <Select id="director-visa" label="Visa Status" value={draft.visaStatus} placeholder="All Visa Statuses" options={toOptions(options?.visaStatuses ?? [])} disabled={isLoading || draft.recordScope === "leads"} onChange={(next) => set("visaStatus", next)} />
             <Select id="director-loan" label="Loan Status" value={draft.loanStatus} placeholder="All Loan Statuses" options={toOptions(options?.loanStatuses ?? [])} disabled={isLoading} onChange={(next) => set("loanStatus", next)} />

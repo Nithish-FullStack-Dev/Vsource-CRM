@@ -120,9 +120,9 @@ function getDateOptions(): Array<{ value: ReportDatePreset; label: string }> {
 }
 
 const scopeOptions: ReportOption[] = [
-  { value: "all", label: "Walk-ins and Applications" },
+  { value: "all", label: "Walk-ins and Converted Students" },
   { value: "leads", label: "Walk-ins Only" },
-  { value: "students", label: "Applications Only" },
+  { value: "students", label: "Converted Students Only" },
 ];
 
 function Section({
@@ -473,9 +473,9 @@ export function ReportFilterSheet({
                   />
                   <FilterSelect
                     id="report-application-status"
-                    label="Application Status"
+                    label="University Application Status"
                     value={draft.applicationStatus}
-                    placeholder="All Application Statuses"
+                    placeholder="All University Application Statuses"
                     options={statusOptions(options?.applicationStatuses ?? [])}
                     disabled={isLoading || draft.recordScope === "leads"}
                     onChange={(value) => update("applicationStatus", value)}

@@ -12,48 +12,55 @@ const HEADER_FILL = "1F2937";
 const GROUP_FILL = "991B1B";
 const SUBTLE_FILL = "F3F4F6";
 const BORDER_COLOR = "D1D5DB";
-
+const INTAKE_PROGRESS_HEADER_FILL =  "C76A08";
+const INTAKE_PROGRESS_LABEL_FILL =  "FFF7ED";
+type IntakeProgressItem = {
+  label: string;
+  done: number;
+  pending: number;
+};
 const columns: Array<{
   header: string;
   key: keyof DirectorReportRow;
   width: number;
   format?: string;
 }> = [
-  { header: "Walk-ins", key: "walkIns", width: 12 },
-  { header: "Reference", key: "references", width: 12 },
-  { header: "Applications", key: "applications", width: 13 },
-  { header: "Same Day Apps", key: "sameDayApplications", width: 15 },
-  { header: "Old Walk-in Apps", key: "oldWalkInApplications", width: 17 },
-  { header: "University Applied", key: "universityApplications", width: 17 },
-  { header: "Offers", key: "offers", width: 10 },
-  { header: "Drops / Hold / DIF", key: "dropHoldDif", width: 17 },
-  { header: "Loan Applications", key: "loanApplications", width: 17 },
-  { header: "OS-LOAN / O-FUND", key: "outsideLoan", width: 18 },
-  { header: "Loan Approved", key: "loanApproved", width: 14 },
-  { header: "Loan Disbursed", key: "loanDisbursed", width: 15 },
-  { header: "Deposit Paid", key: "depositPaid", width: 13 },
-  { header: "CAS Applied", key: "casApplied", width: 13 },
-  { header: "CAS Received", key: "casReceived", width: 14 },
-  { header: "Visa Applied", key: "visaApplied", width: 13 },
-  { header: "Visa Approved", key: "visaApproved", width: 14 },
-  { header: "Target", key: "target", width: 10 },
-  { header: "Achieved", key: "achieved", width: 11 },
-  { header: "Target %", key: "targetCompletionPercentage", width: 11, format: "0.0%" },
-  { header: "Lead Conversion %", key: "leadToStudentConversionPercentage", width: 16, format: "0.0%" },
-  { header: "University Conversion %", key: "universityApplicationConversionPercentage", width: 20, format: "0.0%" },
-  { header: "Visa Conversion %", key: "visaConversionPercentage", width: 16, format: "0.0%" },
-  { header: "Loan Conversion %", key: "loanConversionPercentage", width: 16, format: "0.0%" },
-  { header: "Applied Amount", key: "appliedAmount", width: 16, format: "₹#,##0" },
-  { header: "Sanctioned Amount", key: "sanctionedAmount", width: 18, format: "₹#,##0" },
-  { header: "Disbursed Amount", key: "disbursedAmount", width: 18, format: "₹#,##0" },
-  { header: "Weekly Avg Walk-ins", key: "avgWeeklyWalkIns", width: 18 },
-  { header: "Weekly Avg Applications", key: "avgWeeklyApplications", width: 21 },
-  { header: "Weekly Avg University Apps", key: "avgWeeklyUniversityApplications", width: 23 },
-  { header: "Weekly Avg Loan Apps", key: "avgWeeklyLoanApplications", width: 20 },
-  { header: "Weekly Avg Loan Approved", key: "avgWeeklyLoanApproved", width: 23 },
-  { header: "Weekly Avg Visa", key: "avgWeeklyVisaApproved", width: 17 },
-  { header: "Lead Numbers", key: "leadNumbers", width: 36 },
-];
+    { header: "Walk-ins", key: "walkIns", width: 12 },
+    { header: "Reference", key: "references", width: 12 },
+    { header: "Applications", key: "applications", width: 13 },
+    { header: "Same Day Apps", key: "sameDayApplications", width: 15 },
+    { header: "Old Walk-in Apps", key: "oldWalkInApplications", width: 17 },
+    { header: "University Applied", key: "universityApplications", width: 17 },
+    { header: "Offers", key: "offers", width: 10 },
+    { header: "Walk-in Drop / Lost", key: "walkInDropLost", width: 18 },
+    { header: "Application Drop / Inactive", key: "studentDropInactive", width: 21 },
+    { header: "Loan Applications", key: "loanApplications", width: 17 },
+    { header: "OS-LOAN / O-FUND", key: "outsideLoan", width: 18 },
+    { header: "Loan Approved", key: "loanApproved", width: 14 },
+    { header: "Loan Disbursed", key: "loanDisbursed", width: 15 },
+    { header: "Deposit Paid", key: "depositPaid", width: 13 },
+    { header: "CAS Applied", key: "casApplied", width: 13 },
+    { header: "CAS Received", key: "casReceived", width: 14 },
+    { header: "Visa Applied", key: "visaApplied", width: 13 },
+    { header: "Visa Approved", key: "visaApproved", width: 14 },
+    { header: "Target", key: "target", width: 10 },
+    { header: "Achieved", key: "achieved", width: 11 },
+    { header: "Target %", key: "targetCompletionPercentage", width: 11, format: "0.0%" },
+    { header: "Lead Conversion %", key: "leadToStudentConversionPercentage", width: 16, format: "0.0%" },
+    { header: "University Conversion %", key: "universityApplicationConversionPercentage", width: 20, format: "0.0%" },
+    { header: "Visa Conversion %", key: "visaConversionPercentage", width: 16, format: "0.0%" },
+    { header: "Loan Conversion %", key: "loanConversionPercentage", width: 16, format: "0.0%" },
+    { header: "Applied Amount", key: "appliedAmount", width: 16, format: "₹#,##0" },
+    { header: "Sanctioned Amount", key: "sanctionedAmount", width: 18, format: "₹#,##0" },
+    { header: "Disbursed Amount", key: "disbursedAmount", width: 18, format: "₹#,##0" },
+    { header: "Weekly Avg Walk-ins", key: "avgWeeklyWalkIns", width: 18 },
+    { header: "Weekly Avg Applications", key: "avgWeeklyApplications", width: 21 },
+    { header: "Weekly Avg University Apps", key: "avgWeeklyUniversityApplications", width: 23 },
+    { header: "Weekly Avg Loan Apps", key: "avgWeeklyLoanApplications", width: 20 },
+    { header: "Weekly Avg Loan Approved", key: "avgWeeklyLoanApproved", width: 23 },
+    { header: "Weekly Avg Visa", key: "avgWeeklyVisaApproved", width: 17 },
+    { header: "Lead Numbers", key: "leadNumbers", width: 36 },
+  ];
 
 function border(cell: Cell) {
   cell.border = {
@@ -167,7 +174,8 @@ function addSummary(workbook: Workbook, report: DirectorReportData) {
     ["Same Day Apps", summary.sameDayApplications],
     ["Old Walk-in Apps", summary.oldWalkInApplications],
     ["University Applied", summary.universityApplications],
-    ["Drops / Hold / DIF", summary.dropHoldDif],
+    ["Walk-in Drop / Lost", summary.walkInDropLost],
+    ["Application Drop / Inactive", summary.studentDropInactive],
     ["Loan Applications", summary.loanApplications],
     ["OS-LOAN / O-FUND", summary.outsideLoan],
     ["Loan Approved", summary.loanApproved],
@@ -217,19 +225,452 @@ function addFilters(workbook: Workbook, filters: DirectorReportFilters) {
   styleHeader(sheet, 1);
   sheet.eachRow((row, index) => index > 1 && row.eachCell(border));
 }
+function intakeProgress(
+  row: DirectorReportRow,
+): IntakeProgressItem[] {
+  return [
+    {
+      label: "DROP",
+      done: row.studentDropInactive,
+      pending: 0,
+    },
+    {
+      label: "OSL-OF",
+      done: row.outsideLoan,
+      pending: 0,
+    },
+    {
+      label: "LOAN LOGINS",
+      done: row.loanApplications,
+      pending: Math.max(
+        row.applications -
+          row.outsideLoan -
+          row.loanApplications,
+        0,
+      ),
+    },
+    {
+      label: "LOAN APPROVAL",
+      done: row.loanApproved,
+      pending: Math.max(
+        row.loanApplications -
+          row.loanApproved,
+        0,
+      ),
+    },
+    {
+      label: "DISBURSEMENT",
+      done: row.loanDisbursed,
+      pending: Math.max(
+        row.loanApproved -
+          row.loanDisbursed,
+        0,
+      ),
+    },
+    {
+      label: "DEPOSIT",
+      done: row.depositPaid,
+      pending: Math.max(
+        row.applications -
+          row.depositPaid,
+        0,
+      ),
+    },
+    {
+      label: "CAS",
+      done: row.casReceived,
+      pending: Math.max(
+        row.casApplied -
+          row.casReceived,
+        0,
+      ),
+    },
+    {
+      label: "VISA",
+      done: row.visaApproved,
+      pending: Math.max(
+        row.visaApplied -
+          row.visaApproved,
+        0,
+      ),
+    },
+  ];
+}
 
-export async function buildDirectorReportWorkbook(report: DirectorReportData) {
+function intakeGroupKey(
+  row: DirectorReportRow,
+): string {
+  return [
+    row.intakeId ??
+      row.intakeName ??
+      "not-set",
+    row.branchId ??
+      row.branchName ??
+      "not-set",
+  ].join(":");
+}
+
+function addIntakeDonePendingSheet(
+  workbook: Workbook,
+  report: DirectorReportData,
+) {
+  const sheet = workbook.addWorksheet(
+    "Intake Done Pending",
+    {
+      views: [
+        {
+          state: "frozen",
+          ySplit: 3,
+        },
+      ],
+    },
+  );
+
+  sheet.getColumn(1).width = 16;
+  sheet.getColumn(2).width = 30;
+  sheet.getColumn(3).width = 16;
+
+  sheet.mergeCells("A1:C1");
+
+  const titleCell = sheet.getCell("A1");
+
+  titleCell.value =
+    "VSource Directors Report — Intake Done / Pending";
+
+  titleCell.font = {
+    bold: true,
+    size: 15,
+    color: {
+      argb: "FFFFFF",
+    },
+  };
+
+  titleCell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: {
+      argb: GROUP_FILL,
+    },
+  };
+
+  titleCell.alignment = {
+    vertical: "middle",
+    horizontal: "left",
+  };
+
+  sheet.getRow(1).height = 26;
+
+  sheet.mergeCells("A2:C2");
+
+  const metaCell = sheet.getCell("A2");
+
+  metaCell.value = `Generated: ${new Date(
+    report.generatedAt,
+  ).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+  })}`;
+
+  metaCell.font = {
+    italic: true,
+    color: {
+      argb: "4B5563",
+    },
+  };
+
+  metaCell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: {
+      argb: SUBTLE_FILL,
+    },
+  };
+
+  const uniqueTotals =
+    new Map<string, DirectorReportRow>();
+
+  for (const row of
+    report.intakeWiseTotals.branchRows) {
+    uniqueTotals.set(
+      intakeGroupKey(row),
+      row,
+    );
+  }
+
+  const groupedByIntake =
+    new Map<
+      string,
+      DirectorReportRow[]
+    >();
+
+  for (const row of
+    uniqueTotals.values()) {
+    const intakeName =
+      row.intakeName ??
+      "Not Set";
+
+    const existing =
+      groupedByIntake.get(
+        intakeName,
+      ) ?? [];
+
+    existing.push(row);
+
+    groupedByIntake.set(
+      intakeName,
+      existing,
+    );
+  }
+
+  let currentRow = 4;
+
+  const intakeEntries = [
+    ...groupedByIntake.entries(),
+  ].sort(([left], [right]) =>
+    left.localeCompare(
+      right,
+      undefined,
+      {
+        numeric: true,
+      },
+    ),
+  );
+
+  for (const [
+    intakeName,
+    branchRows,
+  ] of intakeEntries) {
+    sheet.mergeCells(
+      currentRow,
+      1,
+      currentRow,
+      3,
+    );
+
+    const intakeCell =
+      sheet.getCell(
+        currentRow,
+        1,
+      );
+
+    intakeCell.value =
+      `${intakeName.toUpperCase()} INTAKE`;
+
+    intakeCell.font = {
+      bold: true,
+      color: {
+        argb: "FFFFFF",
+      },
+    };
+
+    intakeCell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: HEADER_FILL,
+      },
+    };
+
+    intakeCell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
+
+    border(intakeCell);
+
+    currentRow += 1;
+
+    const sortedBranches =
+      [...branchRows].sort(
+        (left, right) =>
+          left.branchName.localeCompare(
+            right.branchName,
+          ),
+      );
+
+    for (const branch of
+      sortedBranches) {
+      const header =
+        sheet.getRow(currentRow);
+
+      header.getCell(1).value =
+        "DONE";
+
+      header.getCell(2).value =
+        branch.branchName.toUpperCase();
+
+      header.getCell(3).value =
+        "PENDING";
+
+      for (
+        let column = 1;
+        column <= 3;
+        column += 1
+      ) {
+        const cell =
+          header.getCell(column);
+
+        cell.font = {
+          bold: true,
+          color: {
+            argb: "FFFFFF",
+          },
+        };
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb:
+              INTAKE_PROGRESS_HEADER_FILL,
+          },
+        };
+
+        cell.alignment = {
+          horizontal: "center",
+          vertical: "middle",
+        };
+
+        border(cell);
+      }
+
+      currentRow += 1;
+
+      for (const item of
+        intakeProgress(branch)) {
+        const progressRow =
+          sheet.getRow(currentRow);
+
+        progressRow.getCell(
+          1,
+        ).value = item.done;
+
+        progressRow.getCell(
+          2,
+        ).value = item.label;
+
+        progressRow.getCell(
+          3,
+        ).value = item.pending;
+
+        progressRow.getCell(
+          2,
+        ).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb:
+              INTAKE_PROGRESS_LABEL_FILL,
+          },
+        };
+
+        for (
+          let column = 1;
+          column <= 3;
+          column += 1
+        ) {
+          const cell =
+            progressRow.getCell(
+              column,
+            );
+
+          cell.alignment = {
+            horizontal: "center",
+            vertical: "middle",
+          };
+
+          if (column === 2) {
+            cell.font = {
+              bold: true,
+            };
+          }
+
+          border(cell);
+        }
+
+        currentRow += 1;
+      }
+
+      currentRow += 1;
+    }
+
+    currentRow += 1;
+  }
+}
+
+export async function buildDirectorReportWorkbook(
+  report: DirectorReportData,
+) {
   const workbook = new Workbook();
+
   workbook.creator = "Vsource CRM";
   workbook.created = new Date();
+
   addSummary(workbook, report);
-  addReportSheet(workbook, "Today", report, report.todayRows, report.todayTotals);
-  addReportSheet(workbook, "Weekly Daily", report, report.weeklyRows, report.weeklyTotals, true);
-  addReportSheet(workbook, "Current Month", report, report.currentMonthRows, report.currentMonthTotals);
-  addReportSheet(workbook, "Intake Wise", report, report.intakeWiseRows, report.intakeWiseTotals, false, true);
-  addReportSheet(workbook, "All Time", report, report.allTimeRows, report.allTimeTotals);
-  addComparison(workbook, "Week Comparison", report.weekComparison);
-  addComparison(workbook, "Month Comparison", report.monthComparison);
-  addFilters(workbook, report.filters);
+
+  addReportSheet(
+    workbook,
+    "Today",
+    report,
+    report.todayRows,
+    report.todayTotals,
+  );
+
+  addReportSheet(
+    workbook,
+    "Weekly Daily",
+    report,
+    report.weeklyRows,
+    report.weeklyTotals,
+    true,
+  );
+
+  addReportSheet(
+    workbook,
+    "Current Month",
+    report,
+    report.currentMonthRows,
+    report.currentMonthTotals,
+  );
+
+  addReportSheet(
+    workbook,
+    "Intake Wise",
+    report,
+    report.intakeWiseRows,
+    report.intakeWiseTotals,
+    false,
+    true,
+  );
+
+  addIntakeDonePendingSheet(
+    workbook,
+    report,
+  );
+
+  addReportSheet(
+    workbook,
+    "All Time",
+    report,
+    report.allTimeRows,
+    report.allTimeTotals,
+  );
+
+  addComparison(
+    workbook,
+    "Week Comparison",
+    report.weekComparison,
+  );
+
+  addComparison(
+    workbook,
+    "Month Comparison",
+    report.monthComparison,
+  );
+
+  addFilters(
+    workbook,
+    report.filters,
+  );
+
   return workbook.xlsx.writeBuffer();
 }

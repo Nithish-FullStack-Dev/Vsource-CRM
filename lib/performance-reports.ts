@@ -20,7 +20,6 @@ import {
   type ReportStudent,
 } from "@/lib/report-data";
 import {
-  isDropHoldDif,
   isLoanApproved,
   isLoanDisbursed,
   isReferenceSource,
@@ -55,7 +54,8 @@ const metricKeys = [
   "walkIns",
   "references",
   "activeWalkIns",
-  "dropHoldDif",
+  "walkInDropLost",
+  "studentDropInactive",
   "applications",
   "sameDayApplications",
   "oldWalkInApplications",
@@ -193,7 +193,7 @@ type TargetMetrics = {
   branches: Map<string, string>;
   counselors: Map<
     string,
-    { branchId: string; branch: string; counselorId: string; counselor: string }
+    { branchId: string; branch: string; counselorId: string; counselor: string; }
   >;
 };
 
@@ -223,7 +223,7 @@ async function getTargets(
   const branches = new Map<string, string>();
   const counselors = new Map<
     string,
-    { branchId: string; branch: string; counselorId: string; counselor: string }
+    { branchId: string; branch: string; counselorId: string; counselor: string; }
   >();
   for (const row of rows) {
     branchTargets.set(row.branchId, (branchTargets.get(row.branchId) ?? 0) + row.target);
@@ -578,9 +578,9 @@ export async function getPerformanceReport(
   const studentMap = new Map(dataset.students.map((student) => [student.id, student]));
   const applicationRows = includeApplicationRows
     ? records.applications.flatMap((application) => {
-        const student = studentMap.get(application.studentId);
-        return student ? [mapApplicationExport(application, student)] : [];
-      })
+      const student = studentMap.get(application.studentId);
+      return student ? [mapApplicationExport(application, student)] : [];
+    })
     : undefined;
 
   return {

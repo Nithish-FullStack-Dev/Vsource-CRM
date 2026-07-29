@@ -9,7 +9,8 @@ import {
 import {
   isCasApplied,
   isCasReceived,
-  isDropHoldDif,
+  isStudentDropInactive,
+  isWalkInDropLost,
   isLoanApproved,
   isLoanDisbursed,
   isOfferReceived,
@@ -190,17 +191,17 @@ export const reportLoanSelect = {
   },
 } satisfies Prisma.LoanApplicationSelect;
 
-export type ReportLead = Prisma.LeadGetPayload<{ select: typeof reportLeadSelect }>;
-export type ReportStudent = Prisma.StudentGetPayload<{ select: typeof reportStudentSelect }>;
+export type ReportLead = Prisma.LeadGetPayload<{ select: typeof reportLeadSelect; }>;
+export type ReportStudent = Prisma.StudentGetPayload<{ select: typeof reportStudentSelect; }>;
 export type ReportApplication = Prisma.StudentApplicationGetPayload<{
   select: typeof reportApplicationSelect;
 }>;
-export type ReportLoan = Prisma.LoanApplicationGetPayload<{ select: typeof reportLoanSelect }>;
+export type ReportLoan = Prisma.LoanApplicationGetPayload<{ select: typeof reportLoanSelect; }>;
 
 export type ReportAccessScope =
-  | { kind: "all" }
-  | { kind: "branches"; branchIds: string[] }
-  | { kind: "user"; userId: string; userName: string };
+  | { kind: "all"; }
+  | { kind: "branches"; branchIds: string[]; }
+  | { kind: "user"; userId: string; userName: string; };
 
 export type CommonReportFilters = {
   search: string;
@@ -224,7 +225,8 @@ export type ReportMetricValues = {
   walkIns: number;
   references: number;
   activeWalkIns: number;
-  dropHoldDif: number;
+  walkInDropLost: number;
+  studentDropInactive: number;
   applications: number;
   sameDayApplications: number;
   oldWalkInApplications: number;
@@ -270,13 +272,14 @@ export type ReportDataset = {
   applicationsByStudent: Map<string, ReportApplication[]>;
 };
 
-type Lookup = { countryName: string; intakeName: string };
+type Lookup = { countryName: string; intakeName: string; };
 
 const emptyValues = (): ReportMetricValues => ({
   walkIns: 0,
   references: 0,
   activeWalkIns: 0,
-  dropHoldDif: 0,
+  walkInDropLost: 0,
+  studentDropInactive: 0,
   applications: 0,
   sameDayApplications: 0,
   oldWalkInApplications: 0,
@@ -493,8 +496,9 @@ function buildEvents(
     const values = emptyValues();
     values.walkIns = 1;
     values.references = isReferenceSource(lead.source) ? 1 : 0;
-    values.activeWalkIns = !lead.isConverted && !isDropHoldDif(lead.status) ? 1 : 0;
-    values.dropHoldDif = isDropHoldDif(lead.status) ? 1 : 0;
+    values.activeWalkIns =
+      !lead.isConverted && !isWalkInDropLost(lead.status) ? 1 : 0;
+    values.walkInDropLost = isWalkInDropLost(lead.status) ? 1 : 0;
     values.loanApplications = lead.loanRequirement && !lead.loanApplication ? 1 : 0;
     values.outsideLoan = lead.loanRequirement ? 0 : 1;
     events.push({
@@ -521,7 +525,7 @@ function buildEvents(
     values.applications = 1;
     values.sameDayApplications = isSameDayApplication(student) ? 1 : 0;
     values.oldWalkInApplications = isOldWalkInApplication(student) ? 1 : 0;
-    values.dropHoldDif = isDropHoldDif(student.status) ? 1 : 0;
+    values.studentDropInactive = isStudentDropInactive(student.status) ? 1 : 0;
     values.depositPaid = normalizeReportValue(student.visaProfile?.depositStatus) === "paid" ? 1 : 0;
     values.casApplied = isCasApplied(student.visaProfile?.casStatus) ? 1 : 0;
     values.casReceived = isCasReceived(student.visaProfile?.casStatus) ? 1 : 0;
@@ -635,10 +639,10 @@ export async function loadReportDataset(
       : Promise.resolve([] as ReportStudent[]),
     filters.recordScope !== "leads"
       ? db.studentApplication.findMany({
-          where: branch ? { student: { branch } } : undefined,
-          select: reportApplicationSelect,
-          orderBy: [{ applicationDate: "desc" }, { createdAt: "desc" }],
-        })
+        where: branch ? { student: { branch } } : undefined,
+        select: reportApplicationSelect,
+        orderBy: [{ applicationDate: "desc" }, { createdAt: "desc" }],
+      })
       : Promise.resolve([] as ReportApplication[]),
     db.loanApplication.findMany({ where: baseLoanWhere, select: reportLoanSelect, orderBy: { createdAt: "desc" } }),
   ]);
@@ -675,13 +679,13 @@ export async function loadReportDataset(
   );
   const hasAcademicContext = Boolean(
     filters.leadStatus ||
-      filters.leadSource ||
-      filters.countryId ||
-      filters.intakeId ||
-      filters.universityId ||
-      filters.applicationStatus ||
-      filters.casStatus ||
-      filters.visaStatus,
+    filters.leadSource ||
+    filters.countryId ||
+    filters.intakeId ||
+    filters.universityId ||
+    filters.applicationStatus ||
+    filters.casStatus ||
+    filters.visaStatus,
   );
   const loanMatchesScope = (loan: ReportLoan) => {
     if (filters.recordScope === "leads") {
@@ -690,16 +694,16 @@ export async function loadReportDataset(
     if (filters.recordScope === "students") {
       return Boolean(
         loan.leadId &&
-          loan.lead?.student &&
-          matchedStudentLeadIds.has(loan.leadId),
+        loan.lead?.student &&
+        matchedStudentLeadIds.has(loan.leadId),
       );
     }
     return (
       !hasAcademicContext ||
       Boolean(
         loan.leadId &&
-          (matchedLeadIds.has(loan.leadId) ||
-            matchedStudentLeadIds.has(loan.leadId)),
+        (matchedLeadIds.has(loan.leadId) ||
+          matchedStudentLeadIds.has(loan.leadId)),
       )
     );
   };

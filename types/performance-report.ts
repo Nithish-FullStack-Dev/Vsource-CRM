@@ -55,22 +55,22 @@ export const DEFAULT_PERFORMANCE_REPORT_FILTERS: PerformanceReportFilters = {
   endDate: "",
 };
 
-export type ReportOption = { value: string; label: string };
+export type ReportOption = { value: string; label: string; };
 export type CounselorReportOption = ReportOption & {
   branchIds: string[];
   roleName: string;
 };
-export type UniversityReportOption = ReportOption & { countryId: string };
+export type UniversityReportOption = ReportOption & { countryId: string; };
 
 export type PerformanceReportAccess =
-  | { kind: "all" }
-  | { kind: "branches"; branchIds: string[] }
-  | { kind: "user"; userId: string; userName: string };
+  | { kind: "all"; }
+  | { kind: "branches"; branchIds: string[]; }
+  | { kind: "user"; userId: string; userName: string; };
 
 export type PerformanceReportAccessKind = PerformanceReportAccess["kind"];
 
 export type PerformanceReportFilterOptions = {
-  access: { kind: PerformanceReportAccessKind };
+  access: { kind: PerformanceReportAccessKind; };
   branches: ReportOption[];
   counselors: CounselorReportOption[];
   countries: ReportOption[];
@@ -90,7 +90,8 @@ export type PerformanceReportMetricRow = {
   walkIns: number;
   references: number;
   activeWalkIns: number;
-  dropHoldDif: number;
+  walkInDropLost: number;
+  studentDropInactive: number;
   applications: number;
   sameDayApplications: number;
   oldWalkInApplications: number;
@@ -138,7 +139,7 @@ export type PerformanceReportCountryPoint = {
   universityApplications: number;
 };
 
-export type PerformanceReportStatusPoint = { status: string; count: number };
+export type PerformanceReportStatusPoint = { status: string; count: number; };
 export type PerformanceReportSourcePoint = {
   source: string;
   walkIns: number;
@@ -245,7 +246,7 @@ export type PerformanceReportData = {
   counselorPerformance: PerformanceReportCounselorPoint[];
   rows: PerformanceReportRow[];
   applicationRows?: PerformanceApplicationExportRow[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
+  pagination: { page: number; limit: number; total: number; totalPages: number; };
 };
 
-export type ApiResponse<T> = { success: boolean; data: T; message?: string };
+export type ApiResponse<T> = { success: boolean; data: T; message?: string; };
