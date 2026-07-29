@@ -15,6 +15,11 @@ export function getSocket(): CRMSocket {
     const socketUrl =
       process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4001";
 
+    console.info("[SocketClient] Initializing", {
+      socketUrl,
+      origin: window.location.origin,
+    });
+
     socket = io(socketUrl, {
       path: "/socket.io",
 
@@ -22,7 +27,10 @@ export function getSocket(): CRMSocket {
 
       autoConnect: false,
 
-      transports: ["websocket", "polling"],
+      // Start with polling, then upgrade to WebSocket.
+      transports: ["polling", "websocket"],
+
+      upgrade: true,
 
       reconnection: true,
       reconnectionAttempts: Infinity,
