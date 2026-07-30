@@ -473,16 +473,16 @@ export function DMSSection({ studentId }: DMSSectionProps) {
 
   return (
     <div className="grid min-h-[720px] grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-[720px] xl:grid-cols-[420px_minmax(0,1fr)]">
-      <aside className="flex min-h-[520px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
-        <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
-          <div className="grid grid-cols-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
+      <aside className="flex min-h-[520px] flex-col overflow-hidden rounded-[20px] sm:rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
+        <div className="border-b border-slate-100 px-3 py-3 sm:px-5 sm:py-5 dark:border-slate-800">
+          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
             <button
               type="button"
               onClick={() => {
                 setActiveTab("checklist");
                 clearUploadForm();
               }}
-              className={`rounded-xl px-4 py-2.5 text-xs font-black transition ${
+              className={`rounded-xl px-2 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-black transition ${
                 activeTab === "checklist"
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                   : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
@@ -497,7 +497,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                 setActiveTab("others");
                 clearUploadForm();
               }}
-              className={`rounded-xl px-4 py-2.5 text-xs font-black transition ${
+              className={`rounded-xl px-2 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-black transition ${
                 activeTab === "others"
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                   : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
@@ -510,9 +510,9 @@ export function DMSSection({ studentId }: DMSSectionProps) {
           {activeTab === "others" && canUpdate(MODULES.STUDENT_PROFILES) ? (
             <form
               onSubmit={handleCreateDocumentType}
-              className="mt-4 rounded-[18px] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900"
+              className="mt-3 sm:mt-4 rounded-[18px] border border-slate-200 bg-slate-50 p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-900"
             >
-              <label className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
+              <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
                 New document type
               </label>
 
@@ -538,13 +538,13 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                   className="h-4 w-4 rounded border-slate-300 accent-red-500"
                 />
 
-                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                <span className="text-[11px] sm:text-xs font-bold text-slate-600 dark:text-slate-300">
                   Make this document mandatory
                 </span>
               </label>
 
               {documentTypeError ? (
-                <p className="mt-2 text-[11px] font-semibold text-rose-500">
+                <p className="mt-2 text-[10px] sm:text-[11px] font-semibold text-rose-500">
                   {documentTypeError}
                 </p>
               ) : null}
@@ -555,7 +555,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                   createDocumentTypeMutation.isPending ||
                   !newDocumentName.trim()
                 }
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-xs font-black text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-[11px] sm:text-xs font-black text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {createDocumentTypeMutation.isPending ? (
                   <>
@@ -564,7 +564,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                   </>
                 ) : (
                   <>
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Add Document Type
                   </>
                 )}
@@ -573,19 +573,19 @@ export function DMSSection({ studentId }: DMSSectionProps) {
           ) : null}
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-y-auto px-7 pb-7 pt-2 [scrollbar-color:rgb(148_163_184)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 [&::-webkit-scrollbar-track]:bg-transparent">
-          <div className="pointer-events-none absolute bottom-8 left-[36px] top-3 w-px bg-slate-300 dark:bg-slate-700" />
+        <div className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-2 sm:px-4 sm:pb-4 xl:px-7 xl:pb-7 [scrollbar-color:rgb(148_163_184)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 [&::-webkit-scrollbar-track]:bg-transparent">
+          <div className="pointer-events-none absolute bottom-8 left-[30px] sm:left-[36px] top-3 w-px bg-slate-300 dark:bg-slate-700" />
 
           {visibleChecklist.length === 0 ? (
-            <div className="relative rounded-[22px] border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
-              <FileText className="mx-auto h-9 w-9 text-slate-300" />
-              <p className="mt-3 text-sm font-black text-slate-600 dark:text-slate-300">
+            <div className="relative rounded-[20px] sm:rounded-[22px] border border-dashed border-slate-300 bg-slate-50 px-4 py-8 sm:px-5 sm:py-10 text-center dark:border-slate-700 dark:bg-slate-900">
+              <FileText className="mx-auto h-8 w-8 sm:h-9 sm:w-9 text-slate-300" />
+              <p className="mt-3 text-[13px] sm:text-sm font-black text-slate-600 dark:text-slate-300">
                 {activeTab === "others"
                   ? "No other document types added"
                   : "No checklist items found"}
               </p>
 
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-400">
                 {activeTab === "others"
                   ? "Use the form above to add a student-specific document."
                   : "Document folders will appear here when available."}
@@ -608,44 +608,46 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                     tabIndex={0}
                     onClick={() => selectChecklistItem(item)}
                     onKeyDown={(event) => handleCardKeyDown(event, item)}
-                    className={`group relative ml-0 flex min-h-[82px] cursor-pointer items-center gap-3 overflow-hidden rounded-[22px] border px-4 py-3.5 outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 ${
+                    className={`group relative ml-0 flex min-h-[66px] sm:min-h-[82px] cursor-pointer items-center gap-2 sm:gap-3 overflow-hidden rounded-[20px] sm:rounded-[22px] border px-2.5 py-2.5 sm:px-4 sm:py-3.5 outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 ${
                       isSelected
                         ? "border-emerald-200 bg-emerald-50/80 shadow-[0_8px_24px_rgba(16,185,129,0.10)] dark:border-emerald-900/70 dark:bg-emerald-950/20"
                         : "border-slate-300 bg-white hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-[0_10px_24px_rgba(15,23,42,0.10)] dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
                     }`}
                   >
                     <div
-                      className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                      className={`relative z-10 flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ${
                         isComplete
                           ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                           : "bg-slate-50 text-slate-400 dark:bg-slate-900"
                       }`}
                     >
-                      <FileText className="h-5 w-5" />
+                      <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
 
-                    <div className="relative z-10 min-w-0 flex-1 pr-1">
-                      <p className="truncate text-[14px] font-black text-slate-700 dark:text-slate-100">
+                    <div className="relative z-10 min-w-0 flex-1 pr-1 sm:pr-2">
+                      <p className="truncate text-[12px] sm:text-[14px] font-black text-slate-700 dark:text-slate-100">
                         {title}
                       </p>
                       {isComplete ? (
-                        <p className="mt-1 truncate text-[10px] text-slate-400">
+                        <p className="mt-0.5 sm:mt-1 truncate text-[9px] sm:text-[10px] text-slate-400">
                           {itemDocument?.originalFileName?.trim() ||
                             `${itemDocuments.length} uploaded file${itemDocuments.length === 1 ? "" : "s"}`}
                         </p>
                       ) : (
-                        <p className="mt-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.08em] text-rose-500">
-                          <AlertCircle className="h-3 w-3" />
-                          {isOptionalItem(item)
-                            ? "Optional document"
-                            : "Missing checklist item"}
+                        <p className="mt-0.5 sm:mt-1 flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.05em] sm:tracking-[0.08em] text-rose-500">
+                          <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+                          <span className="truncate">
+                            {isOptionalItem(item)
+                              ? "Optional document"
+                              : "Missing checklist item"}
+                          </span>
                         </p>
                       )}
                     </div>
 
                     {isComplete ? (
                       <>
-                        <CheckCircle2 className="relative z-10 h-5 w-5 shrink-0 text-emerald-500 transition group-hover:opacity-0" />
+                        <CheckCircle2 className="relative z-10 h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-emerald-500 transition group-hover:opacity-0" />
                       </>
                     ) : (
                       canUpdate(MODULES.STUDENT_PROFILES) && (
@@ -656,10 +658,10 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                             selectChecklistItem(item);
                             window.setTimeout(() => openFilePicker(null), 0);
                           }}
-                          className="relative z-10 inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-rose-500 px-4 py-2.5 text-[11px] font-black text-white shadow-sm transition hover:bg-rose-600"
+                          className="relative z-10 inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl bg-rose-500 px-3 py-2 sm:px-4 sm:py-2.5 text-[10px] sm:text-[11px] font-black text-white shadow-sm transition hover:bg-rose-600"
                         >
-                          <Upload className="h-3.5 w-3.5" />
-                          Upload
+                          <Upload className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          <span>Upload</span>
                         </button>
                       )
                     )}

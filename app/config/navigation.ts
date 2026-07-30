@@ -28,7 +28,7 @@ export const navigationItems = [
     icon: Users,
   },
   {
-    moduleCode: "MBBS_LEADS",
+    moduleCode: "MBBS_Walkin",
     to: "/mbbs-leads",
     label: "MBBS Walkins",
     icon: Users,
@@ -121,7 +121,7 @@ export const routeConfig = [
   },
 
   {
-    moduleCode: "MBBS_LEADS",
+    moduleCode: "MBBS_Walkin",
     routes: [
       {
         path: "/mbbs-leads/add",

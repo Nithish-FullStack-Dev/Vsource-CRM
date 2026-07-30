@@ -56,7 +56,7 @@ const items = [
     ],
   },
   {
-    moduleCode: "MBBS_LEADS",
+    moduleCode: "MBBS_Walkin",
     to: "/mbbs-leads",
     label: "MBBS Walkins",
     icon: Users,

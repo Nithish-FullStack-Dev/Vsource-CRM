@@ -33,7 +33,7 @@ export const moduleLandingRoutes: Record<string, string> = {
 
   MASTER_LEADS: "/leads/add",
 
-  MBBS_LEADS: "/mbbs-leads/add",
+  MBBS_Walkin: "/mbbs-leads/add",
 
   BRANCHES: "/branches",
 
