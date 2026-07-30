@@ -1,3 +1,4 @@
+// app\components\reports\ReportFilterSheet.tsx
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -19,6 +20,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { countPerformanceReportFilters } from "@/lib/performance-report-utils";
 import {
   DEFAULT_PERFORMANCE_REPORT_FILTERS,
@@ -56,24 +64,29 @@ function FilterSelect({
   onChange,
 }: SelectProps) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-xs font-medium">
+    <div className="space-y-1.5 w-full max-w-full overflow-hidden">
+      <Label
+        htmlFor={id}
+        className="text-xs font-bold text-slate-700 dark:text-slate-300"
+      >
         {label}
       </Label>
-      <select
-        id={id}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select value={value || ""} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger
+          id={id}
+          className="w-full h-10 rounded-xl bg-background truncate"
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="">{placeholder}</SelectItem>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -139,11 +152,15 @@ function Section({
   className?: string;
 }) {
   return (
-    <section className={`rounded-xl border p-4 ${className}`}>
-      <div className="mb-4 flex items-start gap-2">
-        <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
-        <div>
-          <h3 className="text-sm font-semibold">{title}</h3>
+    <section
+      className={`rounded-2xl border border-border/60 p-3.5 sm:p-5 w-full max-w-full overflow-hidden ${className}`}
+    >
+      <div className="mb-4 flex items-start gap-3">
+        <div className="shrink-0 rounded-xl bg-primary/10 p-2 text-primary">
+          <Icon className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-black text-foreground">{title}</h3>
           <p className="text-xs leading-5 text-muted-foreground">
             {description}
           </p>
@@ -248,56 +265,49 @@ export function ReportFilterSheet({
   };
 
   return (
-    <Accordion type="single" collapsible className="mb-4">
+    <Accordion type="single" collapsible className="mb-6 w-full max-w-full">
       <AccordionItem
         value="report-filters"
-        className="overflow-hidden rounded-xl border border-primary/15 bg-card shadow-sm"
+        className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm w-full max-w-full"
       >
         <div className="relative bg-gradient-to-r from-primary/10 via-primary/5 to-background">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="absolute right-12 top-1/2 z-10 -translate-y-1/2 bg-background shadow-sm"
+            className="absolute right-4 top-auto bottom-4 z-10 h-9 sm:right-12 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2"
             onClick={reset}
-            disabled={!countPerformanceReportFilters(value) && !isDirty}
           >
             <RotateCcw className="mr-2 size-4" />
-            Reset All
+            Reset
           </Button>
-          <AccordionTrigger className="min-h-[92px] w-full px-4 py-4 pr-40 text-left hover:no-underline sm:px-6 sm:pr-44">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="shrink-0 rounded-xl bg-primary p-2.5 text-primary-foreground shadow-sm">
+          <AccordionTrigger className="min-h-[110px] px-4 pb-16 pr-4 text-left hover:no-underline sm:min-h-[78px] sm:px-5 sm:pb-0 sm:pr-40">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-primary p-2.5 text-primary-foreground">
                 <SlidersHorizontal className="size-4" />
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-semibold tracking-tight">
-                    Report Filters
-                  </h2>
-                  <Badge variant="secondary">
-                    {countPerformanceReportFilters(value)} active
-                  </Badge>
-                  {isDirty && <Badge variant="outline">Unsaved changes</Badge>}
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold">Advanced Filters</h2>
+                  {isDirty && <Badge variant="outline">Not applied</Badge>}
                 </div>
-                <p className="mt-1 text-xs font-normal leading-5 text-muted-foreground sm:text-sm">
-                  Apply one access-safe filter set to the dashboard and Excel
-                  export.
+                <p className="mt-1 text-xs text-muted-foreground">
+                  The same filters are used on screen and in Excel.
                 </p>
               </div>
             </div>
           </AccordionTrigger>
         </div>
 
-        <AccordionContent className="pb-0">
-          <div className="space-y-5 p-4 sm:p-6">
+        <AccordionContent className="pb-0 w-full max-w-full overflow-hidden">
+          <div className="space-y-4 sm:space-y-5 p-3 sm:p-6 bg-muted/10 w-full max-w-full overflow-hidden">
             <Section
               icon={CalendarDays}
               title="Report Scope and Lifecycle Date"
               description="Walk-ins use creation date, applications use conversion date, loans use login date, and target achievement uses visa decision date."
-              className="bg-muted/20"
+              className="bg-card shadow-sm"
             >
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4 w-full">
                 <FilterSelect
                   id="report-record-scope"
                   label="Report Scope"
@@ -321,32 +331,35 @@ export function ReportFilterSheet({
                     }))
                   }
                 />
-                <div className="space-y-1.5 md:col-span-2">
+                <div className="space-y-1.5 md:col-span-2 w-full max-w-full">
                   <Label
                     htmlFor="report-search"
-                    className="text-xs font-medium"
+                    className="text-xs font-bold text-slate-700 dark:text-slate-300"
                   >
                     Search
                   </Label>
                   <Input
                     id="report-search"
-                    className="h-10"
+                    className="h-10 rounded-xl bg-background w-full"
                     value={draft.search}
-                    placeholder="Walk-in no., loan login, applicant, email, mobile, university or course"
+                    placeholder="Walk-in no., loan login, applicant, email, mobile..."
                     onChange={(event) => update("search", event.target.value)}
                   />
                 </div>
               </div>
               {draft.datePreset === "custom" && (
-                <div className="mt-4 grid gap-4 border-t pt-4 sm:grid-cols-2 xl:max-w-2xl">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="report-start-date" className="text-xs">
+                <div className="mt-4 grid gap-3 sm:gap-4 border-t border-border/60 pt-4 sm:grid-cols-2 xl:max-w-2xl w-full">
+                  <div className="space-y-1.5 w-full">
+                    <Label
+                      htmlFor="report-start-date"
+                      className="text-xs font-bold text-slate-700 dark:text-slate-300"
+                    >
                       Start Date
                     </Label>
                     <Input
                       id="report-start-date"
                       type="date"
-                      className="h-10"
+                      className="h-10 rounded-xl bg-background w-full"
                       value={draft.startDate}
                       max={draft.endDate || undefined}
                       onChange={(event) =>
@@ -354,14 +367,17 @@ export function ReportFilterSheet({
                       }
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="report-end-date" className="text-xs">
+                  <div className="space-y-1.5 w-full">
+                    <Label
+                      htmlFor="report-end-date"
+                      className="text-xs font-bold text-slate-700 dark:text-slate-300"
+                    >
                       End Date
                     </Label>
                     <Input
                       id="report-end-date"
                       type="date"
-                      className="h-10"
+                      className="h-10 rounded-xl bg-background w-full"
                       value={draft.endDate}
                       min={draft.startDate || undefined}
                       onChange={(event) =>
@@ -370,7 +386,7 @@ export function ReportFilterSheet({
                     />
                   </div>
                   {customDateInvalid && (
-                    <p className="text-xs text-destructive sm:col-span-2">
+                    <p className="text-xs font-semibold text-destructive sm:col-span-2">
                       Select at least one custom date.
                     </p>
                   )}
@@ -378,13 +394,14 @@ export function ReportFilterSheet({
               )}
             </Section>
 
-            <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3 w-full">
               <Section
                 icon={GitBranch}
                 title="Walk-in Pipeline"
                 description="Branches and users are restricted by the signed-in role."
+                className="bg-card shadow-sm"
               >
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 w-full">
                   <FilterSelect
                     id="report-branch"
                     label="Branch"
@@ -442,8 +459,9 @@ export function ReportFilterSheet({
                 icon={GraduationCap}
                 title="Destination and Applications"
                 description="University filters apply to converted applications only."
+                className="bg-card shadow-sm"
               >
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 w-full">
                   <FilterSelect
                     id="report-country"
                     label="Country"
@@ -487,9 +505,9 @@ export function ReportFilterSheet({
                 icon={Landmark}
                 title="Visa and Loan Filters"
                 description="Loan filters include standalone loan forms and walk-in generated loan logins."
-                className="xl:col-span-2 2xl:col-span-1"
+                className="xl:col-span-2 2xl:col-span-1 bg-card shadow-sm"
               >
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 w-full">
                   <FilterSelect
                     id="report-cas-status"
                     label="CAS Status"
@@ -529,7 +547,7 @@ export function ReportFilterSheet({
                     disabled={isLoading}
                     onChange={(value) => update("nbfc", value)}
                   />
-                  <div className="sm:col-span-2">
+                  <div className="sm:col-span-2 w-full">
                     <FilterSelect
                       id="report-fintech-assignee"
                       label="Fintech Assignee"
@@ -545,14 +563,15 @@ export function ReportFilterSheet({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <p className="text-xs text-muted-foreground">
+          <div className="flex flex-col gap-3 border-t border-border/60 bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 rounded-b-2xl w-full">
+            <p className="text-xs font-medium text-muted-foreground">
               Filters run only after selecting Apply Filters.
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 justify-end">
               <Button
                 type="button"
                 variant="outline"
+                className="rounded-xl h-9 text-xs font-bold"
                 onClick={() => setDraft(value)}
                 disabled={!isDirty}
               >
@@ -560,6 +579,7 @@ export function ReportFilterSheet({
               </Button>
               <Button
                 type="button"
+                className="rounded-xl h-9 text-xs font-bold"
                 onClick={() => !customDateInvalid && onApply(draft)}
                 disabled={!isDirty || customDateInvalid}
               >

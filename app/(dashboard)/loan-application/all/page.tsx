@@ -1,16 +1,20 @@
 "use client";
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
+  Calendar,
   ChevronLeft,
   ChevronRight,
-  Download,
   Eye,
   Filter,
+  Landmark,
   Loader2,
+  Phone,
   Search,
   Trash2,
+  UserCheck,
 } from "lucide-react";
 import { PageHeader, PageTransition } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -102,6 +106,7 @@ export default function LoanApplicationsPage() {
       ),
     [rows],
   );
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return rows.filter((a) => {
@@ -189,15 +194,27 @@ export default function LoanApplicationsPage() {
     setB(ALL);
     setPage(1);
   };
+  const getLatestFollowUp = (followUps: LoanApplication["followUps"]) => {
+    if (!followUps?.length) return null;
+
+    return [...followUps].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+      return dateB - dateA;
+    })[0];
+  };
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-[1600px] space-y-6 pb-12">
+      <div className="mx-auto max-w-[1600px] space-y-4 px-4 pb-12 sm:space-y-6 sm:px-6 lg:px-8">
         <PageHeader
           title="Loan Applications"
           description="Track loan enquiries, bank applications, approvals, disbursements, deposits, and follow-ups."
         />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+
+        {/* Responsive Summary Grid */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
           {[
             ["Total", totals.total],
             ["New Enquiries", totals.newEnq],
@@ -216,10 +233,11 @@ export default function LoanApplicationsPage() {
           ))}
         </div>
 
-        <div className="rounded-2xl border bg-card shadow-sm">
-          <div className="flex flex-wrap items-center gap-2 border-b p-4">
-            <div className="flex h-9 min-w-60 flex-1 items-center gap-2 rounded-md border bg-background px-3">
-              <Search className="h-4 w-4 text-muted-foreground" />
+        <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+          {/* Filters Area */}
+          <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex h-10 w-full flex-1 items-center gap-2 rounded-md border bg-background px-3 sm:h-9 sm:w-auto sm:min-w-[240px]">
+              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Input
                 value={q}
                 onChange={(e) => {
@@ -227,56 +245,233 @@ export default function LoanApplicationsPage() {
                   setPage(1);
                 }}
                 placeholder="Search name, application ID, mobile, email..."
-                className="h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                className="h-full w-full border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
               />
             </div>
-            <FilterSelect
-              value={cat}
-              onChange={upd(setCat)}
-              placeholder="Applicant Category"
-              options={APPLICANT_CATEGORIES}
-            />
-            <FilterSelect
-              value={loan}
-              onChange={upd(setLoan)}
-              placeholder="Loan Category"
-              options={LOAN_CATEGORIES}
-            />
-            <FilterSelect
-              value={status}
-              onChange={upd(setStatus)}
-              placeholder="Status"
-              options={LOAN_STATUSES}
-            />
-            <FilterSelect
-              value={user}
-              onChange={upd(setUser)}
-              placeholder="Assignee"
-              options={users}
-            />
-            <FilterSelect
-              value={b}
-              onChange={upd(setB)}
-              placeholder="Bank / NBFC"
-              options={banks}
-            />
-            <Button variant="outline" size="sm" onClick={clear}>
-              <Filter className="h-4 w-4 mr-2" />
-              Clear
-            </Button>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-2">
+              <div className="w-full">
+                <FilterSelect
+                  value={cat}
+                  onChange={upd(setCat)}
+                  placeholder="Applicant Category"
+                  options={APPLICANT_CATEGORIES}
+                />
+              </div>
+              <div className="w-full">
+                <FilterSelect
+                  value={loan}
+                  onChange={upd(setLoan)}
+                  placeholder="Loan Category"
+                  options={LOAN_CATEGORIES}
+                />
+              </div>
+              <div className="w-full">
+                <FilterSelect
+                  value={status}
+                  onChange={upd(setStatus)}
+                  placeholder="Status"
+                  options={LOAN_STATUSES}
+                />
+              </div>
+              <div className="w-full">
+                <FilterSelect
+                  value={user}
+                  onChange={upd(setUser)}
+                  placeholder="Assignee"
+                  options={users}
+                />
+              </div>
+              <div className="w-full">
+                <FilterSelect
+                  value={b}
+                  onChange={upd(setB)}
+                  placeholder="Bank / NBFC"
+                  options={banks}
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clear}
+                className="h-10 w-full lg:h-9 lg:w-auto"
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                Clear
+              </Button>
+            </div>
           </div>
 
-          {/* TABLE WRAPPER - Added styling for horizontal scrolling */}
-          <div className="w-full overflow-x-auto pb-4">
-            {/* Added min-w-[1400px] to force proper one-line alignment */}
-            <table className="w-full min-w-350 text-sm">
+          {/* ======================================================== */}
+          {/* MOBILE VIEW: Cards (Shown on screens smaller than `md`)  */}
+          {/* ======================================================== */}
+          <div className="space-y-3 p-4 md:hidden">
+            {isLoading && (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-primary" />
+                Loading loan applications...
+              </div>
+            )}
+
+            {!isLoading && paged.length === 0 && (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                No applications match your filters.
+              </div>
+            )}
+
+            {!isLoading &&
+              paged.map((a) => {
+                const latestFollowUp = getLatestFollowUp(a.followUps);
+
+                return (
+                  <div
+                    key={a.id}
+                    className="space-y-3 rounded-xl border bg-background p-4 shadow-sm"
+                  >
+                    {/* Header: Application ID & Status Badge */}
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <span className="font-mono text-xs font-semibold text-primary">
+                        {a.applicationId}
+                      </span>
+                      <StatusBadge
+                        status={a.loanStatus || "New Enquiry"}
+                        className={loanStatusTone(
+                          a.loanStatus || "New Enquiry",
+                        )}
+                      />
+                    </div>
+
+                    {/* Applicant Primary Details */}
+                    <div>
+                      <Link
+                        href={`/loan-application/all/${a.id}`}
+                        className="text-base font-bold text-foreground transition-colors hover:text-primary"
+                      >
+                        {a.fullName}
+                      </Link>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {a.mobile}
+                        </span>
+                        {a.email && <span>{a.email}</span>}
+                      </div>
+                    </div>
+
+                    {/* Metadata Grid (Assignee & Bank) */}
+                    <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/30 p-2 text-xs">
+                      <div>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <UserCheck className="h-3 w-3" /> Assignee:
+                        </span>
+                        <p className="font-medium text-foreground truncate">
+                          {assignee(a as any) || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Landmark className="h-3 w-3" /> Bank / NBFC:
+                        </span>
+                        <p className="font-medium text-foreground truncate">
+                          {bank(a as any) || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Amounts Grid */}
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <span className="text-[10px] uppercase text-muted-foreground">
+                          Applied
+                        </span>
+                        <p className="font-semibold text-foreground">
+                          {formatINR(a.requiredLoanAmount)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-muted-foreground">
+                          Sanctioned
+                        </span>
+                        <p className="font-semibold text-foreground">
+                          {a.sanctionedAmount
+                            ? formatINR(Number(a.sanctionedAmount))
+                            : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-muted-foreground">
+                          Disbursed
+                        </span>
+                        <p className="font-semibold text-foreground">
+                          {a.disbursedAmount
+                            ? formatINR(Number(a.disbursedAmount))
+                            : "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Follow up & Action Buttons */}
+                    <div className="flex items-center justify-between border-t pt-2 text-xs">
+                      <div className="flex items-start gap-2 text-xs">
+                        <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+
+                        {latestFollowUp ? (
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">
+                              {formatFollowUpValue(latestFollowUp.followUpDate)}
+                            </span>
+
+                            {/* <span className="line-clamp-2 text-muted-foreground">
+                              {latestFollowUp.note}
+                            </span> */}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            No Follow-up
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/loan-application/all/${a.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View
+                          </Button>
+                        </Link>
+
+                        {canDelete(MODULES.LOAN_APPLICATION) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`Delete ${a.fullName}`}
+                            onClick={() => setDeleteApplication(a as any)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          {/* ======================================================== */}
+          {/* DESKTOP VIEW: Table (Hidden on mobile, shown on `md+`)   */}
+          {/* ======================================================== */}
+          <div className="hidden w-full overflow-x-auto md:block">
+            <table className="w-full min-w-[1200px] text-sm">
               <thead>
                 <tr className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                   {[
                     "Application ID",
                     "Applicant",
-                    // "Category",
-                    // "Loan Type",
                     "Mobile",
                     "Assignee",
                     "Bank / NBFC",
@@ -289,8 +484,11 @@ export default function LoanApplicationsPage() {
                   ].map((h, i) => (
                     <th
                       key={h}
-                      // Added whitespace-nowrap to prevent headers from stacking
-                      className={`whitespace-nowrap px-4 py-3 font-medium ${(i >= 7 && i <= 9) || i === 12 ? "text-right" : "text-left"}`}
+                      className={`whitespace-nowrap px-4 py-3 font-medium ${
+                        (i >= 5 && i <= 7) || i === 10
+                          ? "text-right"
+                          : "text-left"
+                      }`}
                     >
                       {h}
                     </th>
@@ -300,7 +498,7 @@ export default function LoanApplicationsPage() {
               <tbody>
                 {isLoading && (
                   <tr>
-                    <td colSpan={13} className="py-14 text-center">
+                    <td colSpan={11} className="py-14 text-center">
                       <span className="inline-flex items-center text-sm text-muted-foreground">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Loading loan applications...
@@ -314,24 +512,17 @@ export default function LoanApplicationsPage() {
                       <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">
                         {a.applicationId}
                       </td>
-                      {/* Using min-w-[180px] to give the applicant cell some breathing room */}
-                      <td className="px-4 py-3 min-w-45 whitespace-nowrap">
+                      <td className="min-w-[180px] whitespace-nowrap px-4 py-3">
                         <Link
                           href={`/loan-application/all/${a.id}`}
-                          className="font-medium text-foreground hover:text-primary block"
+                          className="block font-medium text-foreground hover:text-primary"
                         >
                           {a.fullName}
                         </Link>
-                        <div className="text-xs text-muted-foreground truncate max-w-45">
+                        <div className="max-w-[180px] truncate text-xs text-muted-foreground">
                           {a.email || "—"}
                         </div>
                       </td>
-                      {/* <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {a.applicantCategory || "—"}
-                      </td> */}
-                      {/* <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {a.loanCategory || "—"}
-                      </td> */}
                       <td className="whitespace-nowrap px-4 py-3">
                         {a.mobile}
                       </td>
@@ -345,10 +536,15 @@ export default function LoanApplicationsPage() {
                         {formatINR(a.requiredLoanAmount)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        {a?.sanctionedAmount ? `₹${a?.sanctionedAmount}` : "—"}
+                        {a.sanctionedAmount
+                          ? formatINR(Number(a.sanctionedAmount))
+                          : "—"}
                       </td>
+
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        {a?.disbursedAmount ? `₹${a?.disbursedAmount}` : "—"}
+                        {a.disbursedAmount
+                          ? formatINR(Number(a.disbursedAmount))
+                          : "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <StatusBadge
@@ -358,8 +554,33 @@ export default function LoanApplicationsPage() {
                           )}
                         />
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
-                        {formatFollowUpValue(a.nextFollowUp) || "—"}
+                      <td className="px-4 py-3 text-xs">
+                        {(() => {
+                          const latestFollowUp = getLatestFollowUp(a.followUps);
+
+                          if (!latestFollowUp) {
+                            return (
+                              <span className="text-muted-foreground">—</span>
+                            );
+                          }
+
+                          return (
+                            <div className="min-w-[180px]">
+                              <div className="font-medium text-foreground">
+                                {formatFollowUpValue(
+                                  latestFollowUp.followUpDate,
+                                )}
+                              </div>
+
+                              {/* <div
+                                className="truncate text-muted-foreground"
+                                title={latestFollowUp.note}
+                              >
+                                {latestFollowUp.note}
+                              </div> */}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -370,7 +591,7 @@ export default function LoanApplicationsPage() {
                               className="h-8 gap-1"
                             >
                               <Eye className="h-3.5 w-3.5" />
-                              View
+                              <span className="hidden sm:inline">View</span>
                             </Button>
                           </Link>
 
@@ -393,7 +614,7 @@ export default function LoanApplicationsPage() {
                 {!isLoading && paged.length === 0 && (
                   <tr>
                     <td
-                      colSpan={13}
+                      colSpan={11}
                       className="py-14 text-center text-sm text-muted-foreground"
                     >
                       No applications match your filters.
@@ -404,8 +625,9 @@ export default function LoanApplicationsPage() {
             </table>
           </div>
 
-          <div className="flex flex-col gap-3 border-t p-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <div>
+          {/* Pagination */}
+          <div className="flex flex-col items-center gap-4 border-t p-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+            <div className="text-center sm:text-left">
               Showing{" "}
               <span className="font-medium text-foreground">
                 {paged.length}
@@ -416,7 +638,8 @@ export default function LoanApplicationsPage() {
               </span>{" "}
               results
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-end">
               <div className="flex items-center gap-2">
                 Rows per page:
                 <Select
@@ -426,7 +649,7 @@ export default function LoanApplicationsPage() {
                     setPage(1);
                   }}
                 >
-                  <SelectTrigger className="h-8 w-20">
+                  <SelectTrigger className="h-8 w-16">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -438,31 +661,36 @@ export default function LoanApplicationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                disabled={page === 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span>
-                Page {page} of {pc}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                disabled={page === pc}
-                onClick={() => setPage((p) => Math.min(pc, p + 1))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="w-20 text-center">
+                  Page {page} of {pc}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  disabled={page === pc}
+                  onClick={() => setPage((p) => Math.min(pc, p + 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
       <AlertDialog
         open={Boolean(deleteApplication)}
         onOpenChange={(open) => {
@@ -547,7 +775,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-9 w-auto min-w-40">
+      <SelectTrigger className="h-10 w-full lg:h-9 lg:min-w-[170px] lg:w-[170px]">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
