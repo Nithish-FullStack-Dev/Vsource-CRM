@@ -126,22 +126,6 @@ export default function Home() {
   const { setTitle, clearTitle } = usePageTitle();
   const [newRemarkText, setNewRemarkText] = useState<string>("");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [description, setDescription] = useState("");
-  const [followupDate, setFollowupDate] = useState("");
-  const [timelineType, setTimelineType] = useState<
-    | "note"
-    | "followup"
-    | "call"
-    | "meeting"
-    | "status_change"
-    | "document"
-    | "application"
-    | "offer_letter"
-    | "loan"
-    | "visa"
-    | "payment"
-    | "info"
-  >("followup");
 
   const { data: moduleProgress = [], isLoading: isModuleProgressLoading } =
     useStudentModuleProgress(selectedStudentId || "");
@@ -447,23 +431,6 @@ export default function Home() {
     }));
   };
 
-  const handleAddRemark = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!newRemarkText.trim() || !selectedStudentId) return;
-
-    try {
-      await createRemarkMutation.mutateAsync({
-        studentId: selectedStudentId,
-        note: newRemarkText.trim(),
-      });
-
-      setNewRemarkText("");
-    } catch (caughtError) {
-      toast.error(getErrorMessage(caughtError, "Failed to add remark"));
-    }
-  };
-
   const getTabProgress = (tabKey: StudentDetailTab) => {
     const moduleKey = tabProgressMap[tabKey];
 
@@ -504,7 +471,7 @@ export default function Home() {
       className={`${isDarkMode ? "dark" : ""} flex min-h-screen bg-background text-foreground transition-colors duration-200`}
     >
       <div className="grow flex flex-col min-w-0 min-h-screen">
-        <main className="flex-1 p-6 space-y-6 overflow-y-auto">
+        <main className="flex-1 md:p-6 p-2 md:space-y-6 space-y-2 overflow-y-auto">
           <AnimatePresence mode="wait">
             {selectedStudentId && selectedStudent && (
               <motion.div
@@ -514,20 +481,21 @@ export default function Home() {
                 exit={{ opacity: 0 }}
                 className="space-y-6"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  {/* Left Section */}
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <button
                       onClick={() => router.push("/student-profiles")}
-                      className="inline-flex items-center gap-1.5 text-xs font-black text-red-600 hover:underline"
+                      className="inline-flex w-fit items-center gap-1.5 text-xs font-black text-red-600 hover:underline"
                     >
                       ← Back
                     </button>
 
-                    <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
+                    <div className="hidden h-8 w-px bg-slate-200 dark:bg-slate-800 sm:block" />
 
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <h2 className="break-words text-lg font-black text-slate-900 sm:text-xl dark:text-white">
                           {selectedStudent?.studentName ?? "Unnamed Student"}
                         </h2>
 
@@ -544,19 +512,20 @@ export default function Home() {
                         </span>
                       </div>
 
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="mt-1 text-xs text-slate-500 break-words">
                         Assigned User:{" "}
                         <span className="font-semibold text-slate-700 dark:text-slate-300">
-                          {selectedStudent.counselor?.name ?? "Not Assigned"}
+                          {selectedStudent?.counselor?.name ?? "Not Assigned"}
                         </span>
                       </p>
                     </div>
                   </div>
 
+                  {/* Right Section */}
                   {canUpdate(MODULES.STUDENT_PROFILES) && (
                     <button
                       onClick={() => setStatusDialogOpen(true)}
-                      className="rounded-xl border border-red-600 bg-white px-4 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:bg-slate-900 dark:hover:bg-red-950"
+                      className="w-full rounded-xl border border-red-600 bg-white px-4 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50 sm:w-auto dark:bg-slate-900 dark:hover:bg-red-950"
                     >
                       Update Status
                     </button>

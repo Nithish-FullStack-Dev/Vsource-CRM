@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Eye, Search, Shield, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 import { useStudents } from "@/hooks/student/useStudents";
@@ -22,17 +22,44 @@ import {
 } from "@/components/ui/select";
 import { useDebounce } from "use-debounce";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 interface StudentTableProps {
   isDarkMode: boolean;
   onSelectStudent: (id: string) => void;
-  // onDeleteStudent: (id: string) => void;
+}
+
+interface MobileInfoItemProps {
+  label: string;
+  value: ReactNode;
+  className?: string;
+}
+
+function MobileInfoItem({ label, value, className = "" }: MobileInfoItemProps) {
+  return (
+    <div className={`min-w-0 space-y-1 ${className}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        {label}
+      </p>
+      <div className="wrap-break-word text-xs font-semibold text-slate-700 dark:text-slate-200">
+        {value}
+      </div>
+    </div>
+  );
 }
 
 export function StudentTable({
   isDarkMode,
   onSelectStudent,
-  // onDeleteStudent,
 }: StudentTableProps) {
   const [visiblePasswords, setVisiblePasswords] = useState<
     Record<string, boolean>
@@ -70,20 +97,6 @@ export function StudentTable({
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "-";
     return date.toLocaleDateString("en-GB");
-  };
-
-  const getAmount = (value: string | number | null | undefined) => {
-    if (value === null || value === undefined || value === "") return "-";
-
-    const amount = Number(value);
-
-    if (Number.isNaN(amount)) return getText(value);
-
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   const togglePassword = (studentId: string) => {
@@ -203,7 +216,7 @@ export function StudentTable({
   return (
     <div className="space-y-4" id="student-module-master-table">
       <div className="flex items-center justify-between">
-        <div className="relative w-96">
+        <div className="relative w-full sm:w-96">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
           <Input
@@ -215,7 +228,343 @@ export function StudentTable({
         </div>
       </div>
 
-      <div className="relative overflow-auto rounded-3xl border border-slate-200/85 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="space-y-4 md:hidden">
+        {students.length === 0 ? (
+          <Card className="rounded-2xl border-slate-200 shadow-sm dark:border-slate-800">
+            <CardContent className="py-12 text-center text-sm font-semibold text-slate-400">
+              No students found.
+            </CardContent>
+          </Card>
+        ) : (
+          students.map((student: StudentRecord, index: number) => {
+            const visaProfile = student?.visaProfile ?? null;
+            const lead = student?.lead ?? null;
+            const counselor = student?.counselor ?? null;
+            const loanApplication = student?.lead?.loanApplication ?? null;
+            const remarks = Array.isArray(student?.remarks)
+              ? student.remarks
+              : [];
+            const latestRemark = remarks.at(-1)?.note ?? "No remarks added";
+            const password = getText(student?.password, "Not set");
+            const latestTimeline = Array.isArray(student?.timeline)
+              ? student.timeline.reduce<string | null>((latest, item) => {
+                  if (!item.followupDate) return latest;
+
+                  if (
+                    !latest ||
+                    new Date(item.followupDate).getTime() >
+                      new Date(latest).getTime()
+                  ) {
+                    return item.followupDate;
+                  }
+
+                  return latest;
+                }, null)
+              : null;
+            const latestTimelineDate = latestTimeline
+              ? new Date(latestTimeline).toLocaleDateString("en-IN")
+              : "No timeline added";
+            const depositDate = loanApplication?.depositDate
+              ? new Date(loanApplication.depositDate).toLocaleDateString(
+                  "en-IN",
+                )
+              : "Not set";
+            const disbursedDate = loanApplication?.disbursementDate
+              ? new Date(loanApplication.disbursementDate).toLocaleDateString(
+                  "en-IN",
+                )
+              : "Not set";
+            const studentNumber = (page - 1) * limit + index + 1;
+            const studentCode = student?.id
+              ? student.id.slice(0, 8).toUpperCase()
+              : "-";
+
+            return (
+              <Card
+                key={student?.id ?? `student-card-${index}`}
+                className="overflow-hidden rounded-2xl border-slate-200 shadow-sm dark:border-slate-800"
+              >
+                <CardHeader className="space-y-3 bg-slate-50/70 pb-4 dark:bg-slate-950/40">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <CardDescription className="font-mono text-[10px] font-bold uppercase tracking-wider">
+                        #{studentNumber} · {studentCode}
+                      </CardDescription>
+                      <CardTitle
+                        className="mt-1 cursor-pointer truncate text-base font-extrabold hover:underline"
+                        onClick={() =>
+                          student?.id && onSelectStudent(student.id)
+                        }
+                        title={getText(
+                          student?.studentName,
+                          "Student name unavailable",
+                        )}
+                      >
+                        {getText(
+                          student?.studentName,
+                          "Student name unavailable",
+                        )}
+                      </CardTitle>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                      {getText(lead?.preferredIntake, "No intake")}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <MobileInfoItem
+                      label="Counsellor"
+                      value={getText(counselor?.name, "Not assigned")}
+                    />
+                    <MobileInfoItem
+                      label="Role"
+                      value={getText(counselor?.role?.name, "Not assigned")}
+                    />
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-5 p-4">
+                  <section className="space-y-3">
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Student Details
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      <MobileInfoItem
+                        label="Admission Date"
+                        value={getDate(student?.applicationDate)}
+                      />
+                      <MobileInfoItem
+                        label="Passport No"
+                        value={getText(lead?.passport, "Not provided")}
+                      />
+                      <MobileInfoItem
+                        label="Mobile Number"
+                        value={getText(student?.mobileNumber, "Not provided")}
+                      />
+                      <MobileInfoItem
+                        label="Country"
+                        value={getText(lead?.preferredCountry, "Not selected")}
+                      />
+                      <MobileInfoItem
+                        label="Visa Email"
+                        value={getText(student?.emailId, "Not provided")}
+                        className="col-span-2"
+                      />
+                      <MobileInfoItem
+                        label="Password"
+                        className="col-span-2"
+                        value={
+                          <div className="flex items-center gap-2 max-w-[50%]">
+                            <span className="min-w-0 flex-1 truncate font-mono">
+                              {visiblePasswords[student.id]
+                                ? password
+                                : password === "Not set"
+                                  ? "Not set"
+                                  : "••••••••"}
+                            </span>
+                            {password !== "Not set" && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  togglePassword(student.id);
+                                }}
+                                className="h-7 w-7 shrink-0"
+                                aria-label={
+                                  visiblePasswords[student.id]
+                                    ? "Hide password"
+                                    : "Show password"
+                                }
+                              >
+                                {visiblePasswords[student.id] ? (
+                                  <ShieldOff className="h-3.5 w-3.5" />
+                                ) : (
+                                  <Shield className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        }
+                      />
+                      <MobileInfoItem
+                        label="12th English & MOI"
+                        value={getText(lead?.twelfthPercentage, "Not provided")}
+                      />
+                      <MobileInfoItem
+                        label="Applications"
+                        value={getText(
+                          student?.applications?.length,
+                          "Not provided",
+                        )}
+                      />
+                    </div>
+                  </section>
+
+                  <Separator />
+
+                  <section className="space-y-3">
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Visa Progress
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      <MobileInfoItem
+                        label="Deposit Deadline"
+                        value={getDate(visaProfile?.depositDeadlineDate)}
+                      />
+                      <MobileInfoItem
+                        label="Deposit Status"
+                        value={
+                          <span
+                            className={`inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                              visaProfile?.depositStatus,
+                            )}`}
+                          >
+                            {getText(visaProfile?.depositStatus, "Not updated")}
+                          </span>
+                        }
+                      />
+                      <MobileInfoItem
+                        label="IHS & Visa Paid"
+                        value={
+                          <span
+                            className={`inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                              visaProfile?.ihsPaidStatus,
+                            )}`}
+                          >
+                            {getText(visaProfile?.ihsPaidStatus, "Not updated")}
+                          </span>
+                        }
+                      />
+                      <MobileInfoItem
+                        label="Interview Status"
+                        value={
+                          <span
+                            className={`inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                              visaProfile?.interviewStatus,
+                            )}`}
+                          >
+                            {getText(
+                              visaProfile?.interviewStatus,
+                              "Not updated",
+                            )}
+                          </span>
+                        }
+                      />
+                      <MobileInfoItem
+                        label="CAS Deadline"
+                        value={getDate(visaProfile?.casDeadlineDate)}
+                      />
+                      <MobileInfoItem
+                        label="CAS Status"
+                        value={
+                          <span
+                            className={`inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                              visaProfile?.casStatus,
+                            )}`}
+                          >
+                            {getText(visaProfile?.casStatus, "Not updated")}
+                          </span>
+                        }
+                      />
+                      <MobileInfoItem
+                        label="Visa Status"
+                        value={
+                          <span
+                            className={`inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                              visaProfile?.visaStatus,
+                            )}`}
+                          >
+                            {getText(visaProfile?.visaStatus, "Not updated")}
+                          </span>
+                        }
+                      />
+                      <MobileInfoItem
+                        label="University Start"
+                        value={getDate(visaProfile?.universityStartDate)}
+                      />
+                    </div>
+                  </section>
+
+                  <Separator />
+
+                  <section className="space-y-3">
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Loan Progress
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      <MobileInfoItem
+                        label="Fintech Assignee"
+                        value={getText(
+                          loanApplication?.fintechAssignee?.name,
+                          "Not assigned",
+                        )}
+                      />
+                      <MobileInfoItem
+                        label="Sanctioned Bank / NBFC"
+                        value={getText(
+                          loanApplication?.sanctionBankApplication?.bank?.name,
+                          "Not selected",
+                        )}
+                      />
+                      <MobileInfoItem
+                        label="Loan Status"
+                        value={
+                          <span
+                            className={`inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-bold ${getCellColorClass(
+                              loanApplication?.loanStatus,
+                            )}`}
+                          >
+                            {getText(
+                              loanApplication?.loanStatus,
+                              "Not updated",
+                            )}
+                          </span>
+                        }
+                      />
+                      <MobileInfoItem
+                        label="Disbursed Date"
+                        value={disbursedDate}
+                      />
+                      <MobileInfoItem
+                        label="Deposit Date"
+                        value={depositDate}
+                      />
+                      <MobileInfoItem
+                        label="Next Follow-up"
+                        value={latestTimelineDate}
+                      />
+                    </div>
+                  </section>
+
+                  <Separator />
+
+                  <MobileInfoItem
+                    label="Remarks"
+                    value={latestRemark}
+                    className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/40"
+                  />
+                </CardContent>
+
+                <CardFooter className="border-t border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/20">
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      router.push(`/student-profiles/${student.id}`)
+                    }
+                    className="w-full bg-red-600 text-white hover:bg-red-700"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View Student Profile
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      <div className="relative hidden overflow-auto rounded-3xl border border-slate-200/85 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 md:block">
         <table className="w-max min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
           <colgroup>
             <col className="w-16" />
@@ -401,7 +750,7 @@ export function StudentTable({
             {students.length === 0 ? (
               <tr>
                 <td
-                  colSpan={28}
+                  colSpan={29}
                   className="bg-white py-12 text-center text-xs font-bold text-slate-400 dark:bg-slate-900"
                 >
                   No students found.
@@ -717,18 +1066,6 @@ export function StudentTable({
                           <Eye className="h-3 w-3" />
                           <span>View</span>
                         </button>
-
-                        {/* <button
-                          type="button"
-                          onClick={() =>
-                            student?.id && onDeleteStudent(student.id)
-                          }
-                          disabled={!student?.id}
-                          className="cursor-pointer rounded-lg bg-rose-500/10 px-2 py-1.5 text-[10px] font-black text-rose-500 transition-colors hover:bg-rose-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                          title="Delete student"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button> */}
                       </div>
                     </td>
                   </tr>
@@ -738,70 +1075,72 @@ export function StudentTable({
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between py-4">
-        <div className="text-sm text-muted-foreground">
-          Showing {(page - 1) * limit + 1}–
+      <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-center text-sm text-muted-foreground sm:text-left">
+          Showing {meta?.total ? (page - 1) * limit + 1 : 0}–
           {Math.min(page * limit, meta?.total ?? 0)} of {meta?.total ?? 0}
         </div>
 
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (page > 1) {
-                    setPage((p) => p - 1);
+        <div className="flex flex-col items-center gap-3 sm:flex-row">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page > 1) {
+                      setPage((p) => p - 1);
+                    }
+                  }}
+                  className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+
+              <PaginationItem>
+                <span className="px-4 text-sm font-medium">
+                  Page {meta?.page ?? page} of {meta?.totalPages ?? 1}
+                </span>
+              </PaginationItem>
+
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+
+                    if (page < (meta?.totalPages ?? 1)) {
+                      setPage((p) => p + 1);
+                    }
+                  }}
+                  className={
+                    page >= (meta?.totalPages ?? 1)
+                      ? "pointer-events-none opacity-50"
+                      : ""
                   }
-                }}
-                className={page === 1 ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+          <Select
+            value={String(limit)}
+            onValueChange={(value) => {
+              setLimit(Number(value));
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-24">
+              <SelectValue />
+            </SelectTrigger>
 
-            <PaginationItem>
-              <span className="px-4 text-sm font-medium">
-                Page {meta?.page} of {meta?.totalPages}
-              </span>
-            </PaginationItem>
-
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-
-                  if (page < (meta?.totalPages ?? 1)) {
-                    setPage((p) => p + 1);
-                  }
-                }}
-                className={
-                  page === meta?.totalPages
-                    ? "pointer-events-none opacity-50"
-                    : ""
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-        <Select
-          value={String(limit)}
-          onValueChange={(value) => {
-            setLimit(Number(value));
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-24">
-            <SelectValue />
-          </SelectTrigger>
-
-          <SelectContent>
-            <SelectItem value="10">10</SelectItem>
-            <SelectItem value="20">20</SelectItem>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
-          </SelectContent>
-        </Select>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );

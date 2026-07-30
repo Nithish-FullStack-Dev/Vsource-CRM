@@ -1,5 +1,6 @@
-// app\(dashboard)\student-profiles\[id]\StudentComplianceStep.tsx
+// app/(dashboard)/student-profiles/[id]/StudentComplianceStep.tsx
 "use client";
+
 import {
   FileText,
   CreditCard,
@@ -8,13 +9,9 @@ import {
   FileSignature,
   FolderOpen,
 } from "lucide-react";
+
 const tabs = [
-  {
-    key: "info",
-    label: "Basic",
-    icon: User,
-    color: "text-red-500",
-  },
+  { key: "info", label: "Basic", icon: User, color: "text-red-500" },
   {
     key: "documents",
     label: "Documents",
@@ -46,7 +43,9 @@ const tabs = [
     color: "text-rose-500",
   },
 ] as const;
+
 type StudentDetailTab = (typeof tabs)[number]["key"];
+
 type ComplianceStep = {
   key:
     | "walkin"
@@ -63,46 +62,16 @@ type ComplianceStep = {
 };
 
 const COMPLIANCE_STEPS: ComplianceStep[] = [
-  {
-    key: "walkin",
-    label: "Walkin",
-  },
-  {
-    key: "document",
-    label: "Document",
-  },
-  {
-    key: "applications",
-    label: "Applications",
-  },
-  {
-    key: "offer_received",
-    label: "Offer Received",
-  },
-  {
-    key: "loan",
-    label: "Loan",
-  },
-  {
-    key: "disbursed",
-    label: "Disbursed",
-  },
-  {
-    key: "deposit",
-    label: "Deposit",
-  },
-  {
-    key: "ihs",
-    label: "IHS",
-  },
-  {
-    key: "cas",
-    label: "CAS",
-  },
-  {
-    key: "visa_approved",
-    label: "Visa Approved",
-  },
+  { key: "walkin", label: "Walkin" },
+  { key: "document", label: "Document" },
+  { key: "applications", label: "Applications" },
+  { key: "offer_received", label: "Offer Received" },
+  { key: "loan", label: "Loan" },
+  { key: "disbursed", label: "Disbursed" },
+  { key: "deposit", label: "Deposit" },
+  { key: "ihs", label: "IHS" },
+  { key: "cas", label: "CAS" },
+  { key: "visa_approved", label: "Visa Approved" },
 ];
 
 type StudentComplianceStepperProps = {
@@ -110,6 +79,7 @@ type StudentComplianceStepperProps = {
   completedIndexes: Set<number>;
   loanRequired: boolean;
 };
+
 export default function StudentComplianceStepper({
   currentIndex,
   completedIndexes,
@@ -127,10 +97,22 @@ export default function StudentComplianceStepper({
     : currentIndex <= 0
       ? 0
       : ((currentIndex + 0.5) / totalSteps) * 100;
+
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="overflow-x-auto">
-        <div className="w-full px-6 py-8">
+      {/* 
+        RESPONSIVE FIX:
+        Added custom scrollbar hiding utilities so it scrolls cleanly on mobile
+        without displaying a bulky scrollbar bar. 
+      */}
+      <div className="overflow-x-auto md:overflow-x-visible scroll-smooth">
+        {/* 
+          RESPONSIVE FIX: 
+          Added `min-w-[800px]` (or `min-w-max`). This forces the stepper to maintain 
+          its minimum structural width, triggering the horizontal scroll on small screens 
+          instead of squishing the circles and text together.
+        */}
+        <div className="w-full min-w-200 px-4 py-6 md:px-6 md:py-8">
           <div className="relative">
             {/* STEP LABELS */}
             <div
@@ -213,10 +195,8 @@ export default function StudentComplianceStepper({
                           <span className="text-xs font-black">✓</span>
                         ) : isCurrent ? (
                           <>
-                            <span className="absolute inset-[-8px] -z-10 animate-ping rounded-full bg-red-500/25" />
-
-                            <span className="absolute inset-[-7px] -z-10 rounded-full bg-red-500/15" />
-
+                            <span className="absolute -inset-2 -z-10 animate-ping rounded-full bg-red-500/25" />
+                            <span className="absolute -inset-2 -z-10 rounded-full bg-red-500/15" />
                             <span className="h-3 w-3 rounded-full bg-red-600" />
                           </>
                         ) : isCompleted ? (
@@ -230,7 +210,6 @@ export default function StudentComplianceStepper({
                           <span className="text-[10px] leading-none text-red-600">
                             ▲
                           </span>
-
                           <span className="mt-1 text-[9px] font-black uppercase tracking-widest text-red-600">
                             Current Stage
                           </span>
