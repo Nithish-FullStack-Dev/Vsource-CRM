@@ -499,7 +499,7 @@ export function StudentVisaProfileSection({
           setDialogOpen(true);
         }}
       >
-        <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto p-0">
+        <DialogContent className="max-h-[80vh] overflow-y-auto p-0 max-w-3xl [&>button]:hidden">
           <DialogHeader className="sticky top-0 border-b bg-background px-6 py-4">
             <div className="flex items-center justify-between gap-4">
               <div>

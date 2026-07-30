@@ -207,7 +207,7 @@ export default function StudentApplicationsSection({
     <div className="space-y-6">
       {/* Header */}
 
-      <div className="flex items-center justify-between">
+      <div className="flex md:flex-row flex-col gap-2 items-center justify-between">
         <div>
           <h3 className="text-xl font-black text-red-600">
             University Applications
@@ -455,7 +455,7 @@ export default function StudentApplicationsSection({
               className="group rounded-[30px] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden"
             >
               <CardContent className="p-6">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex md:flex-row flex-col items-start justify-between gap-4">
                   <div>
                     <h4 className="text-xl text-slate-900">
                       {app.university?.name ?? "-"}

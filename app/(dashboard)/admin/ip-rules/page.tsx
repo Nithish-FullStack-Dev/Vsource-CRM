@@ -180,7 +180,7 @@ export default function IpRulesPage() {
         <h2 className="font-semibold text-sm text-muted-foreground">
           Add / Block IP or Device Manually
         </h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid md:grid-cols-2 grid-cols-1 gap-3">
           <div>
             <Label>IP Address</Label>
             <Input
@@ -198,7 +198,7 @@ export default function IpRulesPage() {
             />
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid md:grid-cols-3 grid-cols-1 gap-3">
           <div>
             <Label>Label (optional)</Label>
             <Input
@@ -230,7 +230,11 @@ export default function IpRulesPage() {
             />
           </div>
         </div>
-        <Button onClick={addManualRule} disabled={savingManual || !ip} size="sm">
+        <Button
+          onClick={addManualRule}
+          disabled={savingManual || !ip}
+          size="sm"
+        >
           {savingManual ? "Saving..." : "Save Rule"}
         </Button>
       </div>
@@ -251,24 +255,28 @@ export default function IpRulesPage() {
 
         {rules.map((r) => {
           const expired = isExpired(r);
+
           return (
             <div
               key={r.id}
-              className="flex items-center justify-between border rounded-lg p-3 gap-3"
+              className="flex flex-col gap-4 rounded-lg border p-4 md:flex-row md:items-center md:justify-between"
             >
-              <div className="min-w-0">
-                <div className="font-medium">
+              {/* Details */}
+              <div className="min-w-0 flex-1">
+                <div className="break-all font-medium">
                   {r.ip}{" "}
                   {r.label && (
                     <span className="text-muted-foreground">({r.label})</span>
                   )}
                 </div>
+
                 {r.deviceFingerprint && (
-                  <div className="text-xs text-muted-foreground break-all">
+                  <div className="mt-1 break-all text-xs text-muted-foreground">
                     device: {r.deviceFingerprint.slice(0, 20)}...
                   </div>
                 )}
-                <div className="text-xs">
+
+                <div className="mt-2 text-xs">
                   <span
                     className={
                       r.status === "ALLOWED" && !expired
@@ -284,16 +292,19 @@ export default function IpRulesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              {/* Actions */}
+              <div className="flex w-full flex-wrap gap-2 md:w-auto md:flex-nowrap md:justify-end">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="flex-1 sm:flex-none"
                   onClick={() => toggleStatus(r)}
                 >
                   {r.status === "ALLOWED" ? "Block" : "Allow"}
                 </Button>
+
                 <select
-                  className="border rounded-md h-8 px-2 text-xs"
+                  className="h-8 flex-1 rounded-md border px-2 text-xs sm:flex-none"
                   defaultValue=""
                   onChange={(e) => {
                     const val = Number(e.target.value);
@@ -305,9 +316,11 @@ export default function IpRulesPage() {
                   <option value="60">1 hr</option>
                   <option value="180">3 hr</option>
                 </select>
+
                 <Button
                   variant="destructive"
                   size="sm"
+                  className="flex-1 sm:flex-none"
                   onClick={() => removeRule(r.id)}
                 >
                   Remove

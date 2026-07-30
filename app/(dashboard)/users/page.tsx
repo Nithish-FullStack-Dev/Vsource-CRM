@@ -59,25 +59,32 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Heading */}
+        <div className="w-full md:w-auto">
           <h1 className="text-2xl font-bold">User Management</h1>
-
           <p className="text-muted-foreground">Manage users and roles</p>
         </div>
 
-        <div className="relative w-80">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        {/* Right Controls */}
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center md:w-auto">
+          {/* Search */}
+          <div className="relative w-full sm:flex-1 md:w-80 md:flex-none">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
-          <Input
-            placeholder="Search users..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+            <Input
+              placeholder="Search users..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Add User Button */}
+          <div className="w-full sm:w-auto">
+            <AddUserSheet />
+          </div>
         </div>
-
-        <AddUserSheet />
       </div>
 
       <UserTable
