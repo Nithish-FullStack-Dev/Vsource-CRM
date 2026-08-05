@@ -63,11 +63,7 @@ export async function PATCH(
     const isConverting =
       body.status === "VISA_APPLICATION" && !existingLead.isConverted;
 
-    const primaryCounselor =
-      existingLead.counselors.find((item) => item.isPrimary) ??
-      existingLead.counselors[0];
-
-    const studentCounselorId = primaryCounselor?.counselorId ?? currentUser.id;
+    const studentCounselorId = currentUser.id;
 
     const transactionResult = await db.$transaction(
       async (tx: Prisma.TransactionClient) => {
@@ -81,6 +77,7 @@ export async function PATCH(
             ...(body.status === "VISA_APPLICATION"
               ? {
                   isConverted: true,
+                  convertedById: currentUser.id,
                   convertedAt:
                     existingLead.isConverted && !isConverting
                       ? undefined
