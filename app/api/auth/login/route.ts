@@ -6,7 +6,10 @@ import { getClientIp } from "@/lib/get-client-ip";
 import { sendMaliciousLoginAlert } from "@/lib/mailer";
 import { ROLES } from "@/lib/roles";
 
-const IP_CHECK_EXEMPT_ROLES: string[] = [ROLES.SUPER_ADMIN, ROLES.DIRECTOR];
+const IP_CHECK_EXEMPT_ROLES: string[] = [
+  ROLES.SUPER_ADMIN,
+  ROLES.DIRECTOR,
+];
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +19,7 @@ export async function POST(req: Request) {
     const userAgent = req.headers.get("user-agent") ?? undefined;
     const now = new Date();
 
-    // 1. Validate credentials FIRST so we know the role before applying IP/device rules
+    // Validate credentials first
     const result = await validateUser(email, password);
 
     if (result.status === "blocked") {
@@ -25,7 +28,7 @@ export async function POST(req: Request) {
           message:
             "Your account has been blocked due to multiple failed login attempts. Please contact an administrator.",
         },
-        { status: 403 },
+        { status: 403 }
       );
     }
 
@@ -34,28 +37,34 @@ export async function POST(req: Request) {
         {
           message:
             result.attemptsLeft !== undefined
-              ? `Invalid credentials. ${result.attemptsLeft} attempt${
-                  result.attemptsLeft === 1 ? "" : "s"
-                } remaining before your account is blocked.`
+              ? `Invalid credentials. ${result.attemptsLeft} attempt${result.attemptsLeft === 1 ? "" : "s"
+              } remaining before your account is blocked.`
               : "Invalid credentials",
           attemptsLeft: result.attemptsLeft,
         },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
     const user = result.user;
     const isExemptRole = IP_CHECK_EXEMPT_ROLES.includes(user.role.name);
 
-    // 2. Apply IP/device checks only for non-exempt roles
     if (!isExemptRole) {
-      // Hard block: explicit IP-level ban
+      // ------------------------------------------------------------------
+      // 1. Hard Block (Highest Priority)
+      // ------------------------------------------------------------------
+
       const ipBlockRule = await prisma.ipRule.findFirst({
-        where: { ip, deviceFingerprint: null, status: "BLOCKED" },
+        where: {
+          ip,
+          deviceFingerprint: null,
+          status: "BLOCKED",
+        },
       });
 
       const ipIsHardBlocked =
-        ipBlockRule && (!ipBlockRule.expiresAt || ipBlockRule.expiresAt > now);
+        !!ipBlockRule &&
+        (!ipBlockRule.expiresAt || ipBlockRule.expiresAt > now);
 
       if (ipIsHardBlocked) {
         await prisma.loginIpLog.create({
@@ -68,12 +77,16 @@ export async function POST(req: Request) {
           },
         });
 
-        await sendMaliciousLoginAlert({
-          ip,
-          userEmail: email,
-          userAgent,
-          reason: ipBlockRule.reason ?? "IP explicitly blocked",
-        });
+        try {
+          await sendMaliciousLoginAlert({
+            ip,
+            userEmail: email,
+            userAgent,
+            reason: ipBlockRule.reason ?? "IP explicitly blocked",
+          });
+        } catch (err) {
+          console.error("Failed to send alert email:", err);
+        }
 
         return NextResponse.json(
           { message: "Access denied from this IP address." },
@@ -81,25 +94,62 @@ export async function POST(req: Request) {
         );
       }
 
-      // Primary check: known & allowed device?
-      const deviceRule = deviceFingerprint
-        ? await prisma.ipRule.findFirst({
-            where: { deviceFingerprint, status: "ALLOWED" },
+      // ------------------------------------------------------------------
+      // 2. Fetch Allow Rules
+      // ------------------------------------------------------------------
+
+      const [ipAllowRule, deviceAllowRule] = await Promise.all([
+        prisma.ipRule.findFirst({
+          where: {
+            ip,
+            deviceFingerprint: null,
+            status: "ALLOWED",
+          },
+        }),
+
+        deviceFingerprint
+          ? prisma.ipRule.findFirst({
+            where: {
+              ip,
+              deviceFingerprint,
+              status: "ALLOWED",
+            },
           })
-        : null;
+          : Promise.resolve(null),
+      ]);
+
+      const ipIsAllowed =
+        !!ipAllowRule &&
+        (!ipAllowRule.expiresAt || ipAllowRule.expiresAt > now);
 
       const deviceIsAllowed =
-        deviceRule && (!deviceRule.expiresAt || deviceRule.expiresAt > now);
+        !!deviceAllowRule &&
+        (!deviceAllowRule.expiresAt || deviceAllowRule.expiresAt > now);
 
-      if (!deviceIsAllowed) {
-        // Unknown device -> block, and register it as a pending/blocked
-        // rule so it shows up in the admin panel for one-click approval.
+      const hasFingerprint =
+        typeof deviceFingerprint === "string" &&
+        deviceFingerprint.trim().length > 0;
+
+      // ------------------------------------------------------------------
+      // PRIORITY:
+      // 1. Allowed IP + fingerprint
+      // 2. Allowed device
+      // ------------------------------------------------------------------
+
+      const isAllowed =
+        (ipIsAllowed && hasFingerprint) ||
+        deviceIsAllowed;
+
+      if (!isAllowed) {
         if (deviceFingerprint) {
           await prisma.ipRule.upsert({
             where: {
-              ip_deviceFingerprint: { ip, deviceFingerprint },
+              ip_deviceFingerprint: {
+                ip,
+                deviceFingerprint,
+              },
             },
-            update: {}, // don't overwrite if admin already actioned it
+            update: {},
             create: {
               ip,
               deviceFingerprint,
@@ -128,13 +178,18 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json(
-          { message: "This device is not authorized to sign in." },
-          { status: 403 },
+          {
+            message: "This device is not authorized to sign in.",
+          },
+          {
+            status: 403,
+          }
         );
       }
 
-      // Known device, but check if this IP is new for it (soft flag only)
-      const ipMatchesKnownDevice = deviceRule.ip === ip;
+      // ------------------------------------------------------------------
+      // Login Allowed
+      // ------------------------------------------------------------------
 
       await prisma.loginIpLog.create({
         data: {
@@ -146,17 +201,26 @@ export async function POST(req: Request) {
         },
       });
 
-      if (!ipMatchesKnownDevice) {
+      // Optional:
+      // Alert only if login was allowed by device rule but IP changed.
+      if (
+        deviceIsAllowed &&
+        deviceAllowRule &&
+        deviceAllowRule.ip !== ip
+      ) {
         await sendMaliciousLoginAlert({
           ip,
           userEmail: email,
           userAgent,
-          reason: "Known device logged in from a new/unrecognized IP",
+          reason: "Known device logged in from a new IP",
         });
       }
     }
 
-    // 3. Issue token (runs for both exempt and approved non-exempt logins)
+    // ------------------------------------------------------------------
+    // Issue JWT
+    // ------------------------------------------------------------------
+
     const token = await generateToken({
       id: user.id,
       email: user.email,
@@ -177,7 +241,16 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch {
-    return NextResponse.json({ message: "Login failed" }, { status: 500 });
+  } catch (error) {
+    console.error(error);
+
+    return NextResponse.json(
+      {
+        message: "Login failed",
+      },
+      {
+        status: 500,
+      }
+    );
   }
 }
