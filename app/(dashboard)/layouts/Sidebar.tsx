@@ -56,7 +56,7 @@ const items = [
     ],
   },
   {
-    moduleCode: "MBBS_LEADS",
+    moduleCode: "MBBS_Walkin",
     to: "/mbbs-leads",
     label: "MBBS Walkins",
     icon: Users,
@@ -241,7 +241,7 @@ export function Sidebar() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 space-y-0.5">
+        <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 space-y-0.5">
           {filteredItems.map((it) => {
             const active =
               pathname === it.to || pathname.startsWith(it.to + "/");
@@ -385,18 +385,18 @@ export function Sidebar() {
               >
                 {(pathname === "/blocked-users" ||
                   pathname.startsWith("/blocked-users/")) && (
-                    <motion.span
-                      layoutId="sidebar-active"
-                      className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary"
-                    />
-                  )}
+                  <motion.span
+                    layoutId="sidebar-active"
+                    className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary"
+                  />
+                )}
 
                 <ShieldAlert
                   className={cn(
                     "size-[18px] shrink-0",
                     (pathname === "/blocked-users" ||
                       pathname.startsWith("/blocked-users/")) &&
-                    "text-primary",
+                      "text-primary",
                   )}
                 />
 
@@ -418,18 +418,18 @@ export function Sidebar() {
               >
                 {(pathname === "/admin/ip-rules" ||
                   pathname.startsWith("/admin/ip-rules/")) && (
-                    <motion.span
-                      layoutId="sidebar-active"
-                      className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary"
-                    />
-                  )}
+                  <motion.span
+                    layoutId="sidebar-active"
+                    className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary"
+                  />
+                )}
 
                 <ShieldQuestion
                   className={cn(
                     "size-[18px] shrink-0",
                     (pathname === "/admin/ip-rules" ||
                       pathname.startsWith("/admin/ip-rules/")) &&
-                    "text-primary",
+                      "text-primary",
                   )}
                 />
 
@@ -440,17 +440,6 @@ export function Sidebar() {
             </div>
           )}
         </nav>
-
-        {!sidebarCollapsed && (
-          <div className="m-3 rounded-xl p-3 bg-(image:--gradient-soft) border border-border">
-            <div className="text-xs font-semibold text-foreground">
-              Need help?
-            </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">
-              Contact your branch admin or open the docs.
-            </div>
-          </div>
-        )}
       </aside>
     </>
   );

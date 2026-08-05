@@ -1,3 +1,4 @@
+// app\(dashboard)\loan-application\all\[id]\_components\DocumentsTab.tsx
 "use client";
 
 import {
@@ -122,7 +123,7 @@ function DocumentPreview({ record }: { record: LoanDocumentRecord }) {
         <img
           src={fileUrl}
           alt={fileName}
-          className="max-h-[430px] w-full object-contain"
+          className="max-h-[250px] sm:max-h-[430px] w-full object-contain"
         />
       </div>
     );
@@ -528,7 +529,7 @@ export function DocumentsTab({
 
   if (documentsQuery.isLoading) {
     return (
-      <div className="grid min-h-[720px] grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-[720px] xl:grid-cols-[420px_minmax(0,1fr)]">
+      <div className="grid gap-4 xl:h-[calc(100vh-120px)] xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="animate-pulse rounded-[28px] bg-slate-100 dark:bg-slate-900" />
         <div className="animate-pulse rounded-[28px] bg-slate-100 dark:bg-slate-900" />
       </div>
@@ -563,8 +564,8 @@ export function DocumentsTab({
 
   return (
     <div className="grid min-h-[720px] grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-[720px] xl:grid-cols-[420px_minmax(0,1fr)]">
-      <aside className="flex min-h-[520px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
-        <div className="border-b border-slate-200 p-4 dark:border-slate-800">
+      <aside className="flex max-h-[45vh] sm:max-h-[350px] flex-col overflow-hidden rounded-[28px] border bg-white shadow xl:max-h-none xl:h-full">
+        <div className="border-b border-slate-200 p-3 sm:p-4 dark:border-slate-800">
           <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
             <button
               type="button"
@@ -572,7 +573,7 @@ export function DocumentsTab({
                 setActiveTab("KYC");
                 setShowAddDocument(false);
               }}
-              className={`rounded-xl px-3 py-2.5 text-[11px] font-black transition ${
+              className={`rounded-xl px-2 py-2 sm:px-3 sm:py-2.5 text-[10px] sm:text-[11px] font-black transition ${
                 activeTab === "KYC"
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                   : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
@@ -587,7 +588,7 @@ export function DocumentsTab({
                 setActiveTab("OPTIONAL");
                 setShowAddDocument(false);
               }}
-              className={`rounded-xl px-3 py-2.5 text-[11px] font-black transition ${
+              className={`rounded-xl px-2 py-2 sm:px-3 sm:py-2.5 text-[10px] sm:text-[11px] font-black transition ${
                 activeTab === "OPTIONAL"
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                   : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
@@ -599,7 +600,7 @@ export function DocumentsTab({
             <button
               type="button"
               onClick={() => setActiveTab("OTHER")}
-              className={`rounded-xl px-3 py-2.5 text-[11px] font-black transition ${
+              className={`rounded-xl px-2 py-2 sm:px-3 sm:py-2.5 text-[10px] sm:text-[11px] font-black transition ${
                 activeTab === "OTHER"
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                   : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
@@ -693,8 +694,8 @@ export function DocumentsTab({
             </form>
           )}
         </div>
-        <div className="relative min-h-0 flex-1 overflow-y-auto px-7 pb-7 pt-2 [scrollbar-color:rgb(148_163_184)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 [&::-webkit-scrollbar-track]:bg-transparent">
-          <div className="pointer-events-none absolute bottom-8 left-[36px] top-3 w-px bg-slate-300 dark:bg-slate-700" />
+        <div className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-2 sm:px-4 sm:pb-4 xl:px-7 xl:pb-7 [scrollbar-color:rgb(148_163_184)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 [&::-webkit-scrollbar-track]:bg-transparent">
+          <div className="pointer-events-none absolute bottom-8 left-[32px] sm:left-[36px] top-3 w-px bg-slate-300 dark:bg-slate-700" />
 
           {!filteredChecklist.length ? (
             <div className="relative rounded-[22px] border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
@@ -724,48 +725,50 @@ export function DocumentsTab({
                     tabIndex={0}
                     onClick={() => selectChecklistItem(item)}
                     onKeyDown={(event) => handleCardKeyDown(event, item)}
-                    className={`group relative ml-0 flex min-h-[82px] cursor-pointer items-center gap-3 overflow-hidden rounded-[22px] border px-4 py-3.5 outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 ${
+                    className={`group relative ml-0 flex min-h-[66px] sm:min-h-[82px] cursor-pointer items-center gap-2 sm:gap-3 overflow-hidden rounded-[20px] sm:rounded-[22px] border px-2.5 py-2.5 sm:px-4 sm:py-3.5 outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 ${
                       isSelected
                         ? "border-emerald-200 bg-emerald-50/80 shadow-[0_8px_24px_rgba(16,185,129,0.10)] dark:border-emerald-900/70 dark:bg-emerald-950/20"
                         : "border-slate-300 bg-white hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-[0_10px_24px_rgba(15,23,42,0.10)] dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
                     }`}
                   >
                     <div
-                      className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                      className={`relative z-10 flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ${
                         isComplete
                           ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                           : "bg-slate-50 text-slate-400 dark:bg-slate-900"
                       }`}
                     >
-                      <FileText className="h-5 w-5" />
+                      <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
 
-                    <div className="relative z-10 min-w-0 flex-1 pr-1">
-                      <p className="truncate text-[14px] font-black text-slate-700 dark:text-slate-100">
+                    <div className="relative z-10 min-w-0 flex-1 pr-1 sm:pr-2">
+                      <p className="truncate text-[12px] sm:text-[14px] font-black text-slate-700 dark:text-slate-100">
                         {title}
                       </p>
 
                       {isComplete ? (
-                        <p className="mt-1 truncate text-[10px] text-slate-400">
+                        <p className="mt-0.5 sm:mt-1 truncate text-[9px] sm:text-[10px] text-slate-400">
                           {itemDocument?.originalFileName?.trim() ||
                             `${itemDocuments.length} uploaded file${
                               itemDocuments.length === 1 ? "" : "s"
                             }`}
                         </p>
                       ) : (
-                        <p className="mt-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.08em] text-rose-500">
-                          <AlertCircle className="h-3 w-3" />
-                          {item.category === "OPTIONAL"
-                            ? "Optional document"
-                            : item.category === "OTHER" && !item.required
-                              ? "Optional custom document"
-                              : "Missing checklist item"}
+                        <p className="mt-0.5 sm:mt-1 flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.05em] sm:tracking-[0.08em] text-rose-500">
+                          <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+                          <span className="truncate">
+                            {item.category === "OPTIONAL"
+                              ? "Optional document"
+                              : item.category === "OTHER" && !item.required
+                                ? "Optional custom document"
+                                : "Missing checklist item"}
+                          </span>
                         </p>
                       )}
                     </div>
 
                     {isComplete ? (
-                      <CheckCircle2 className="relative z-10 h-5 w-5 shrink-0 text-emerald-500 transition group-hover:opacity-0" />
+                      <CheckCircle2 className="relative z-10 h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-emerald-500 transition group-hover:opacity-0" />
                     ) : canUpdate(MODULES.LOAN_APPLICATION) ? (
                       <button
                         type="button"
@@ -774,10 +777,10 @@ export function DocumentsTab({
                           selectChecklistItem(item);
                           window.setTimeout(() => openFilePicker(null), 0);
                         }}
-                        className="relative z-10 inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-rose-500 px-4 py-2.5 text-[11px] font-black text-white shadow-sm transition hover:bg-rose-600"
+                        className="relative z-10 inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl bg-rose-500 px-3 py-2 sm:px-4 sm:py-2.5 text-[10px] sm:text-[11px] font-black text-white shadow-sm transition hover:bg-rose-600"
                       >
-                        <Upload className="h-3.5 w-3.5" />
-                        Upload
+                        <Upload className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <span>Upload</span>
                       </button>
                     ) : null}
                   </div>
@@ -813,32 +816,32 @@ export function DocumentsTab({
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-5 md:flex-row md:items-center md:justify-between dark:border-slate-800">
+            <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 sm:px-7 sm:py-5 md:flex-row md:items-center md:justify-between dark:border-slate-800">
               <div className="min-w-0">
-                <h3 className="mt-3 truncate text-[16px] font-black text-slate-800 dark:text-white">
+                <h3 className="mt-2 sm:mt-3 truncate text-[15px] sm:text-[16px] font-black text-slate-800 dark:text-white">
                   {activeFileName}
                 </h3>
 
-                <h3 className="truncate text-[16px] font-black text-slate-500 dark:text-white">
+                <h3 className="truncate text-[14px] sm:text-[16px] font-black text-slate-500 dark:text-white">
                   {remark}
                 </h3>
 
-                <p className="mt-1 text-[11px] text-slate-400">
+                <p className="mt-1 text-[10px] sm:text-[11px] text-slate-400">
                   {activeFileMeta}
                 </p>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex w-full flex-wrap items-center justify-between gap-2 md:w-auto">
                 <button
                   type="button"
                   onClick={() => goToChecklistItem(-1)}
                   disabled={selectedIndex <= 0}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
 
-                <div className="rounded-xl bg-slate-50 px-4 py-3 text-[11px] font-black text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                <div className="rounded-xl bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3 text-[10px] sm:text-[11px] font-black text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                   Checklist: {currentPosition} / {filteredChecklist.length}
                 </div>
 
@@ -849,23 +852,23 @@ export function DocumentsTab({
                     selectedIndex < 0 ||
                     selectedIndex >= filteredChecklist.length - 1
                   }
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-5 dark:bg-slate-900/40 md:p-7">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900/40 p-3 sm:p-5 md:p-7">
               <form
                 onSubmit={handleSubmit}
-                className="mx-auto flex min-h-[620px] max-w-[760px] flex-col rounded-[26px] border border-slate-300 bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.14)] dark:border-slate-700 dark:bg-slate-950 md:p-7"
+                className="mx-auto flex min-h-[500px] sm:min-h-[620px] w-full max-w-[760px] flex-col rounded-[20px] sm:rounded-[26px] border border-slate-300 bg-white p-4 sm:p-6 shadow-[0_12px_30px_rgba(15,23,42,0.14)] dark:border-slate-700 dark:bg-slate-950 md:p-7"
               >
                 {activeDocument ? (
                   <div className="group relative">
                     <DocumentPreview record={activeDocument} />
 
-                    <div className="absolute right-3 top-3 flex translate-y-1 items-center gap-2 rounded-xl border border-white/70 bg-white/90 p-1.5 opacity-0 shadow-lg backdrop-blur transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-950/90">
+                    <div className="absolute right-3 top-3 flex translate-y-1 items-center gap-2 rounded-xl border border-white/70 bg-white/90 p-1.5  shadow-lg backdrop-blur transition duration-200 group-hover:translate-y-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-950/90">
                       {activeFileUrl && (
                         <a
                           href={activeFileUrl}
@@ -900,15 +903,15 @@ export function DocumentsTab({
                   </div>
                 ) : (
                   <div className="text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
-                      <Upload className="h-6 w-6" />
+                    <div className="mx-auto flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
+                      <Upload className="h-5 w-5 sm:h-6 sm:w-6" />
                     </div>
 
-                    <h4 className="mt-4 text-[15px] font-black uppercase tracking-[0.02em] text-slate-700 dark:text-slate-200">
+                    <h4 className="mt-4 text-[13px] sm:text-[15px] font-black uppercase tracking-[0.02em] text-slate-700 dark:text-slate-200">
                       {selectedItem.name?.trim() || "Document"} File Pending
                     </h4>
 
-                    <p className="mt-1 text-[11px] text-slate-400">
+                    <p className="mt-1 text-[10px] sm:text-[11px] text-slate-400">
                       No official document attached. Please upload a PDF or
                       image.
                     </p>
@@ -939,40 +942,40 @@ export function DocumentsTab({
                         openFilePicker(activeDocument);
                       }
                     }}
-                    className={`mt-5 cursor-pointer rounded-[18px] border border-dashed px-5 py-6 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-red-500 ${
+                    className={`mt-5 cursor-pointer rounded-[18px] border border-dashed px-4 py-5 sm:px-5 sm:py-6 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-red-500 ${
                       isDragging
                         ? "border-red-500 bg-red-50 dark:bg-red-950/20"
                         : "border-slate-300 bg-slate-50 hover:border-red-300 hover:bg-red-50/50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-red-900 dark:hover:bg-red-950/10"
                     }`}
                   >
-                    <UploadCloud className="mx-auto h-6 w-6 text-slate-400" />
+                    <UploadCloud className="mx-auto h-5 w-5 sm:h-6 sm:w-6 text-slate-400" />
 
-                    <p className="mt-2 text-xs font-black text-slate-700 dark:text-slate-200">
+                    <p className="mt-2 text-[11px] sm:text-xs font-black text-slate-700 dark:text-slate-200">
                       {activeDocument
                         ? "Upload / Replace Device File here"
                         : "Upload / Attach Device File here"}
                     </p>
 
-                    <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                    <p className="mt-1 text-[8px] sm:text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                       PDF, JPG, PNG format
                     </p>
                   </div>
                 )}
 
                 {selectedFile && (
-                  <div className="mt-4 rounded-[18px] border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm dark:bg-slate-900 dark:text-emerald-400">
-                          <FileText className="h-5 w-5" />
+                  <div className="mt-4 rounded-[18px] border border-emerald-200 bg-emerald-50/70 p-3 sm:p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                    <div className="flex items-center justify-between gap-2 sm:gap-3">
+                      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                        <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm dark:bg-slate-900 dark:text-emerald-400">
+                          <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                         </div>
 
                         <div className="min-w-0">
-                          <p className="truncate text-xs font-black text-slate-700 dark:text-slate-200">
+                          <p className="truncate text-[11px] sm:text-xs font-black text-slate-700 dark:text-slate-200">
                             {selectedFile.name || "Selected document"}
                           </p>
 
-                          <p className="mt-1 text-[10px] text-slate-400">
+                          <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] text-slate-400">
                             {formatBytes(selectedFile.size)}
                           </p>
                         </div>
@@ -986,9 +989,9 @@ export function DocumentsTab({
                           if (fileInputRef.current)
                             fileInputRef.current.value = "";
                         }}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-white"
+                        className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-white"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </button>
                     </div>
 
@@ -998,14 +1001,14 @@ export function DocumentsTab({
                       maxLength={200}
                       rows={2}
                       placeholder="Remarks (optional)"
-                      className="mt-3 w-full resize-none rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-red-500 dark:border-emerald-900/60 dark:bg-slate-900 dark:text-slate-200"
+                      className="mt-3 w-full resize-none rounded-xl border border-emerald-200 bg-white px-3 py-2 sm:py-2.5 text-[11px] sm:text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-red-500 dark:border-emerald-900/60 dark:bg-slate-900 dark:text-slate-200"
                     />
 
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
                       <button
                         type="button"
                         onClick={clearUploadForm}
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[11px] sm:text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
                         Cancel
                       </button>
@@ -1013,16 +1016,16 @@ export function DocumentsTab({
                       <button
                         type="submit"
                         disabled={isSaving}
-                        className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl bg-rose-500 px-5 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex w-full sm:min-w-[170px] sm:w-auto items-center justify-center gap-2 rounded-xl bg-rose-500 px-5 py-2.5 text-[11px] sm:text-xs font-black text-white shadow-sm transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isSaving ? (
                           <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
                             Saving {progress}%
                           </>
                         ) : (
                           <>
-                            <UploadCloud className="h-4 w-4" />
+                            <UploadCloud className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             {editingDocument
                               ? "Replace Document"
                               : "Upload Document"}
@@ -1034,8 +1037,8 @@ export function DocumentsTab({
                 )}
 
                 {fileError && (
-                  <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 sm:px-4 sm:py-3 text-[11px] sm:text-xs font-semibold text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                     <span>{fileError}</span>
                   </div>
                 )}

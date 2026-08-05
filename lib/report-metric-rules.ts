@@ -1,3 +1,5 @@
+import { LOAN_STATUSES } from "@/lib/loan-application/constants";
+
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
 const WALK_IN_DROP_LOST = new Set([
@@ -25,15 +27,10 @@ const LEGACY_DROP_HOLD_DIF = new Set([
   "deferred",
 ]);
 
-const LOAN_APPROVED = new Set([
-  "approved",
-  "sanctioned",
-  "sanctioned_approved",
-  "deposit_received",
-  "partially_disbursed",
-  "fully_disbursed",
-  "disbursed",
-]);
+const APPROVED_LOAN_STATUS = LOAN_STATUSES.find(
+  (status) => status === "Approved",
+);
+
 
 export function normalizeReportValue(value: unknown): string {
   return String(value ?? "")
@@ -103,10 +100,12 @@ export function isVisaApproved(value: unknown): boolean {
   );
 }
 
-export function isLoanApproved(value: unknown, sanctionedAmount?: unknown): boolean {
+export function isLoanApproved(value: unknown): boolean {
+  if (!APPROVED_LOAN_STATUS) return false;
+
   return (
-    LOAN_APPROVED.has(normalizeReportValue(value)) ||
-    toReportNumber(sanctionedAmount) > 0
+    normalizeReportValue(value) ===
+    normalizeReportValue(APPROVED_LOAN_STATUS)
   );
 }
 

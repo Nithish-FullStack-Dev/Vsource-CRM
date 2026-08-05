@@ -1,3 +1,4 @@
+// app\(dashboard)\roles\page.tsx
 "use client";
 
 import ErrorState from "@/rbac/components/ErrorState";
@@ -36,9 +37,8 @@ export default function RolesPage() {
 
   if (rolesLoading || modulesLoading) {
     return (
-      <div className="grid h-full grid-cols-[300px_1fr] gap-6 p-6">
+      <div className="grid h-full grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 sm:gap-6 p-4 sm:p-6">
         <RoleSidebarSkeleton />
-
         <PermissionMatrixSkeleton />
       </div>
     );
@@ -46,7 +46,7 @@ export default function RolesPage() {
 
   if (rolesError || modulesError) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <ErrorState
           title="Failed to load RBAC"
           description="Please refresh and try again."
@@ -56,14 +56,24 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="grid h-full grid-cols-[300px_1fr] gap-6 p-6">
-      <RoleSidebar
-        roles={roles}
-        selectedRole={selectedRole}
-        onSelect={setSelectedRole}
-      />
+    <div className="grid h-full grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 sm:gap-6 p-4 sm:p-6">
+      {/* Sidebar hidden on mobile when a role is selected */}
+      <div className={`${selectedRole ? "hidden lg:block" : "block"}`}>
+        <RoleSidebar
+          roles={roles}
+          selectedRole={selectedRole}
+          onSelect={setSelectedRole}
+        />
+      </div>
 
-      <PermissionMatrix role={selectedRole} modules={modules} />
+      {/* Permission matrix hidden on mobile when no role is selected */}
+      <div className={`${!selectedRole ? "hidden lg:block" : "block"}`}>
+        <PermissionMatrix
+          role={selectedRole}
+          modules={modules}
+          onBack={() => setSelectedRole(null)}
+        />
+      </div>
     </div>
   );
 }

@@ -28,6 +28,9 @@ export const LOAN_STATUSES = [
   "Rejected",
 ] as const;
 
+export type LoanStatus =
+  (typeof LOAN_STATUSES)[number];
+
 export const PRIORITIES = ["Low", "Medium", "High", "Urgent"] as const;
 
 export const CIBIL_CONCERN_TYPES = [

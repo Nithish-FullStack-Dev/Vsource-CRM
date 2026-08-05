@@ -85,6 +85,7 @@ export type CoApplicant = {
 export type FollowUp = {
   id?: string;
   date?: string | Date | null;
+  followUpDate?: string | Date | null;
   nextFollowUp?: string | Date | null;
   type?: string | null;
   note?: string | null;

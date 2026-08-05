@@ -339,32 +339,32 @@ export function BanksTab({
       {rows.length === 0 ? (
         <EmptyState message="No bank or NBFC applications found." />
       ) : (
-        <DataTable
-          columns={[
-            "Bank / NBFC",
-            // "Application No",
-            "Application Date",
-            "Applied Amount",
-            // "Loan Type",
-            // "ROI",
-            // "Tenure",
-            "Status",
-            // "Remarks",
-            "Actions",
-          ]}
-          rows={rows.map((row, index) => (
-            <tr
-              key={row.id ?? index}
-              className="border-t dark:border-slate-800"
-            >
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <Building2 className="h-4 w-4" />
+        <div className="w-full max-sm:[&_table]:block max-sm:[&_thead]:hidden max-sm:[&_tbody]:block">
+          <DataTable
+            columns={[
+              "Bank / NBFC",
+              // "Application No",
+              "Application Date",
+              "Applied Amount",
+              // "Loan Type",
+              // "ROI",
+              // "Tenure",
+              "Status",
+              // "Remarks",
+              "Actions",
+            ]}
+            rows={rows.map((row, index) => (
+              <tr
+                key={row.id ?? index}
+                className="mb-4 flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:mb-0 sm:table-row sm:rounded-none sm:border-x-0 sm:border-b-0 sm:border-t sm:bg-transparent sm:p-0 sm:shadow-none dark:border-slate-800 dark:bg-slate-950 sm:dark:bg-transparent"
+              >
+                <td className="flex items-center gap-3 border-b border-slate-100 pb-3 sm:table-cell sm:border-0 sm:px-4 sm:py-3 sm:pb-3 dark:border-slate-800/60">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-8 sm:w-8 sm:rounded-md">
+                    <Building2 className="h-5 w-5 sm:h-4 sm:w-4" />
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-800 dark:text-slate-100">
+                    <p className="text-base font-bold text-slate-800 dark:text-slate-100 sm:text-sm sm:font-semibold">
                       {getBankName(row)}
                     </p>
 
@@ -374,83 +374,97 @@ export function BanksTab({
                       </p>
                     )} */}
                   </div>
-                </div>
-              </td>
+                </td>
 
-              {/* <td className="px-4 py-3 font-mono text-xs text-slate-500">
-                {row.applicationNo || "—"}
-              </td> */}
+                {/* <td className="flex items-center justify-between py-2 text-slate-500 sm:table-cell sm:px-4 sm:py-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 sm:hidden">App No</span>
+                  <span className="font-mono text-sm sm:text-xs">{row.applicationNo || "—"}</span>
+                </td> */}
 
-              <td className="px-4 py-3 text-slate-500">
-                {formatDate(row.applicationDate)}
-              </td>
+                <td className="flex items-center justify-between py-2.5 text-slate-500 sm:table-cell sm:px-4 sm:py-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 sm:hidden">
+                    Date
+                  </span>
+                  <span className="text-sm">
+                    {formatDate(row.applicationDate)}
+                  </span>
+                </td>
 
-              <td className="px-4 py-3 text-slate-500">
-                {formatINR(
-                  row.appliedAmount != null
-                    ? Number(row.appliedAmount)
-                    : row.appliedAmount,
-                )}
-              </td>
+                <td className="flex items-center justify-between py-2.5 text-slate-500 sm:table-cell sm:px-4 sm:py-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 sm:hidden">
+                    Amount
+                  </span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200 sm:font-normal sm:text-slate-500">
+                    {formatINR(
+                      row.appliedAmount != null
+                        ? Number(row.appliedAmount)
+                        : row.appliedAmount,
+                    )}
+                  </span>
+                </td>
 
-              {/* <td className="px-4 py-3 text-slate-500">
-                {row.loanType || "—"}
-              </td>
+                {/* <td className="flex items-center justify-between py-2 text-slate-500 sm:table-cell sm:px-4 sm:py-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 sm:hidden">Type</span>
+                  <span>{row.loanType || "—"}</span>
+                </td>
 
-              <td className="px-4 py-3 text-slate-500">
-                {row.roi !== null && row.roi !== undefined
-                  ? `${Number(row.roi).toFixed(2)}%`
-                  : "—"}
-              </td>
+                <td className="flex items-center justify-between py-2 text-slate-500 sm:table-cell sm:px-4 sm:py-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 sm:hidden">ROI</span>
+                  <span>{row.roi !== null && row.roi !== undefined ? `${Number(row.roi).toFixed(2)}%` : "—"}</span>
+                </td>
 
-              <td className="px-4 py-3 text-slate-500">
-                {row.tenure !== null && row.tenure !== undefined
-                  ? `${row.tenure} months`
-                  : "—"}
-              </td> */}
+                <td className="flex items-center justify-between py-2 text-slate-500 sm:table-cell sm:px-4 sm:py-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 sm:hidden">Tenure</span>
+                  <span>{row.tenure !== null && row.tenure !== undefined ? `${row.tenure} months` : "—"}</span>
+                </td> */}
 
-              <td className="px-4 py-3">
-                <StatusBadge status={row.status} />
-              </td>
+                <td className="flex items-center justify-between pt-2.5 sm:table-cell sm:px-4 sm:py-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 sm:hidden">
+                    Status
+                  </span>
+                  <StatusBadge status={row.status} />
+                </td>
 
-              {/* <td className="max-w-[240px] px-4 py-3 text-slate-500">
-                <span className="line-clamp-2" title={row.remarks ?? undefined}>
-                  {row.remarks || "—"}
-                </span>
-              </td> */}
+                {/* <td className="flex items-center justify-between py-2 text-slate-500 sm:table-cell sm:px-4 sm:py-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 sm:hidden">Remarks</span>
+                  <span className="line-clamp-2 max-w-[200px] text-right sm:max-w-[240px] sm:text-left" title={row.remarks ?? undefined}>
+                    {row.remarks || "—"}
+                  </span>
+                </td> */}
 
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  {canUpdate(MODULES.LOAN_APPLICATION) && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8"
-                      onClick={() => openEditDialog(row)}
-                      aria-label="Edit bank application"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  )}
+                <td className="mt-3 flex items-center justify-end border-t border-slate-100 pt-3 sm:mt-0 sm:table-cell sm:border-0 sm:px-4 sm:py-3 sm:pt-3 dark:border-slate-800/60">
+                  <div className="flex items-center gap-2">
+                    {canUpdate(MODULES.LOAN_APPLICATION) && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-10 w-10 sm:h-8 sm:w-8 rounded-xl sm:rounded-md"
+                        onClick={() => openEditDialog(row)}
+                        aria-label="Edit bank application"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
 
-                  {canDelete(MODULES.LOAN_APPLICATION) && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => setDeletingApplication(row)}
-                      aria-label="Delete bank application"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        />
+                    {canDelete(MODULES.LOAN_APPLICATION) && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-10 w-10 sm:h-8 sm:w-8 rounded-xl sm:rounded-md text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setDeletingApplication(row)}
+                        aria-label="Delete bank application"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          />
+        </div>
       )}
 
       <Dialog
