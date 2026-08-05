@@ -234,73 +234,74 @@ export default function LoanApplicationsPage() {
         </div>
 
         <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-          {/* Filters Area */}
-          <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="flex h-10 w-full flex-1 items-center gap-2 rounded-md border bg-background px-3 sm:h-9 sm:w-auto sm:min-w-[240px]">
-              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search name, application ID, mobile, email..."
-                className="h-full w-full border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
-              />
-            </div>
+       {/* Filters */}
+<div className="border-b p-4">
+  <div className="flex flex-col gap-4">
+    {/* Search */}
+    <div className="w-full">
+      <div className="flex h-11 items-center rounded-lg border bg-background px-3">
+        <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-2">
-              <div className="w-full">
-                <FilterSelect
-                  value={cat}
-                  onChange={upd(setCat)}
-                  placeholder="Applicant Category"
-                  options={APPLICANT_CATEGORIES}
-                />
-              </div>
-              <div className="w-full">
-                <FilterSelect
-                  value={loan}
-                  onChange={upd(setLoan)}
-                  placeholder="Loan Category"
-                  options={LOAN_CATEGORIES}
-                />
-              </div>
-              <div className="w-full">
-                <FilterSelect
-                  value={status}
-                  onChange={upd(setStatus)}
-                  placeholder="Status"
-                  options={LOAN_STATUSES}
-                />
-              </div>
-              <div className="w-full">
-                <FilterSelect
-                  value={user}
-                  onChange={upd(setUser)}
-                  placeholder="Assignee"
-                  options={users}
-                />
-              </div>
-              <div className="w-full">
-                <FilterSelect
-                  value={b}
-                  onChange={upd(setB)}
-                  placeholder="Bank / NBFC"
-                  options={banks}
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clear}
-                className="h-10 w-full lg:h-9 lg:w-auto"
-              >
-                <Filter className="mr-2 h-4 w-4" />
-                Clear
-              </Button>
-            </div>
-          </div>
+        <Input
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPage(1);
+          }}
+          placeholder="Search name, application ID, mobile, email..."
+          className="h-full border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+        />
+      </div>
+    </div>
+
+    {/* Filters */}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <FilterSelect
+        value={cat}
+        onChange={upd(setCat)}
+        placeholder="Applicant Category"
+        options={APPLICANT_CATEGORIES}
+      />
+
+      <FilterSelect
+        value={loan}
+        onChange={upd(setLoan)}
+        placeholder="Loan Category"
+        options={LOAN_CATEGORIES}
+      />
+
+      <FilterSelect
+        value={status}
+        onChange={upd(setStatus)}
+        placeholder="Status"
+        options={LOAN_STATUSES}
+      />
+
+      <FilterSelect
+        value={user}
+        onChange={upd(setUser)}
+        placeholder="Assignee"
+        options={users}
+      />
+
+      <FilterSelect
+        value={b}
+        onChange={upd(setB)}
+        placeholder="Bank / NBFC"
+        options={banks}
+      />
+
+      <Button
+        variant="outline"
+        onClick={clear}
+        className="h-10 w-full"
+      >
+        <Filter className="mr-2 h-4 w-4" />
+        Clear
+      </Button>
+    </div>
+  </div>
+</div>
 
           {/* ======================================================== */}
           {/* MOBILE VIEW: Cards (Shown on screens smaller than `md`)  */}
