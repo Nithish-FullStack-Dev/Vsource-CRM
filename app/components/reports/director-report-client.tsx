@@ -223,7 +223,7 @@ function getMonthYearKey(value: string): string | null {
     return `month:${yearMonthMatch[1]}-${yearMonthMatch[2].padStart(2, "0")}`;
   }
   const monthYearMatch = normalized.match(
-    /\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\b.*?\b(20\d{2})\b/
+    /\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\b.*?\b(20\d{2})\b/,
   );
   if (monthYearMatch) {
     const month = MONTH_LOOKUP[monthYearMatch[1]];
@@ -232,7 +232,7 @@ function getMonthYearKey(value: string): string | null {
     }
   }
   const yearThenMonthMatch = normalized.match(
-    /\b(20\d{2})\b.*?\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\b/
+    /\b(20\d{2})\b.*?\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\b/,
   );
   if (yearThenMonthMatch) {
     const month = MONTH_LOOKUP[yearThenMonthMatch[2]];
@@ -244,9 +244,7 @@ function getMonthYearKey(value: string): string | null {
 }
 
 function getIntakeDisplayName(row: DirectorReportRow): string {
-  return (
-    row.intakeName?.trim() || row.periodLabel?.trim() || "Unknown Intake"
-  );
+  return row.intakeName?.trim() || row.periodLabel?.trim() || "Unknown Intake";
 }
 
 function getIntakeGroupKey(row: DirectorReportRow): string {
@@ -306,13 +304,10 @@ function getRowMetricScore(row: DirectorReportRow): number {
 function keepBestRow(
   map: Map<string, DirectorReportRow>,
   key: string,
-  candidate: DirectorReportRow
+  candidate: DirectorReportRow,
 ) {
   const existing = map.get(key);
-  if (
-    !existing ||
-    getRowMetricScore(candidate) > getRowMetricScore(existing)
-  ) {
+  if (!existing || getRowMetricScore(candidate) > getRowMetricScore(existing)) {
     map.set(key, candidate);
   }
 }
@@ -404,7 +399,7 @@ function calculatePercentage(part: number, whole: number): number {
 
 function sumDirectorRows(
   rows: DirectorReportRow[],
-  fallbackName: string
+  fallbackName: string,
 ): DirectorReportRow {
   const total = createEmptyDirectorRow(fallbackName);
   if (rows.length === 0) {
@@ -430,34 +425,34 @@ function sumDirectorRows(
     }
   }
   total.leadNumbers = [...leadNumbers].sort((left, right) =>
-    left.localeCompare(right, undefined, { numeric: true })
+    left.localeCompare(right, undefined, { numeric: true }),
   );
   total.leadToStudentConversionPercentage = calculatePercentage(
     total.applications,
-    total.walkIns
+    total.walkIns,
   );
   total.universityApplicationConversionPercentage = calculatePercentage(
     total.universityApplications,
-    total.applications
+    total.applications,
   );
   total.visaConversionPercentage = calculatePercentage(
     total.visaApproved,
-    total.applications
+    total.applications,
   );
   total.loanConversionPercentage = calculatePercentage(
     total.loanApproved,
-    total.loanApplications
+    total.loanApplications,
   );
   total.targetCompletionPercentage = calculatePercentage(
     total.achieved,
-    total.target
+    total.target,
   );
   return total;
 }
 
 function createMissingBranchTotals(
   rows: DirectorReportRow[],
-  existingTotals: DirectorReportRow[]
+  existingTotals: DirectorReportRow[],
 ): DirectorReportRow[] {
   const totalMap = new Map<string, DirectorReportRow>();
   for (const total of existingTotals) {
@@ -477,7 +472,7 @@ function createMissingBranchTotals(
     const firstRow = branchRows[0];
     const calculated = sumDirectorRows(
       branchRows,
-      firstRow.branchName || "Unknown Branch"
+      firstRow.branchName || "Unknown Branch",
     );
     calculated.branchId = firstRow.branchId;
     calculated.branchName = firstRow.branchName || "Unknown Branch";
@@ -486,18 +481,18 @@ function createMissingBranchTotals(
     totalMap.set(branchKey, calculated);
   }
   return Array.from(totalMap.values()).sort((left, right) =>
-    left.branchName.localeCompare(right.branchName)
+    left.branchName.localeCompare(right.branchName),
   );
 }
 
 async function fetchDirectorReport(
-  filters: DirectorReportFilters
+  filters: DirectorReportFilters,
 ): Promise<DirectorReportData> {
   const response = await fetch(
     `/api/reports/directors?${queryString(filters)}`,
     {
       cache: "no-store",
-    }
+    },
   );
   const payload = (await response.json().catch(() => null)) as
     | ApiResponse<DirectorReportData>
@@ -507,7 +502,7 @@ async function fetchDirectorReport(
     throw new Error(
       payload && "message" in payload && payload.message
         ? payload.message
-        : "Unable to fetch Directors Report"
+        : "Unable to fetch Directors Report",
     );
   }
   if (!payload) {
@@ -596,13 +591,12 @@ function ExcelReportTable({
     }
     for (const row of rows) {
       const key = row.branchId || normalizeText(row.branchName);
-      const current =
-        map.get(key) ?? { key, rows: [], total: row };
+      const current = map.get(key) ?? { key, rows: [], total: row };
       current.rows.push(row);
       map.set(key, current);
     }
     return Array.from(map.values()).sort((left, right) =>
-      left.total.branchName.localeCompare(right.total.branchName)
+      left.total.branchName.localeCompare(right.total.branchName),
     );
   }, [rows, totals.branchRows]);
 
@@ -759,10 +753,7 @@ function ExcelReportTable({
                             key={`total-${group.key}-${String(column.key)}`}
                             className="border-b border-border/50 px-2 py-2 text-center tabular-nums text-foreground"
                           >
-                            {formatValue(
-                              group.total[column.key],
-                              column.type
-                            )}
+                            {formatValue(group.total[column.key], column.type)}
                           </td>
                         ))}
                       </tr>
@@ -790,7 +781,7 @@ function comparisonTone(value: number): string {
 
 function formatComparisonValue(
   value: number,
-  type: DirectorReportComparisonRow["valueType"]
+  type: DirectorReportComparisonRow["valueType"],
 ): string {
   if (type === "currency") {
     return currencyFormat.format(value);
@@ -874,14 +865,14 @@ function ComparisonTable({
                     </td>
                     <td
                       className={`px-4 py-3 text-right font-semibold tabular-nums ${comparisonTone(
-                        row.difference
+                        row.difference,
                       )}`}
                     >
                       {formatComparisonValue(row.difference, row.valueType)}
                     </td>
                     <td
                       className={`px-4 py-3 text-right font-semibold tabular-nums ${comparisonTone(
-                        row.changePercentage
+                        row.changePercentage,
                       )}`}
                     >
                       <span className="inline-flex items-center justify-end gap-1.5">
@@ -906,12 +897,14 @@ function ComparisonTable({
 
 export default function DirectorReportClient() {
   const [appliedFilters, setAppliedFilters] = useState<DirectorReportFilters>(
-    DEFAULT_DIRECTOR_REPORT_FILTERS
+    DEFAULT_DIRECTOR_REPORT_FILTERS,
   );
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const [showScrollToTop, setShowScrollToTop] = useState(false);
-  const [activeHash, setActiveHash] = useState("#today-report");
+  const [activeHash, setActiveHash] = useState(
+    window.location.hash || "#today-report",
+  );
 
   useEffect(() => {
     const handleScroll = () => setShowScrollToTop(window.scrollY > 500);
@@ -951,11 +944,11 @@ export default function DirectorReportClient() {
           timeZone: "Asia/Kolkata",
           month: "long",
           year: "numeric",
-        }).format(new Date())
+        }).format(new Date()),
       );
     const groupMap = new Map<string, MutableIntakeGroup>();
     const getOrCreateGroup = (
-      row: DirectorReportRow
+      row: DirectorReportRow,
     ): MutableIntakeGroup | null => {
       const displayName = getIntakeDisplayName(row);
       const key = getIntakeGroupKey(row);
@@ -1003,12 +996,11 @@ export default function DirectorReportClient() {
         const rows = [...group.rowMap.values()].sort(
           (left, right) =>
             left.branchName.localeCompare(right.branchName) ||
-            left.counselorName.localeCompare(right.counselorName)
+            left.counselorName.localeCompare(right.counselorName),
         );
-        const branchTotals = createMissingBranchTotals(
-          rows,
-          [...group.branchTotalMap.values()]
-        );
+        const branchTotals = createMissingBranchTotals(rows, [
+          ...group.branchTotalMap.values(),
+        ]);
         return {
           key: group.key,
           name: group.name,
@@ -1018,7 +1010,7 @@ export default function DirectorReportClient() {
       })
       .filter((group) => group.rows.length > 0 || group.branchTotals.length > 0)
       .sort((left, right) =>
-        left.name.localeCompare(right.name, undefined, { numeric: true })
+        left.name.localeCompare(right.name, undefined, { numeric: true }),
       );
   }, [appliedFilters.intakeId, data]);
 
@@ -1028,14 +1020,14 @@ export default function DirectorReportClient() {
       setExportError("");
       const response = await fetch(
         `/api/reports/directors/export?${queryString(appliedFilters)}`,
-        { cache: "no-store" }
+        { cache: "no-store" },
       );
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
           message?: string;
         } | null;
         throw new Error(
-          payload?.message ?? "Unable to export Directors Report"
+          payload?.message ?? "Unable to export Directors Report",
         );
       }
       const blob = await response.blob();
@@ -1056,7 +1048,7 @@ export default function DirectorReportClient() {
       URL.revokeObjectURL(url);
     } catch (error) {
       setExportError(
-        error instanceof Error ? error.message : "Unable to export report"
+        error instanceof Error ? error.message : "Unable to export report",
       );
     } finally {
       setExporting(false);
@@ -1193,10 +1185,19 @@ export default function DirectorReportClient() {
                     <a
                       key={href}
                       href={href}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        window.history.pushState(null, "", href);
-                        window.dispatchEvent(new Event("hashchange"));
+                      onClick={(e) => {
+                        e.preventDefault();
+
+                        const element = document.querySelector(href);
+
+                        if (element) {
+                          window.history.pushState(null, "", href);
+                          setActiveHash(href);
+                          element.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                        }
                       }}
                       className={`rounded px-3 py-2 text-xs font-bold uppercase tracking-wider transition-colors duration-200 sm:px-4 ${
                         isActive
@@ -1265,7 +1266,7 @@ export default function DirectorReportClient() {
                   {intakes.map((intake, index) => {
                     const grandTotal = sumDirectorRows(
                       intake.branchTotals,
-                      "Grand Total"
+                      "Grand Total",
                     );
                     grandTotal.intakeName = intake.name;
                     return (

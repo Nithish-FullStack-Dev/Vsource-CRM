@@ -174,28 +174,28 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="relative">
                   <Label htmlFor="password">Password:</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={show ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="pr-10"
+                    />
 
-                  <Input
-                    id="password"
-                    type={show ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="pr-10"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShow((s) => !s)}
-                    className="absolute right-3 top-[70%] -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {show ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-
+                    <button
+                      type="button"
+                      onClick={() => setShow((s) => !s)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {show ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                   {error && (
                     <p className="mt-1 text-sm text-red-500">{error}</p>
                   )}
