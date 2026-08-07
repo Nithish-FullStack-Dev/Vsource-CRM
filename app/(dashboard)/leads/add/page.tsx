@@ -739,7 +739,7 @@ export default function AddLeadPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Assign Counsellor</Label>
+                        <Label>Assign User</Label>
 
                         <Controller
                           control={control}

@@ -1490,6 +1490,17 @@ export default function AddLoanApplicationPage() {
                 />
 
                 <Text
+                  name="requiredLoanAmount"
+                  label="Required Loan Amount (₹)"
+                  required
+                  type="number"
+                  placeholder="1000000"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                />
+
+                <Text
                   name="altMobile"
                   label="Alternate Mobile"
                   type="tel"
@@ -2079,7 +2090,7 @@ export default function AddLoanApplicationPage() {
                     />
                   </Section>
 
-                  <Section
+                  {/*  <Section
                     title="Financial Requirement"
                     icon={<IndianRupee className="h-5 w-5 text-emerald-500" />}
                   >
@@ -2128,15 +2139,7 @@ export default function AddLoanApplicationPage() {
                       step="0.01"
                     />
 
-                    <Text
-                      name="requiredLoanAmount"
-                      label="Required Loan Amount (₹)"
-                      required
-                      type="number"
-                      inputMode="decimal"
-                      min={0}
-                      step="0.01"
-                    />
+                    
 
                     <SelectField
                       name="loanPreference"
@@ -2149,7 +2152,7 @@ export default function AddLoanApplicationPage() {
                       label="Collateral Available"
                       options={toOptions(YES_NO_OPTIONS)}
                     />
-                  </Section>
+                  </Section>*/}
                 </>
               )}
               {/* PERSONAL LOAN */}

@@ -32,6 +32,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 type DashboardPeriod = "today" | "week" | "month" | "year";
 
@@ -421,44 +427,6 @@ export default function Dashboard() {
 
       <div className="space-y-5 sm:space-y-6">
         <section>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-            {kpis.map((kpi, index) => (
-              <KpiCard key={kpi.label} index={index} {...kpi} />
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <Card className="overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 border-b px-4 py-4 sm:px-5 lg:px-6">
-              <div className="min-w-0">
-                <CardTitle className="text-base">
-                  Master Daily Tracker
-                </CardTitle>
-
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {selectedPeriodLabel} application workflow
-                </p>
-              </div>
-
-              <Badge variant="secondary" className="shrink-0">
-                {formatNumber(data.summary.students)} Applications
-              </Badge>
-            </CardHeader>
-
-            <CardContent className="p-3 sm:p-4 lg:p-5">
-              <div className="overflow-x-auto">
-                <div className="grid min-w-[1100px] grid-cols-5 gap-3 lg:gap-4">
-                  {data.masterTracker.map((column) => (
-                    <TrackerColumn key={column.key} column={column} />
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        <section>
           <Card className="overflow-hidden">
             <CardHeader className="border-b px-4 py-4 sm:px-5 lg:px-6">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -571,6 +539,71 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </section>
+
+        <section>
+          <Accordion
+            type="single"
+            collapsible
+            defaultValue=""
+            className="w-full"
+          >
+            <AccordionItem
+              value="kpi"
+              className="overflow-hidden rounded-xl border"
+            >
+              <AccordionTrigger className="px-5 py-4 hover:no-underline">
+                <div className="flex w-full items-center justify-between pr-4">
+                  <div>
+                    <h2 className="text-base font-semibold">Dashboard KPIs</h2>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedPeriodLabel} overview
+                    </p>
+                  </div>
+
+                  <Badge variant="secondary">{kpis.length} Metrics</Badge>
+                </div>
+              </AccordionTrigger>
+
+              <AccordionContent className="px-5 pb-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {kpis.map((kpi, index) => (
+                    <KpiCard key={kpi.label} index={index} {...kpi} />
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        <section>
+          <Card className="overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between gap-3 border-b px-4 py-4 sm:px-5 lg:px-6">
+              <div className="min-w-0">
+                <CardTitle className="text-base">
+                  Master Daily Tracker
+                </CardTitle>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {selectedPeriodLabel} application workflow
+                </p>
+              </div>
+
+              <Badge variant="secondary" className="shrink-0">
+                {formatNumber(data.summary.students)} Applications
+              </Badge>
+            </CardHeader>
+
+            <CardContent className="p-3 sm:p-4 lg:p-5">
+              <div className="overflow-x-auto">
+                <div className="grid min-w-[1100px] grid-cols-5 gap-3 lg:gap-4">
+                  {data.masterTracker.map((column) => (
+                    <TrackerColumn key={column.key} column={column} />
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
       </div>
     </PageTransition>
   );
@@ -618,7 +651,7 @@ function KpiCard({
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent">
               <Icon className="size-5 text-primary" />
             </div>
-
+            {/* 
             {change !== undefined ? (
               <Badge
                 variant={isPositive ? "secondary" : "destructive"}
@@ -632,7 +665,7 @@ function KpiCard({
 
                 {formatChange(change)}
               </Badge>
-            ) : null}
+            ) : null} */}
           </div>
 
           <div className="mt-4 text-2xl font-bold tracking-tight">{value}</div>
