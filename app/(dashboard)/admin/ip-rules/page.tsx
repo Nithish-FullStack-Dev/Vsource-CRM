@@ -14,6 +14,7 @@ interface IpRule {
   id: string;
   ip: string;
   deviceFingerprint: string | null;
+  email: string;
   label: string | null;
   status: "ALLOWED" | "BLOCKED";
   reason: string | null;
@@ -38,6 +39,7 @@ export default function IpRulesPage() {
 
   // Manual add form
   const [ip, setIp] = useState("");
+  const [email, setEmail] = useState("");
   const [deviceFingerprint, setDeviceFingerprint] = useState("");
   const [label, setLabel] = useState("");
   const [status, setStatus] = useState<"ALLOWED" | "BLOCKED">("ALLOWED");
@@ -71,6 +73,7 @@ export default function IpRulesPage() {
 
   const saveRule = async (payload: {
     ip: string;
+    email: string;
     deviceFingerprint?: string | null;
     label?: string;
     status: "ALLOWED" | "BLOCKED";
@@ -85,10 +88,12 @@ export default function IpRulesPage() {
   };
 
   const allowCurrentDevice = async () => {
+    if (!currentUser?.email) return;
     setAllowingSelf(true);
     setSelfStatus("");
     await saveRule({
       ip: currentIp,
+      email: currentUser.email,
       deviceFingerprint: currentFingerprint,
       label: "Registered via admin panel",
       status: "ALLOWED",
@@ -99,16 +104,18 @@ export default function IpRulesPage() {
   };
 
   const addManualRule = async () => {
-    if (!ip) return;
+    if (!ip || !email) return;
     setSavingManual(true);
     await saveRule({
       ip,
+      email,
       deviceFingerprint: deviceFingerprint || null,
       label,
       status,
       durationMinutes: duration ? Number(duration) : null,
     });
     setIp("");
+    setEmail("");
     setDeviceFingerprint("");
     setLabel("");
     setDuration("");
@@ -158,6 +165,10 @@ export default function IpRulesPage() {
               <code>{currentIp || "loading..."}</code>
             </div>
             <div>
+              <span className="font-medium">Email:</span>{" "}
+              <code>{currentUser?.email || "loading..."}</code>
+            </div>
+            <div>
               <span className="font-medium">Fingerprint:</span>{" "}
               <code className="break-all">
                 {currentFingerprint || "loading..."}
@@ -166,7 +177,12 @@ export default function IpRulesPage() {
           </div>
           <Button
             onClick={allowCurrentDevice}
-            disabled={allowingSelf || !currentIp || !currentFingerprint}
+            disabled={
+              allowingSelf ||
+              !currentIp ||
+              !currentFingerprint ||
+              !currentUser?.email
+            }
             size="sm"
           >
             {allowingSelf ? "Saving..." : "Allow This Device"}
@@ -178,7 +194,7 @@ export default function IpRulesPage() {
       {/* Manual add / block form */}
       <div className="space-y-3 border rounded-xl p-4">
         <h2 className="font-semibold text-sm text-muted-foreground">
-          Add / Block IP or Device Manually
+          Add / Block IP + Email Manually
         </h2>
         <div className="grid md:grid-cols-2 grid-cols-1 gap-3">
           <div>
@@ -190,15 +206,23 @@ export default function IpRulesPage() {
             />
           </div>
           <div>
-            <Label>Device Fingerprint (optional)</Label>
+            <Label>Email</Label>
             <Input
-              value={deviceFingerprint}
-              onChange={(e) => setDeviceFingerprint(e.target.value)}
-              placeholder="leave blank for IP-only rule"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. user@vsource.com"
             />
           </div>
         </div>
-        <div className="grid md:grid-cols-3 grid-cols-1 gap-3">
+        <div className="grid md:grid-cols-2 grid-cols-1 gap-3">
+          <div>
+            <Label>Device Fingerprint (optional, reference only)</Label>
+            <Input
+              value={deviceFingerprint}
+              onChange={(e) => setDeviceFingerprint(e.target.value)}
+              placeholder="not used for access decisions"
+            />
+          </div>
           <div>
             <Label>Label (optional)</Label>
             <Input
@@ -207,6 +231,8 @@ export default function IpRulesPage() {
               placeholder="e.g. Office WiFi"
             />
           </div>
+        </div>
+        <div className="grid md:grid-cols-2 grid-cols-1 gap-3">
           <div>
             <Label>Status</Label>
             <select
@@ -232,7 +258,7 @@ export default function IpRulesPage() {
         </div>
         <Button
           onClick={addManualRule}
-          disabled={savingManual || !ip}
+          disabled={savingManual || !ip || !email}
           size="sm"
         >
           {savingManual ? "Saving..." : "Save Rule"}
@@ -268,6 +294,10 @@ export default function IpRulesPage() {
                   {r.label && (
                     <span className="text-muted-foreground">({r.label})</span>
                   )}
+                </div>
+
+                <div className="mt-1 break-all text-xs text-muted-foreground">
+                  {r.email}
                 </div>
 
                 {r.deviceFingerprint && (

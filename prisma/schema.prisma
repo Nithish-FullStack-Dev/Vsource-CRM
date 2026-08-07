@@ -1162,6 +1162,7 @@ model IpRule {
   id                String    @id @default(uuid())
   ip                String
   deviceFingerprint String?
+  email             String    // now required
   label             String?
   status            IpStatus
   reason            String?
@@ -1170,7 +1171,7 @@ model IpRule {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  @@unique([ip, deviceFingerprint])
+  @@unique([ip, email])
   @@index([status])
   @@index([expiresAt])
 }

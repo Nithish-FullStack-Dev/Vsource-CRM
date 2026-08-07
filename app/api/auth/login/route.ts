@@ -51,13 +51,13 @@ export async function POST(req: Request) {
 
     if (!isExemptRole) {
       // ------------------------------------------------------------------
-      // 1. Hard Block (Highest Priority)
+      // 1. Hard Block (Highest Priority) — keyed on ip + email
       // ------------------------------------------------------------------
 
       const ipBlockRule = await prisma.ipRule.findFirst({
         where: {
           ip,
-          deviceFingerprint: null,
+          email,
           status: "BLOCKED",
         },
       });
@@ -95,70 +95,39 @@ export async function POST(req: Request) {
       }
 
       // ------------------------------------------------------------------
-      // 2. Fetch Allow Rules
+      // 2. Fetch Allow Rule — ip + email is the sole trust key now
       // ------------------------------------------------------------------
 
-      const [ipAllowRule, deviceAllowRule] = await Promise.all([
-        prisma.ipRule.findFirst({
-          where: {
-            ip,
-            deviceFingerprint: null,
-            status: "ALLOWED",
-          },
-        }),
-
-        deviceFingerprint
-          ? prisma.ipRule.findFirst({
-            where: {
-              ip,
-              deviceFingerprint,
-              status: "ALLOWED",
-            },
-          })
-          : Promise.resolve(null),
-      ]);
-
-      const ipIsAllowed =
-        !!ipAllowRule &&
-        (!ipAllowRule.expiresAt || ipAllowRule.expiresAt > now);
-
-      const deviceIsAllowed =
-        !!deviceAllowRule &&
-        (!deviceAllowRule.expiresAt || deviceAllowRule.expiresAt > now);
-
-      const hasFingerprint =
-        typeof deviceFingerprint === "string" &&
-        deviceFingerprint.trim().length > 0;
-
-      // ------------------------------------------------------------------
-      // PRIORITY:
-      // 1. Allowed IP + fingerprint
-      // 2. Allowed device
-      // ------------------------------------------------------------------
+      const ipEmailAllowRule = await prisma.ipRule.findFirst({
+        where: {
+          ip,
+          email,
+          status: "ALLOWED",
+        },
+      });
 
       const isAllowed =
-        (ipIsAllowed && hasFingerprint) ||
-        deviceIsAllowed;
+        !!ipEmailAllowRule &&
+        (!ipEmailAllowRule.expiresAt || ipEmailAllowRule.expiresAt > now);
 
       if (!isAllowed) {
-        if (deviceFingerprint) {
-          await prisma.ipRule.upsert({
-            where: {
-              ip_deviceFingerprint: {
-                ip,
-                deviceFingerprint,
-              },
-            },
-            update: {},
-            create: {
+        await prisma.ipRule.upsert({
+          where: {
+            ip_email: {
               ip,
-              deviceFingerprint,
-              label: `Auto-flagged: ${email}`,
-              status: "BLOCKED",
-              reason: "New/unrecognized device attempted login",
+              email,
             },
-          });
-        }
+          },
+          update: {},
+          create: {
+            ip,
+            email,
+            deviceFingerprint: deviceFingerprint ?? null,
+            label: `Auto-flagged: ${email}`,
+            status: "BLOCKED",
+            reason: "New/unrecognized ip+email combination",
+          },
+        });
 
         await prisma.loginIpLog.create({
           data: {
@@ -170,20 +139,20 @@ export async function POST(req: Request) {
           },
         });
 
-        await sendMaliciousLoginAlert({
-          ip,
-          userEmail: email,
-          userAgent,
-          reason: "Device not recognized/allowlisted",
-        });
+        try {
+          await sendMaliciousLoginAlert({
+            ip,
+            userEmail: email,
+            userAgent,
+            reason: "IP+email combination not recognized/allowlisted",
+          });
+        } catch (err) {
+          console.error("Failed to send alert email:", err);
+        }
 
         return NextResponse.json(
-          {
-            message: "This device is not authorized to sign in.",
-          },
-          {
-            status: 403,
-          }
+          { message: "This IP is not authorized for this account." },
+          { status: 403 }
         );
       }
 
@@ -200,21 +169,6 @@ export async function POST(req: Request) {
           status: "ALLOWED",
         },
       });
-
-      // Optional:
-      // Alert only if login was allowed by device rule but IP changed.
-      if (
-        deviceIsAllowed &&
-        deviceAllowRule &&
-        deviceAllowRule.ip !== ip
-      ) {
-        await sendMaliciousLoginAlert({
-          ip,
-          userEmail: email,
-          userAgent,
-          reason: "Known device logged in from a new IP",
-        });
-      }
     }
 
     // ------------------------------------------------------------------
