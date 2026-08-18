@@ -47,6 +47,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useBranches } from "@/lib/branches";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -110,6 +111,8 @@ export default function AllLeadsPage() {
 
   const { data: uniqueSources = [], isLoading: resourceLoad } =
     useLeadSources();
+
+  const { data: branches = [], isLoading: branchLoad } = useBranches();
 
   const filteredLeads = useMemo(() => {
     return leads
@@ -434,11 +437,19 @@ export default function AllLeadsPage() {
                   <SelectGroup>
                     <SelectLabel>Branch</SelectLabel>
                     <SelectItem value="all">All Branches</SelectItem>
-                    {branchOptions.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
+                    {branchLoad ? (
+                      <SelectItem value="load">Loading...</SelectItem>
+                    ) : branches.length === 0 ? (
+                      <SelectItem value="empty" disabled>
+                        No lead sources found
                       </SelectItem>
-                    ))}
+                    ) : (
+                      branches.map((item: { id: string; name: string }) => (
+                        <SelectItem key={item.id} value={item.name}>
+                          {item.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectGroup>
                 </SelectContent>
               </Select>
