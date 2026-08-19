@@ -107,7 +107,11 @@ export default function AllLeadsPage() {
   const [leadIdToDelete, setLeadIdToDelete] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: leads = [], isLoading, refetch: loadLeads } = useLeads();
+  const [perPage, setPerPage] = useState(10);
+  const { data, isLoading, refetch: loadLeads } = useLeads(page, perPage);
+
+  const leads = data?.data ?? [];
+  const meta = data?.meta;
 
   const { data: uniqueSources = [], isLoading: resourceLoad } =
     useLeadSources();
@@ -143,13 +147,11 @@ export default function AllLeadsPage() {
     setPage(1);
   }, [query, status, branch, source]);
 
-  const [perPage, setPerPage] = useState(10);
-
   const start = (page - 1) * perPage;
 
-  const pageLeads = filteredLeads.slice(start, start + perPage);
+  const pageLeads = filteredLeads;
 
-  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / perPage));
+  const pageCount = meta?.totalPages ?? 1;
   useEffect(() => {
     if (page > pageCount) {
       setPage(pageCount);
@@ -974,15 +976,7 @@ export default function AllLeadsPage() {
 
       <div className="mt-4 flex flex-col gap-4 rounded-xl border bg-background px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="text-muted-foreground">
-          Showing{" "}
-          <span className="font-semibold text-foreground">
-            {pageLeads.length}
-          </span>{" "}
-          of{" "}
-          <span className="font-semibold text-foreground">
-            {filteredLeads.length}
-          </span>{" "}
-          results
+          Showing {pageLeads.length} of {meta?.total ?? 0} results
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -1021,7 +1015,7 @@ export default function AllLeadsPage() {
           </Button>
 
           <span className="text-sm font-medium text-foreground whitespace-nowrap">
-            Page {page} of {pageCount}
+            Page {meta?.page ?? 1} of {meta?.totalPages ?? 1}
           </span>
 
           <Button
