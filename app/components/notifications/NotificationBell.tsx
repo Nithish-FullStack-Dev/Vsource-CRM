@@ -1,3 +1,4 @@
+// app\components\notifications\NotificationBell.tsx
 "use client";
 
 import { useState } from "react";
@@ -110,7 +111,10 @@ export function NotificationBell() {
           <Bell className="size-4" />
 
           {unreadCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-xs animate-in zoom-in-50">
+            <span
+              className="
+    absolute -right-1 -top-1 flex h-5  items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold leading-none text-white shadow-md animate-in zoom-in-50"
+            >
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
