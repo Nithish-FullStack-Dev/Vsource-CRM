@@ -27,14 +27,18 @@ export const useCounselors = (branchId?: string) => {
   });
 };
 
-export const useLeads = () => {
+export const useLeads = (page: number, limit: number) => {
   return useQuery({
-    queryKey: LEADS.all,
+    queryKey: [...LEADS.all, page, limit],
     queryFn: async () => {
-      const { data } = await api.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/leads`,
-      );
-      return data?.data ?? [];
+      const { data } = await api.get("/leads", {
+        params: {
+          page,
+          limit,
+        },
+      });
+
+      return data;
     },
   });
 };
