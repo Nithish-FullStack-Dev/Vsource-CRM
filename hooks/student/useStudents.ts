@@ -18,3 +18,12 @@ export const useStudents = (filters?: StudentFilters) => {
     placeholderData: keepPreviousData,
   });
 };
+
+export const useStudent = (id?: string) => {
+  return useQuery({
+    queryKey: id ? STUDENTKEY.detail(id) : ["students", "detail", "empty"],
+    queryFn: () => studentService.getStudent(id!),
+    enabled: Boolean(id),
+    staleTime: 60 * 60,
+  });
+};

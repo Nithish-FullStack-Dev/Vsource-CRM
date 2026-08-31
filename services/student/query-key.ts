@@ -3,6 +3,9 @@ export const STUDENTKEY = {
   one: ["student"] as const,
   applications: ["student-applications"],
   remarks: ["student-remarks"],
+  details: () => [...STUDENTKEY.all, "detail"] as const,
+
+  detail: (id: string) => [...STUDENTKEY.details(), id] as const,
 };
 
 export const DOCUMENT = {

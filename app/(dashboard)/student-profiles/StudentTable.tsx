@@ -66,7 +66,7 @@ export function StudentTable({
   >({});
   const router = useRouter();
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
 

@@ -848,7 +848,7 @@ export default function AddLeadPage() {
                     </div>
                   </AccordionContent>
                 </AccordionItem>
-                {/* Section 2: Educational Information */}
+                {/* Section 2: Educational Information & Experience */}
                 {/* Education */}
                 <AccordionItem
                   value="education"
@@ -858,7 +858,7 @@ export default function AddLeadPage() {
                     <div className="px-6 py-4 ">
                       <h3 className="flex items-center text-lg font-semibold text-foreground">
                         <GraduationCap className="mr-2 h-5 w-5 text-blue-500" />
-                        Educational Information
+                        Educational Information & Experience
                       </h3>
                     </div>
                   </AccordionTrigger>
@@ -1900,7 +1900,7 @@ export default function AddLeadPage() {
                     </div>
                   </AccordionContent>
                 </AccordionItem>
-                {/* Section 4: Preferences & Experience */}
+                {/* Section 4: Preferences */}
                 <AccordionItem
                   value="preferences"
                   className="rounded-2xl border bg-card"
@@ -1909,7 +1909,7 @@ export default function AddLeadPage() {
                     <div className=" px-6 py-4 ">
                       <h3 className="flex items-center text-lg font-semibold text-foreground">
                         <Globe className="mr-2 h-5 w-5 text-emerald-500" />
-                        Study Preferences & Experience
+                        Study Preferences
                       </h3>
                     </div>
                   </AccordionTrigger>
