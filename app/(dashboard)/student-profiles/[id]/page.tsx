@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { DMSSection } from "../DMSSection";
 import { motion, AnimatePresence } from "framer-motion";
-import { useStudents } from "@/hooks/student/useStudents";
+import { useStudent, useStudents } from "@/hooks/student/useStudents";
 import { Remarks, StudentRecord } from "@/types/student";
 import { useCreateStudentApplication } from "@/hooks/student/useCreateStudentApplication";
 import { useUpdateStudentApplication } from "@/hooks/student/useUpdateStudentApplication";
@@ -104,27 +104,24 @@ export default function Home() {
   const params = useParams();
   const router = useRouter();
   const studentId = params.id as string;
-  const { data, isLoading, isError, error } = useStudents();
   const selectedStudentId = studentId;
-  const students = useMemo<StudentRecord[]>(() => {
-    return Array.isArray(data?.data) ? data.data : [];
-  }, [data]);
+  const {
+    data: studentResponse,
+    isLoading,
+    isError,
+    error,
+  } = useStudent(selectedStudentId);
 
   const selectedStudent = useMemo<StudentRecord | null>(() => {
-    return (
-      students.find(
-        (student: StudentRecord) => student.id === selectedStudentId,
-      ) ?? null
-    );
-  }, [students, selectedStudentId]);
+    return studentResponse?.data ?? null;
+  }, [studentResponse]);
+
   const [basicInfoOpen, setBasicInfoOpen] = useState(false);
   const [progressDialogOpen, setProgressDialogOpen] = useState(false);
-  const [currentView] = useState<"students">("students");
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [detailTab, setDetailTab] = useState<StudentDetailTab>("info");
   const { setTitle, clearTitle } = usePageTitle();
-  const [newRemarkText, setNewRemarkText] = useState<string>("");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
   const { data: moduleProgress = [], isLoading: isModuleProgressLoading } =
