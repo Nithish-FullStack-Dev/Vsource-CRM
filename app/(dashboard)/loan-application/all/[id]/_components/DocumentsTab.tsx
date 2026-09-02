@@ -616,7 +616,7 @@ export function DocumentsTab({
                   : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
               }`}
             >
-              Student
+              Visa
             </button>
             <button
               type="button"
