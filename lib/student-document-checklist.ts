@@ -1,3 +1,4 @@
+// lib\student-document-checklist.ts
 export const CATEGORY_LABELS = {
   ACADEMIC: "Academic",
   PERSONAL: "Personal",

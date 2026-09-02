@@ -171,7 +171,7 @@ export function DocumentsTab({
 }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  type DocumentTab = "KYC" | "OPTIONAL" | "OTHER";
+  type DocumentTab = "KYC" | "OPTIONAL" | "STUDENT" | "OTHER";
 
   const [activeTab, setActiveTab] = useState<DocumentTab>("KYC");
 
@@ -245,6 +245,12 @@ export function DocumentsTab({
         formData.append("documentMasterId", selectedItem.id);
       }
 
+      if (selectedItem.category === "STUDENT") {
+        formData.append("source", "STUDENT_SHARED");
+      } else {
+        formData.append("source", "LOAN");
+      }
+
       await axios.post(
         `${apiBase}/loan-applications/${applicationId}/documents`,
         formData,
@@ -276,7 +282,7 @@ export function DocumentsTab({
       formData.append("remarks", remarks);
 
       await axios.patch(
-        `${apiBase}/loan-applications/${applicationId}/documents/${editingDocument.id}`,
+        `${apiBase}/loan-applications/${applicationId}/documents/${editingDocument.id}?source=${editingDocument.source}`,
         formData,
         {
           withCredentials: true,
@@ -297,18 +303,21 @@ export function DocumentsTab({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (documentId: string) => {
+    mutationFn: async (record: LoanDocumentRecord) => {
       await axios.delete(
-        `${apiBase}/loan-applications/${applicationId}/documents/${documentId}`,
+        `${apiBase}/loan-applications/${applicationId}/documents/${record.id}?source=${record.source}`,
         { withCredentials: true },
       );
     },
+
     onSuccess: async () => {
       clearUploadForm();
+
       await queryClient.invalidateQueries({
         queryKey: ["loan-application-documents", applicationId],
       });
     },
+
     onError: (error) => setFileError(getErrorMessage(error)),
   });
 
@@ -486,12 +495,11 @@ export function DocumentsTab({
 
   const handleDelete = async (record?: LoanDocumentRecord | null) => {
     if (!record?.id) return;
-
     const fileName = record.originalFileName?.trim() || "this document";
-
-    if (!window.confirm(`Delete "${fileName}" permanently?`)) return;
-
-    await deleteMutation.mutateAsync(record.id);
+    if (!window.confirm(`Delete "${fileName}" permanently?`)) {
+      return;
+    }
+    await deleteMutation.mutateAsync(record);
   };
 
   const goToChecklistItem = (direction: -1 | 1) => {
@@ -566,7 +574,7 @@ export function DocumentsTab({
     <div className="grid min-h-[720px] grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-[720px] xl:grid-cols-[420px_minmax(0,1fr)]">
       <aside className="flex max-h-[45vh] sm:max-h-[350px] flex-col overflow-hidden rounded-[28px] border bg-white shadow xl:max-h-none xl:h-full">
         <div className="border-b border-slate-200 p-3 sm:p-4 dark:border-slate-800">
-          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
+          <div className="grid grid-cols-4 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
             <button
               type="button"
               onClick={() => {
@@ -596,7 +604,20 @@ export function DocumentsTab({
             >
               Optional
             </button>
-
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("STUDENT");
+                setShowAddDocument(false);
+              }}
+              className={`rounded-xl px-2 py-2 sm:px-3 sm:py-2.5 text-[10px] sm:text-[11px] font-black transition ${
+                activeTab === "STUDENT"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+              }`}
+            >
+              Student
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab("OTHER")}
@@ -759,9 +780,11 @@ export function DocumentsTab({
                           <span className="truncate">
                             {item.category === "OPTIONAL"
                               ? "Optional document"
-                              : item.category === "OTHER" && !item.required
-                                ? "Optional custom document"
-                                : "Missing checklist item"}
+                              : item.category === "STUDENT"
+                                ? "Student document"
+                                : item.category === "OTHER" && !item.required
+                                  ? "Optional custom document"
+                                  : "Missing checklist item"}
                           </span>
                         </p>
                       )}
@@ -952,12 +975,12 @@ export function DocumentsTab({
 
                     <p className="mt-2 text-[11px] sm:text-xs font-black text-slate-700 dark:text-slate-200">
                       {activeDocument
-                        ? "Upload / Replace Device File here"
+                        ? "Upload / Attach Device File here"
                         : "Upload / Attach Device File here"}
                     </p>
 
                     <p className="mt-1 text-[8px] sm:text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      PDF, JPG, PNG format
+                      PDF, JPG, PNG, WEBP, DOC, DOCX
                     </p>
                   </div>
                 )}

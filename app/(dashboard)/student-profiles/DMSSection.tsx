@@ -198,7 +198,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
 
   const createDocumentTypeMutation = useCreateStudentDocumentType(studentId);
 
-  const [activeTab, setActiveTab] = useState<"checklist" | "others">(
+  const [activeTab, setActiveTab] = useState<"checklist" | "loan" | "others">(
     "checklist",
   );
 
@@ -207,8 +207,16 @@ export function DMSSection({ studentId }: DMSSectionProps) {
   const [documentTypeError, setDocumentTypeError] = useState("");
 
   const checklist = documentsQuery.data?.checklist ?? [];
-
   const visibleChecklist = useMemo(() => {
+    if (activeTab === "loan") {
+      return checklist.filter(
+        (item) =>
+          item.module === "LOAN" ||
+          item.category === "KYC" ||
+          item.category === "OPTIONAL",
+      );
+    }
+
     if (activeTab === "others") {
       return checklist.filter(
         (item) => item.isSystem === false || item.module === "OTHER",
@@ -216,7 +224,10 @@ export function DMSSection({ studentId }: DMSSectionProps) {
     }
 
     return checklist.filter(
-      (item) => item.isSystem !== false && item.module !== "OTHER",
+      (item) =>
+        item.module !== "LOAN" &&
+        item.isSystem !== false &&
+        item.module !== "OTHER",
     );
   }, [activeTab, checklist]);
 
@@ -229,7 +240,109 @@ export function DMSSection({ studentId }: DMSSectionProps) {
     () => visibleChecklist.findIndex((item) => item.code === selectedItemCode),
     [visibleChecklist, selectedItemCode],
   );
+  const updateLoanDocument = async ({
+    documentId,
+    file,
+    remarks,
+    onProgress,
+  }: {
+    documentId: string;
+    file: File;
+    remarks: string;
+    onProgress?: (progress: number) => void;
+  }) => {
+    onProgress?.(10);
 
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("remarks", remarks);
+
+    const response = await fetch(
+      `/api/students/${studentId}/documents/${documentId}?source=LOAN`,
+      {
+        method: "PATCH",
+        body: formData,
+      },
+    );
+
+    onProgress?.(90);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to replace loan document");
+    }
+
+    onProgress?.(100);
+
+    return data;
+  };
+
+  const deleteLoanDocument = async (documentId: string) => {
+    const response = await fetch(
+      `/api/students/${studentId}/documents/${documentId}?source=LOAN`,
+      {
+        method: "DELETE",
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to delete loan document");
+    }
+
+    return data;
+  };
+
+  const uploadLoanDocument = async ({
+    documentCode,
+    file,
+    remarks,
+    onProgress,
+  }: {
+    documentCode: string;
+    file: File;
+    remarks: string;
+    onProgress?: (progress: number) => void;
+  }) => {
+    const loanApplicationId =
+      selectedItem?.loanApplicationId ??
+      selectedItem?.documents?.find((document) => document.source === "LOAN")
+        ?.loanApplicationId;
+
+    if (!loanApplicationId) {
+      throw new Error("This student does not have a linked loan application.");
+    }
+
+    onProgress?.(10);
+
+    const formData = new FormData();
+    formData.append("documentCode", documentCode);
+    formData.append("file", file);
+    formData.append("remarks", remarks);
+    formData.append("source", "LOAN");
+
+    const response = await fetch(
+      `/api/loan-applications/${loanApplicationId}/documents`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+
+    onProgress?.(90);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to upload loan document");
+    }
+
+    onProgress?.(100);
+
+    return data;
+  };
   const activeDocument = selectedItem?.documents?.[0] ?? null;
   useEffect(() => {
     if (visibleChecklist.length === 0) {
@@ -371,21 +484,44 @@ export function DMSSection({ studentId }: DMSSectionProps) {
     setFileError("");
     setProgress(0);
 
+    const source =
+      editingDocument?.source ??
+      selectedItem.source ??
+      (selectedItem.module === "LOAN" ? "LOAN" : "STUDENT_SHARED");
+
     try {
       if (editingDocument?.id) {
-        await updateMutation.mutateAsync({
-          documentId: editingDocument.id,
-          file: selectedFile,
-          remarks,
-          onProgress: setProgress,
-        });
+        if (source === "LOAN") {
+          await updateLoanDocument({
+            documentId: editingDocument.id,
+            file: selectedFile,
+            remarks,
+            onProgress: setProgress,
+          });
+        } else {
+          await updateMutation.mutateAsync({
+            documentId: editingDocument.id,
+            file: selectedFile,
+            remarks,
+            onProgress: setProgress,
+          });
+        }
       } else {
-        await uploadMutation.mutateAsync({
-          documentCode: selectedItem.code,
-          file: selectedFile,
-          remarks,
-          onProgress: setProgress,
-        });
+        if (source === "LOAN") {
+          await uploadLoanDocument({
+            documentCode: selectedItem.code,
+            file: selectedFile,
+            remarks,
+            onProgress: setProgress,
+          });
+        } else {
+          await uploadMutation.mutateAsync({
+            documentCode: selectedItem.code,
+            file: selectedFile,
+            remarks,
+            onProgress: setProgress,
+          });
+        }
       }
 
       clearUploadForm();
@@ -399,12 +535,22 @@ export function DMSSection({ studentId }: DMSSectionProps) {
     if (!record?.id) return;
 
     const fileName = record.originalFileName?.trim() || "this document";
+
     const accepted = window.confirm(`Delete "${fileName}" permanently?`);
+
     if (!accepted) return;
 
     try {
-      await deleteMutation.mutateAsync(record.id);
-      if (editingDocument?.id === record.id) clearUploadForm();
+      if (record.source === "LOAN") {
+        await deleteLoanDocument(record.id);
+      } else {
+        await deleteMutation.mutateAsync(record.id);
+      }
+
+      if (editingDocument?.id === record.id) {
+        clearUploadForm();
+      }
+
       await documentsQuery.refetch();
     } catch (error) {
       setFileError(getErrorMessage(error));
@@ -475,7 +621,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
     <div className="grid min-h-180 grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-180 xl:grid-cols-[420px_minmax(0,1fr)]">
       <aside className="flex min-h-130 flex-col overflow-hidden rounded-[20px] sm:rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
         <div className="border-b border-slate-100 px-3 py-3 sm:px-5 sm:py-5 dark:border-slate-800">
-          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
+          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
             <button
               type="button"
               onClick={() => {
@@ -490,7 +636,20 @@ export function DMSSection({ studentId }: DMSSectionProps) {
             >
               Checklist
             </button>
-
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("loan");
+                clearUploadForm();
+              }}
+              className={`rounded-xl px-2 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-black transition ${
+                activeTab === "loan"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+              }`}
+            >
+              Loan
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -582,13 +741,17 @@ export function DMSSection({ studentId }: DMSSectionProps) {
               <p className="mt-3 text-[13px] sm:text-sm font-black text-slate-600 dark:text-slate-300">
                 {activeTab === "others"
                   ? "No other document types added"
-                  : "No checklist items found"}
+                  : activeTab === "loan"
+                    ? "No loan document checklist found"
+                    : "No checklist items found"}
               </p>
 
               <p className="mt-1 text-[11px] sm:text-xs text-slate-400">
                 {activeTab === "others"
                   ? "Use the form above to add a student-specific document."
-                  : "Document folders will appear here when available."}
+                  : activeTab === "loan"
+                    ? "Loan document folders will appear here when available."
+                    : "Document folders will appear here when available."}
               </p>
             </div>
           ) : (
@@ -628,6 +791,17 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                       <p className="truncate text-[12px] sm:text-[14px] font-black text-slate-700 dark:text-slate-100">
                         {title}
                       </p>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${
+                            item.source === "LOAN"
+                              ? "bg-blue-50 text-red-600 dark:bg-blue-500/10 dark:text-red-400"
+                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                          }`}
+                        >
+                          {item.source === "LOAN" ? "Loan" : "Student"}
+                        </span>
+                      </div>
                       {isComplete ? (
                         <p className="mt-0.5 sm:mt-1 truncate text-[9px] sm:text-[10px] text-slate-400">
                           {itemDocument?.originalFileName?.trim() ||

@@ -141,37 +141,29 @@ export interface Remarks {
   createdBy: User;
 }
 
+export type StudentDocumentSource = "STUDENT_SHARED" | "LOAN";
+
 export type StudentDocumentRecord = {
   id: string;
-
   studentId: string;
-
+  applicationId?: string | null;
   documentCode: string;
-
   documentType: string;
-
   originalFileName: string;
-
   storedFileName: string;
-
   fileUrl: string;
-
   mimeType: string;
-
   fileSize: number;
-
   remarks?: string | null;
-
   uploadedAt: string;
-
   createdAt: string;
-
   updatedAt: string;
+  source: StudentDocumentSource;
+  loanApplicationId?: string | null;
 };
 
 export type StudentDocumentChecklistItem = {
   code: string;
-
   name: string;
 
   category:
@@ -183,18 +175,18 @@ export type StudentDocumentChecklistItem = {
     | "LOAN_STUDENT"
     | "LOAN_PARENT"
     | "LOAN_COLLATERAL"
-    | "VISA";
+    | "VISA"
+    | "KYC"
+    | "OPTIONAL"
+    | "OTHER";
 
   module: "ADMISSION" | "LOAN" | "OTHER";
 
   requiredCount: number;
-
   allowMultiple: boolean;
 
   isMandatory: boolean;
-
   uploadedCount: number;
-
   isComplete: boolean;
 
   documents: StudentDocumentRecord[];
@@ -204,6 +196,8 @@ export type StudentDocumentChecklistItem = {
   required?: boolean;
   isOptional?: boolean;
   isSystem?: boolean;
+  source?: StudentDocumentSource;
+  loanApplicationId?: string | null;
 };
 
 export type StudentDocumentSummary = {

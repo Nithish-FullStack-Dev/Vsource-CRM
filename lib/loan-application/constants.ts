@@ -4,17 +4,12 @@ import { LoanDocumentCategory } from "@/generated/prisma/enums";
 
 export const APPLICANT_CATEGORIES = [
   "Student",
-  // "Salaried",
-  // "Self Employed",
 ] as const;
 
 export const LOAN_CATEGORIES = [
   "Education Loan",
   "Study Abroad Loan",
   "Domestic Education Loan",
-  // "Personal Loan",
-  // "Home Loan",
-  // "Business Loan",
 ] as const;
 
 export const LOAN_STATUSES = [

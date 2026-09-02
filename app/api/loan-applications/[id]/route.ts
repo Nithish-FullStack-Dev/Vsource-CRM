@@ -63,7 +63,21 @@ const loanApplicationInclude = {
       email: true,
     },
   },
-
+  lead: {
+    select: {
+      id: true,
+      student: {
+        select: {
+          id: true,
+          documents: {
+            orderBy: {
+              uploadedAt: "desc",
+            },
+          },
+        },
+      },
+    },
+  },
   fintechAssignee: {
     select: {
       id: true,

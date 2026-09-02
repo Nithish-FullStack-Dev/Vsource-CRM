@@ -324,10 +324,9 @@ export async function POST(req: NextRequest) {
     );
 
     const lead = await db.$transaction(async (tx) => {
+      let preferredCountryId = leadData.preferredCountryId ?? null;
       let preferredUniversityId = leadData.preferredUniversityId ?? null;
       let preferredCourseId = leadData.preferredCourseId ?? null;
-
-
       // ---------------------------------------------------------
       // Resolve / create preferred university
       // ---------------------------------------------------------
@@ -414,7 +413,18 @@ export async function POST(req: NextRequest) {
           preferredCourseId = newCourse.id;
         }
       }
+      if (preferredUniversityId && !preferredCountryId) {
+        const university = await tx.university.findUnique({
+          where: {
+            id: preferredUniversityId,
+          },
+          select: {
+            countryId: true,
+          },
+        });
 
+        preferredCountryId = university?.countryId ?? null;
+      }
       const {
         preferredUniversityName: _preferredUniversityName,
         preferredCourseName: _preferredCourseName,
@@ -425,6 +435,7 @@ export async function POST(req: NextRequest) {
         data: {
           ...cleanLeadData,
 
+          preferredCountryId,
           preferredUniversityId,
           preferredCourseId,
 
@@ -467,8 +478,6 @@ export async function POST(req: NextRequest) {
               code: true,
             },
           },
-
-    
 
           preferredUniversity: {
             select: {

@@ -5,7 +5,30 @@
 import { StudentRecord } from "@/types/student";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Calendar, Globe, GraduationCap } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Pencil,
+  Plus,
+  Trash2,
+  Calendar,
+  Globe,
+  GraduationCap,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -13,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +60,8 @@ import {
   CourseOption,
 } from "@/components/student/CreatableCourseCombobox";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { APPLICATION } from "@/services/student/query-key";
 
 interface Props {
   student: StudentRecord;
@@ -61,7 +85,10 @@ type OfferStatus =
   | "PRIORITY_COL"
   | "COL"
   | "UCOL";
-
+interface CountryDropdownItem {
+  id: string;
+  name: string;
+}
 export default function StudentApplicationsSection({
   student,
   isDarkMode,
@@ -71,16 +98,113 @@ export default function StudentApplicationsSection({
 }: Props) {
   const { data: universities = [] } = useUniversityDropdown(student.id);
   const [selectedUniversityId, setSelectedUniversityId] = useState("");
+  const [selectedUniversityName, setSelectedUniversityName] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [preferredUniversityOpen, setPreferredUniversityOpen] = useState(false);
+  const [preferredUniversitySearch, setPreferredUniversitySearch] =
+    useState("");
   const { data: courses = [] } = useCourseDropdown(selectedUniversityId);
   const createCourseMutation = useCreateUniversityCourse(selectedUniversityId);
+  const queryClient = useQueryClient();
+  const [creatingUniversity, setCreatingUniversity] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [countries, setCountries] = useState<CountryDropdownItem[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
   const { canCreate, canDelete, canUpdate } = useAuth();
   const canApply = student.applications.length < 5;
 
   const handleUniversityChange = (universityId: string) => {
+    const university = universities.find(
+      (item: UniversityDropdownItem) => item.id === universityId,
+    );
+
     setSelectedUniversityId(universityId);
+    setSelectedUniversityName(university?.name ?? "");
     setSelectedCourseId("");
+  };
+  const createPreferredUniversity = async () => {
+    const name = preferredUniversitySearch.trim();
+    const countryId = studentCountry.id;
+
+    if (!countryId) {
+      toast.error("Please select Preferred Country first");
+      return;
+    }
+
+    if (!name) {
+      toast.error("Please enter university name");
+      return;
+    }
+
+    try {
+      setCreatingUniversity(true);
+
+      // Check if university already exists
+      const existing = universities.find(
+        (university: UniversityDropdownItem) =>
+          university.name.trim().toLowerCase() === name.toLowerCase(),
+      );
+
+      if (existing) {
+        handleUniversityChange(existing.id);
+
+        setPreferredUniversitySearch("");
+        setPreferredUniversityOpen(false);
+
+        return;
+      }
+
+      // Create new university
+      const response = await fetch("/api/universities", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          countryId,
+          tier: "T4",
+          status: "active",
+          courses: [],
+          scholarships: [],
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to create university");
+      }
+
+      const university: UniversityDropdownItem = result.data;
+
+      // Add the newly created university to React Query cache
+      queryClient.setQueryData<UniversityDropdownItem[]>(
+        [...APPLICATION.universityDropDown, student.id],
+        (current = []) => {
+          const exists = current.some((item) => item.id === university.id);
+
+          return exists ? current : [...current, university];
+        },
+      );
+
+      setSelectedUniversityId(university.id);
+      setSelectedUniversityName(university.name);
+      setSelectedCourseId("");
+
+      setPreferredUniversitySearch("");
+      setPreferredUniversityOpen(false);
+      toast.success(`University "${university.name}" added successfully`);
+    } catch (error) {
+      console.error("Create university error:", error);
+
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add university",
+      );
+    } finally {
+      setCreatingUniversity(false);
+    }
   };
   const [portal, setPortal] = useState("");
   const [applicationDate, setApplicationDate] = useState("");
@@ -106,12 +230,17 @@ export default function StudentApplicationsSection({
       (u: UniversityDropdownItem) => u.id === selectedUniversityId,
     );
 
+    if (!selectedUniversity) {
+      toast.error("Unable to load selected university. Please try again.");
+      return;
+    }
+
     const selectedCourse = courses.find(
       (c: CourseDropdownItem) => c.id === selectedCourseId,
     );
 
     const payload = {
-      countryId: selectedUniversity?.countryId,
+      countryId: selectedUniversity.countryId,
       universityId: selectedUniversityId,
       courseId: selectedCourseId,
       intakeId: selectedCourse?.intakeId ?? null,
@@ -158,6 +287,7 @@ export default function StudentApplicationsSection({
     setEditingId(app.id);
 
     setSelectedUniversityId(app.universityId || "");
+    setSelectedUniversityName(app.university?.name || "");
     setSelectedCourseId(app.courseId || "");
     setPortal(app.portal || "");
     setApplicationDate(
@@ -194,6 +324,7 @@ export default function StudentApplicationsSection({
   };
   const resetForm = () => {
     setSelectedUniversityId("");
+    setSelectedUniversityName("");
     setSelectedCourseId("");
     setPortal("");
     setApplicationDate("");
@@ -203,6 +334,70 @@ export default function StudentApplicationsSection({
     setEditingId(null);
     setShowForm(false);
   };
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        setLoadingCountries(true);
+
+        const response = await fetch("/api/countries", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load countries");
+        }
+
+        const result = await response.json();
+
+        setCountries(Array.isArray(result?.data) ? result.data : []);
+      } catch (error) {
+        console.error("Failed to load countries:", error);
+      } finally {
+        setLoadingCountries(false);
+      }
+    };
+
+    loadCountries();
+  }, []);
+  const studentCountry = useMemo(() => {
+    const preferredCountry = student.lead?.preferredCountry;
+
+    if (typeof preferredCountry === "object") {
+      return {
+        id: preferredCountry?.id ?? "",
+        name: preferredCountry?.name ?? "",
+      };
+    }
+
+    const countryName = preferredCountry ?? "";
+
+    const country = countries.find(
+      (item) =>
+        item.name.trim().toLowerCase() === countryName.trim().toLowerCase(),
+    );
+
+    return {
+      id: country?.id ?? "",
+      name: countryName,
+    };
+  }, [student.lead?.preferredCountry, countries]);
+
+  useEffect(() => {
+    const preferredUniversity = student.lead?.preferredUniversity;
+
+    if (!preferredUniversity?.id) {
+      return;
+    }
+    setSelectedUniversityId((currentId) => currentId || preferredUniversity.id);
+    setSelectedUniversityName(
+      (currentName) => currentName || preferredUniversity.name,
+    );
+  }, [
+    student.lead?.preferredUniversity?.id,
+    student.lead?.preferredUniversity?.name,
+  ]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -278,22 +473,143 @@ export default function StudentApplicationsSection({
                   University
                 </label>
 
-                <Select
-                  value={selectedUniversityId}
-                  onValueChange={handleUniversityChange}
+                <Popover
+                  open={preferredUniversityOpen}
+                  onOpenChange={setPreferredUniversityOpen}
                 >
-                  <SelectTrigger className="h-11 rounded-2xl">
-                    <SelectValue placeholder="Select University" />
-                  </SelectTrigger>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={preferredUniversityOpen}
+                      disabled={!studentCountry.id}
+                      className="h-11 w-full justify-between gap-2 rounded-2xl font-normal"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-left">
+                        {selectedUniversityId
+                          ? selectedUniversityName ||
+                            universities.find(
+                              (university: UniversityDropdownItem) =>
+                                university.id === selectedUniversityId,
+                            )?.name ||
+                            "Loading university..."
+                          : studentCountry.name
+                            ? "Select or type university"
+                            : "Country not selected"}
+                      </span>
 
-                  <SelectContent>
-                    {universities.map((university: UniversityDropdownItem) => (
-                      <SelectItem key={university.id} value={university.id}>
-                        {university.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    className="w-(--radix-popover-trigger-width) min-w-70 max-w-[calc(100vw-2rem)] p-0"
+                    align="start"
+                    sideOffset={6}
+                  >
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Search or type university..."
+                        value={preferredUniversitySearch}
+                        onValueChange={setPreferredUniversitySearch}
+                      />
+
+                      <CommandList className="max-h-72">
+                        {universities.filter(
+                          (university: UniversityDropdownItem) =>
+                            university.name
+                              .toLowerCase()
+                              .includes(
+                                preferredUniversitySearch.toLowerCase(),
+                              ),
+                        ).length === 0 &&
+                          !preferredUniversitySearch.trim() && (
+                            <CommandEmpty>
+                              No universities found for {studentCountry.name}.
+                            </CommandEmpty>
+                          )}
+
+                        {universities.filter(
+                          (university: UniversityDropdownItem) =>
+                            university.name
+                              .toLowerCase()
+                              .includes(
+                                preferredUniversitySearch.toLowerCase(),
+                              ),
+                        ).length > 0 && (
+                          <CommandGroup
+                            heading={`Universities in ${studentCountry.name}`}
+                          >
+                            {universities
+                              .filter((university: UniversityDropdownItem) =>
+                                university.name
+                                  .toLowerCase()
+                                  .includes(
+                                    preferredUniversitySearch.toLowerCase(),
+                                  ),
+                              )
+                              .map((university: UniversityDropdownItem) => (
+                                <CommandItem
+                                  key={university.id}
+                                  value={university.id}
+                                  onSelect={() => {
+                                    handleUniversityChange(university.id);
+
+                                    setPreferredUniversitySearch("");
+                                    setPreferredUniversityOpen(false);
+                                  }}
+                                  className="flex min-w-0 items-center gap-2"
+                                >
+                                  <Check
+                                    className={`h-4 w-4 shrink-0 ${
+                                      selectedUniversityId === university.id
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    }`}
+                                  />
+
+                                  <span className="min-w-0 flex-1 truncate">
+                                    {university.name}
+                                  </span>
+
+                                  {university.tier && (
+                                    <span className="shrink-0 text-xs text-muted-foreground">
+                                      {university.tier}
+                                    </span>
+                                  )}
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        )}
+
+                        {preferredUniversitySearch.trim() &&
+                          !universities.some(
+                            (university: UniversityDropdownItem) =>
+                              university.name.trim().toLowerCase() ===
+                              preferredUniversitySearch.trim().toLowerCase(),
+                          ) && (
+                            <CommandGroup>
+                              <CommandItem
+                                value={`add-${preferredUniversitySearch}`}
+                                onSelect={createPreferredUniversity}
+                                disabled={creatingUniversity}
+                                className="min-w-0"
+                              >
+                                <Plus className="mr-2 h-4 w-4 shrink-0" />
+
+                                <span className="min-w-0 truncate">
+                                  {creatingUniversity
+                                    ? "Adding..."
+                                    : `Add "${preferredUniversitySearch.trim()}"`}
+                                </span>
+                              </CommandItem>
+                            </CommandGroup>
+                          )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div>
