@@ -102,7 +102,7 @@ export type ActivityLog = {
   createdAt?: string | Date | null;
 };
 
-export type LoanDocumentCategory = "KYC" | "OPTIONAL" | "OTHER";
+export type LoanDocumentCategory = "KYC" | "OPTIONAL" | "OTHER" | "STUDENT";
 
 export type LoanDocumentChecklistItem = {
   id: string;
@@ -115,11 +115,12 @@ export type LoanDocumentChecklistItem = {
   isComplete: boolean;
   documents: LoanDocumentRecord[];
 };
+export type LoanDocumentSource = "LOAN" | "STUDENT_SHARED";
 
 export type LoanDocumentRecord = {
   id: string;
-  applicationId: string;
-  documentMasterId: string;
+  applicationId?: string | null;
+  documentMasterId?: string | null;
   documentCode: string;
   documentType: string;
   originalFileName: string;
@@ -131,6 +132,8 @@ export type LoanDocumentRecord = {
   uploadedAt: string;
   createdAt: string;
   updatedAt: string;
+  source: LoanDocumentSource;
+  studentDocumentId?: string | null;
 };
 
 export type DecimalValue = string | number | null;

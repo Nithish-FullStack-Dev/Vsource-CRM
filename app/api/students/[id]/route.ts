@@ -29,16 +29,79 @@ export async function GET(
       include: {
         lead: {
           select: {
-            loanRequirement: true,
             passport: true,
-            preferredCountry: true,
-            preferredIntake: true,
-            preferredCourse: true,
-            bachelorsCourse: true,
+            passportExpireDate: true,
+
+            // Academic
+            tenthPercentage: true,
+            tenthYearOfPassing: true,
+
             twelfthPercentage: true,
             twelfthYearOfPassing: true,
+
+            bachelorsCourse: true,
+            bachelorsUniversityName: true,
+            bachelorsPercentage: true,
+            bachelorsYearOfPassing: true,
+
+            backlogs: true,
+            workExperience: true,
+
+            // Preferred study details
+            preferredCountry: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
+
+            preferredIntake: true,
+
+            preferredUniversity: {
+              select: {
+                id: true,
+                name: true,
+                countryId: true,
+                tier: true,
+              },
+            },
+
+            preferredCourse: {
+              select: {
+                id: true,
+                name: true,
+                universityId: true,
+                degree: true,
+                durationMonths: true,
+                annualTuitionFee: true,
+                totalTuitionFee: true,
+                currency: true,
+              },
+            },
+
+            // Test / academic scores
+            greGmatScore: true,
+            quantitativeScore: true,
+            verbalScore: true,
+            analyticalWritingScore: true,
+
+            // Other profile information
+            moi: true,
+            gapsIfAny: true,
+            graduationStatus: true,
+            loanRequirement: true,
+
             emailId: true,
 
+            // English tests
+            englishTests: {
+              orderBy: {
+                createdAt: "asc",
+              },
+            },
+
+            // Keep your existing loan application
             loanApplication: {
               select: {
                 loanStatus: true,
@@ -50,6 +113,7 @@ export async function GET(
                 disbursementStatus: true,
                 sanctionDate: true,
                 sanctionedAmount: true,
+
                 sanctionBankApplication: {
                   select: {
                     bank: {

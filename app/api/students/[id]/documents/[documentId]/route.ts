@@ -1,153 +1,212 @@
-// app\api\students\[id]\documents\[documentId]\route.ts
-import { unlink, writeFile } from "fs/promises";
+// app/api/students/[id]/documents/[documentId]/route.ts
+
+import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/prisma";
-import { STUDENT_DOCUMENT_CHECKLIST } from "@/lib/student-document-checklist";
-import {
-  buildStudentDocumentFileName,
-  validateStudentDocument,
-} from "@/lib/student-document-utils";
 
 export const runtime = "nodejs";
 
-function errorResponse(message: string, status: number) {
-  return NextResponse.json({ success: false, message }, { status });
-}
+type Ctx = {
+  params: Promise<{
+    id: string;
+    documentId: string;
+  }>;
+};
 
-async function removeStoredFile(fileUrl: string) {
-  const filePath = path.join(
-    process.cwd(),
-    "public",
-    fileUrl.replace(/^\/+/, ""),
+const OK = ["pdf", "jpg", "jpeg", "png", "webp", "doc", "docx"];
+
+const MAX_FILE_SIZE = 15 * 1024 * 1024;
+
+const ext = (name: string) => name.split(".").pop()?.toLowerCase() ?? "";
+
+const getSource = (req: NextRequest) => {
+  const source = req.nextUrl.searchParams.get("source");
+
+  if (source === "STUDENT_SHARED" || source === "LOAN") {
+    return source;
+  }
+
+  return null;
+};
+
+const removeStoredFile = async (fileUrl?: string | null) => {
+  if (!fileUrl) return;
+
+  try {
+    await unlink(path.join(process.cwd(), "public", fileUrl));
+  } catch {
+    // File may already be missing.
+  }
+};
+
+const errorResponse = (message: string, status: number) =>
+  NextResponse.json(
+    {
+      success: false,
+      message,
+    },
+    {
+      status,
+    },
   );
 
-  await unlink(filePath).catch(() => undefined);
-}
+export async function PATCH(req: NextRequest, ctx: Ctx) {
+  let savedFilePath: string | null = null;
 
-export async function PUT(
-  req: NextRequest,
-  {
-    params,
-  }: {
-    params: Promise<{ id: string; documentId: string }>;
-  },
-) {
   try {
-    const { id: studentId, documentId } = await params;
-    const formData = await req.formData();
+    const { id: studentId, documentId } = await ctx.params;
 
-    const file = formData.get("file");
-    const remarks = String(formData.get("remarks") || "").trim();
+    const source = getSource(req);
+    if (!source) {
+      return errorResponse(
+        "Document source is required. Use source=STUDENT_SHARED or source=LOAN.",
+        400,
+      );
+    }
 
-    const existingDocument = await db.studentDocument.findFirst({
+    const student = await db.student.findUnique({
+      where: {
+        id: studentId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!student) {
+      return errorResponse("Student not found.", 404);
+    }
+
+    const old = await db.studentDocument.findFirst({
       where: {
         id: documentId,
         studentId,
       },
-      include: {
-        student: {
-          select: {
-            studentName: true,
-            branch: {
-              select: {
-                code: true,
-              },
-            },
-          },
-        },
-      },
     });
 
-    if (!existingDocument) {
-      return errorResponse("Document not found", 404);
+    if (!old) {
+      return errorResponse("Student document not found.", 404);
     }
 
-    if (!(file instanceof File)) {
-      const updatedDocument = await db.studentDocument.update({
-        where: { id: documentId },
-        data: {
-          remarks: remarks || null,
-        },
+    const formData = await req.formData();
+
+    const remarks = String(formData.get("remarks") ?? "").trim();
+
+    const file = formData.get("file");
+
+    const data: {
+      remarks: string | null;
+      originalFileName?: string;
+      storedFileName?: string;
+      fileUrl?: string;
+      mimeType?: string;
+      fileSize?: number;
+      documentType?: string;
+      uploadedAt?: Date;
+    } = {
+      remarks: remarks || null,
+    };
+    if (file instanceof File) {
+      if (file.size <= 0) {
+        return errorResponse("The selected file is empty.", 400);
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        return errorResponse("File must be 15 MB or smaller.", 400);
+      }
+
+      const extension = ext(file.name);
+
+      if (!extension || !OK.includes(extension)) {
+        return errorResponse("Invalid file type.", 400);
+      }
+      const uploadDirectory = path.join(
+        process.cwd(),
+        "public",
+        "uploads",
+        "students",
+      );
+
+      await mkdir(uploadDirectory, {
+        recursive: true,
       });
 
-      return NextResponse.json({
-        success: true,
-        data: updatedDocument,
-        message: "Document updated successfully",
-      });
-    }
+      const storedFileName = `${old.documentCode}-${crypto.randomUUID()}.${extension}`;
 
-    const checklistItem = STUDENT_DOCUMENT_CHECKLIST.find(
-      (item) => item.code === existingDocument.documentCode,
-    );
+      savedFilePath = path.join(uploadDirectory, storedFileName);
 
-    if (!checklistItem) {
-      return errorResponse("Document checklist item not found", 400);
-    }
+      await writeFile(savedFilePath, Buffer.from(await file.arrayBuffer()));
 
-    const extension = validateStudentDocument(file);
-
-    const storedFileName = buildStudentDocumentFileName({
-      studentName: existingDocument.student.studentName,
-      documentName: checklistItem.name,
-      branchCode: existingDocument.student.branch?.code || "branch",
-      extension,
-    });
-
-    const uploadDirectory = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "students",
-    );
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    await writeFile(path.join(uploadDirectory, storedFileName), buffer, {
-      flag: "wx",
-    });
-
-    const updatedDocument = await db.studentDocument.update({
-      where: { id: documentId },
-      data: {
+      Object.assign(data, {
         originalFileName: file.name,
         storedFileName,
         fileUrl: `/uploads/students/${storedFileName}`,
-        mimeType: file.type,
+        mimeType: file.type || "application/octet-stream",
         fileSize: file.size,
-        remarks: remarks || null,
+        documentType: extension.toUpperCase(),
         uploadedAt: new Date(),
+      });
+    }
+    const updated = await db.studentDocument.update({
+      where: {
+        id: documentId,
       },
+      data,
     });
+    if (file instanceof File) {
+      await removeStoredFile(old.fileUrl);
+    }
 
-    await removeStoredFile(existingDocument.fileUrl);
+    savedFilePath = null;
 
     return NextResponse.json({
       success: true,
-      data: updatedDocument,
-      message: "Document replaced successfully",
+      message:
+        source === "STUDENT_SHARED"
+          ? "Shared student document replaced successfully."
+          : "Student document replaced successfully.",
+      data: {
+        ...updated,
+        source: "STUDENT_SHARED" as const,
+        studentDocumentId: updated.id,
+      },
     });
-  } catch (error) {
-    console.error("[student-document:put]", error);
+  } catch (error: unknown) {
+    console.error("[student-documents:patch]", error);
+    if (savedFilePath) {
+      try {
+        await unlink(savedFilePath);
+      } catch {}
+    }
 
-    return errorResponse(
-      error instanceof Error ? error.message : "Unable to update document",
-      500,
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to replace document.",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }
 
-export async function DELETE(
-  _req: NextRequest,
-  {
-    params,
-  }: {
-    params: Promise<{ id: string; documentId: string }>;
-  },
-) {
+export async function DELETE(req: NextRequest, ctx: Ctx) {
   try {
-    const { id: studentId, documentId } = await params;
+    const { id: studentId, documentId } = await ctx.params;
+
+    const source = getSource(req);
+
+    if (!source) {
+      return errorResponse(
+        "Document source is required. Use source=STUDENT_SHARED or source=LOAN.",
+        400,
+      );
+    }
 
     const document = await db.studentDocument.findFirst({
       where: {
@@ -157,21 +216,34 @@ export async function DELETE(
     });
 
     if (!document) {
-      return errorResponse("Document not found", 404);
+      return errorResponse("Student document not found.", 404);
     }
-
     await db.studentDocument.delete({
-      where: { id: documentId },
+      where: {
+        id: documentId,
+      },
     });
-
     await removeStoredFile(document.fileUrl);
 
     return NextResponse.json({
       success: true,
-      message: "Document deleted successfully",
+      message:
+        source === "STUDENT_SHARED"
+          ? "Shared student document deleted successfully."
+          : "Student document deleted successfully.",
     });
-  } catch (error) {
-    console.error("[student-document:delete]", error);
-    return errorResponse("Unable to delete document", 500);
+  } catch (error: unknown) {
+    console.error("[student-documents:delete]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Failed to delete document.",
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }

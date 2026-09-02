@@ -1,3 +1,4 @@
+// app\api\leads\[id]\status\route.ts
 import { NextRequest } from "next/server";
 import db from "@/lib/prisma";
 import { badRequest, handleError, notFound, ok } from "@/lib/api-helpers";
@@ -42,6 +43,7 @@ export async function PATCH(
         branchId: true,
         mobileNumber: true,
         emailId: true,
+        moi: true,
         counselors: {
           select: {
             counselorId: true,
@@ -112,6 +114,7 @@ export async function PATCH(
                   existingLead.studentName || existingLead.leadNumber,
                 mobileNumber: existingLead.mobileNumber ?? "",
                 emailId: existingLead.emailId ?? "",
+                moi: existingLead.moi ?? null,
               },
               select: {
                 id: true,

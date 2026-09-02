@@ -6,6 +6,7 @@ import path from "path";
 import db from "@/lib/prisma";
 import { buildDocumentChecklist } from "@/lib/loan-application/server";
 import { LOAN_DOCUMENT_CHECKLIST } from "@/lib/loan-application/constants";
+import { badRequest } from "@/lib/api-helpers";
 
 type Ctx = {
   params: Promise<{
@@ -31,22 +32,37 @@ export async function GET(_: NextRequest, ctx: Ctx) {
       },
       select: {
         id: true,
+        lead: {
+          select: {
+            student: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
       },
     });
 
     if (!application) {
-      return NextResponse.json(
-        {
-          message: "Loan application not found",
-        },
-        {
-          status: 404,
-        },
+      return badRequest("Loan application not found.");
+    }
+
+    const studentId = application.lead?.student?.id;
+
+    if (!studentId) {
+      return badRequest(
+        "This loan application is not linked to a converted student.",
       );
     }
 
-    const [customMasters, documents] = await Promise.all([
-      // Only dynamic OTHER documents should come from LoanDocumentMaster.
+    const [
+      customMasters,
+      loanDocuments,
+      studentDocuments,
+      studentCustomMasters,
+    ] = await Promise.all([
+      // Loan custom document masters
       db.loanDocumentMaster.findMany({
         where: {
           applicationId: id,
@@ -63,7 +79,6 @@ export async function GET(_: NextRequest, ctx: Ctx) {
           },
         ],
       }),
-
       db.loanDocument.findMany({
         where: {
           applicationId: id,
@@ -72,9 +87,56 @@ export async function GET(_: NextRequest, ctx: Ctx) {
           uploadedAt: "desc",
         },
       }),
+      db.studentDocument.findMany({
+        where: {
+          studentId,
+        },
+        orderBy: {
+          uploadedAt: "desc",
+        },
+      }),
+      db.studentDocumentMaster.findMany({
+        where: {
+          studentId,
+          isActive: true,
+        },
+        orderBy: [
+          {
+            sortOrder: "asc",
+          },
+          {
+            createdAt: "asc",
+          },
+        ],
+      }),
     ]);
 
-    const checklist = buildDocumentChecklist(documents, customMasters);
+    const normalizedLoanDocuments = loanDocuments.map((document) => ({
+      id: document.id,
+      applicationId: document.applicationId,
+      studentId: null,
+      documentMasterId: document.documentMasterId,
+      documentCode: document.documentCode,
+      documentType: document.documentType,
+      originalFileName: document.originalFileName,
+      storedFileName: document.storedFileName,
+      fileUrl: document.fileUrl,
+      mimeType: document.mimeType,
+      fileSize: document.fileSize,
+      remarks: document.remarks,
+      uploadedAt: document.uploadedAt,
+      createdAt: document.createdAt,
+      updatedAt: document.updatedAt,
+      source: "LOAN" as const,
+      studentDocumentId: null,
+    }));
+
+    const checklist = buildDocumentChecklist(
+      normalizedLoanDocuments,
+      customMasters,
+      studentDocuments,
+      studentCustomMasters,
+    );
 
     return NextResponse.json({
       data: {

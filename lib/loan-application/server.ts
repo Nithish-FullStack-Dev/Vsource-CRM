@@ -1,8 +1,14 @@
 // lib\loan-application\server.ts
-import { LoanDocumentMaster, LoanDocument } from "@/generated/prisma/client";
+import {
+  LoanDocumentMaster,
+  LoanDocument,
+  StudentDocumentMaster,
+  StudentDocument,
+} from "@/generated/prisma/client";
 import db from "@/lib/prisma";
 import type { LoanApplicationPayload } from "@/schemas/loan-application/loan-application.schema";
 import { LOAN_DOCUMENT_CHECKLIST } from "./constants";
+import { STUDENT_DOCUMENT_CHECKLIST } from "@/lib/student-document-checklist";
 
 const toDate = (v?: string | Date | null) => (v ? new Date(v) : null);
 const money = (v?: number | null) => (typeof v === "number" ? v : null);
@@ -159,19 +165,61 @@ export function serializeLoanApplication(r: any) {
   return b;
 }
 
+export type LoanChecklistDocument = {
+  id: string;
+  applicationId?: string | null;
+  studentId?: string | null;
+  documentMasterId?: string | null;
+  documentCode: string;
+  documentType: string;
+  originalFileName: string;
+  storedFileName: string;
+  fileUrl: string;
+  mimeType: string;
+  fileSize: number;
+  remarks?: string | null;
+  uploadedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  source: "STUDENT_SHARED" | "LOAN";
+  studentDocumentId?: string | null;
+};
+
+const normalizeStudentDocument = (
+  document: StudentDocument,
+): LoanChecklistDocument => ({
+  id: document.id,
+  applicationId: null,
+  studentId: document.studentId,
+  documentMasterId: document.documentMasterId,
+  documentCode: document.documentCode,
+  documentType: document.documentType,
+  originalFileName: document.originalFileName,
+  storedFileName: document.storedFileName,
+  fileUrl: document.fileUrl,
+  mimeType: document.mimeType,
+  fileSize: document.fileSize,
+  remarks: document.remarks,
+  uploadedAt: document.uploadedAt,
+  createdAt: document.createdAt,
+  updatedAt: document.updatedAt,
+  source: "STUDENT_SHARED",
+  studentDocumentId: document.id,
+});
+
 export function buildDocumentChecklist(
-  documents: LoanDocument[],
+  documents: LoanChecklistDocument[],
   customMasters: LoanDocumentMaster[],
+  studentDocuments: StudentDocument[] = [],
+  studentCustomMasters: StudentDocumentMaster[] = [],
 ) {
-  // KYC and OPTIONAL always come from the static constant.
   const staticChecklist = LOAN_DOCUMENT_CHECKLIST.map((item) => {
     const matchedDocuments = documents.filter(
-      (document) => document.documentCode === item.code,
+      (document) =>
+        document.source === "LOAN" && document.documentCode === item.code,
     );
 
     return {
-      // Static items do not come from LoanDocumentMaster.
-      // The code acts as the checklist identifier.
       id: item.code,
       code: item.code,
       name: item.name,
@@ -183,11 +231,10 @@ export function buildDocumentChecklist(
       documents: matchedDocuments,
     };
   });
-
-  // OTHER always comes from application-specific LoanDocumentMaster records.
   const otherChecklist = customMasters.map((master) => {
     const matchedDocuments = documents.filter(
-      (document) => document.documentMasterId === master.id,
+      (document) =>
+        document.source === "LOAN" && document.documentMasterId === master.id,
     );
 
     return {
@@ -202,6 +249,49 @@ export function buildDocumentChecklist(
       documents: matchedDocuments,
     };
   });
+  const studentChecklist = STUDENT_DOCUMENT_CHECKLIST.map((item) => {
+    const matchedDocuments = studentDocuments
+      .filter((document) => document.documentCode === item.code)
+      .map(normalizeStudentDocument);
 
-  return [...staticChecklist, ...otherChecklist];
+    return {
+      id: `student:${item.code}`,
+      code: item.code,
+      name: item.name,
+      category: "STUDENT" as const,
+
+      required: true,
+      isOptional: false,
+
+      isSystem: true,
+      isComplete: matchedDocuments.length >= item.requiredCount,
+
+      documents: matchedDocuments,
+    };
+  });
+
+  const studentCustomChecklist = studentCustomMasters.map((master) => {
+    const matchedDocuments = studentDocuments
+      .filter((document) => document.documentMasterId === master.id)
+      .map(normalizeStudentDocument);
+
+    return {
+      id: `student-custom:${master.id}`,
+      code: master.code,
+      name: master.name,
+      category: "STUDENT" as const,
+      required: master.required,
+      isOptional: !master.required,
+      isSystem: false,
+      isComplete: matchedDocuments.length > 0,
+      documents: matchedDocuments,
+    };
+  });
+
+  return [
+    ...staticChecklist,
+    ...otherChecklist,
+    ...studentChecklist,
+    ...studentCustomChecklist,
+  ];
 }

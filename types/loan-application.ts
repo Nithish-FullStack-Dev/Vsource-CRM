@@ -1,3 +1,6 @@
+// types\loan-application.ts
+import { LoanChecklistDocument } from "@/lib/loan-application/server";
+
 export type SelectOption = {
   id: string;
   name: string;
@@ -63,7 +66,7 @@ export type LoanDocumentChecklistItem = {
   required?: boolean;
   isOptional?: boolean;
   isComplete?: boolean;
-  documents: LoanDocument[];
+  documents: LoanChecklistDocument[]
 };
 export type LoanApplication = {
   id: string;

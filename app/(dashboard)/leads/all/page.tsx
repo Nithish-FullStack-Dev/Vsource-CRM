@@ -154,6 +154,14 @@ export default function AllLeadsPage() {
   const pageLeads = filteredLeads;
 
   const pageCount = meta?.totalPages ?? 1;
+
+  const totalResults = meta?.total ?? 0;
+
+  const showingFrom = totalResults === 0 ? 0 : start + 1;
+
+  const showingTo =
+    totalResults === 0 ? 0 : Math.min(start + pageLeads.length, totalResults);
+
   useEffect(() => {
     if (page > pageCount) {
       setPage(pageCount);
@@ -1005,8 +1013,8 @@ export default function AllLeadsPage() {
       </Card>
 
       <div className="mt-4 flex flex-col gap-4 rounded-xl border bg-background px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-muted-foreground">
-          Showing {pageLeads.length} of {meta?.total ?? 0} results
+        <div className="text-muted-foreground whitespace-nowrap">
+          Showing {showingFrom}–{showingTo} of {totalResults} results
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -1044,15 +1052,15 @@ export default function AllLeadsPage() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
-          <span className="text-sm font-medium text-foreground whitespace-nowrap">
-            Page {meta?.page ?? 1} of {meta?.totalPages ?? 1}
+          <span className="whitespace-nowrap text-sm font-medium text-foreground">
+            Page {meta?.page ?? page} of {pageCount}
           </span>
 
           <Button
             variant="outline"
             size="icon"
             className="h-9 w-9"
-            disabled={page === pageCount}
+            disabled={page >= pageCount}
             onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
           >
             <ChevronRight className="h-4 w-4" />
