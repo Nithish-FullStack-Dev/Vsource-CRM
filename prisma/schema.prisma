@@ -149,14 +149,25 @@ model Lead {
   bachelorsYearOfPassing  Int?
   backlogs                Int?
   workExperience          String?
-  preferredCountry        String?
-  preferredIntake         String?
-  preferredCourse         String?
-  preferredTiers          String[]          @default([])
+  preferredCountryId     String?
+  preferredIntake        String?
+  preferredUniversityId  String?
+  preferredCourseId      String?
+
+  preferredCountry Country? @relation("LeadPreferredCountry",fields: [preferredCountryId],references: [id],onDelete: SetNull)
+
+  preferredUniversity University? @relation("LeadPreferredUniversity",fields: [preferredUniversityId],references: [id],onDelete: SetNull)
+
+  preferredCourse UniversityCourse? @relation("LeadPreferredCourse",fields: [preferredCourseId],references: [id],onDelete: SetNull)
+
+  @@index([preferredCountryId])
+  @@index([preferredUniversityId])
+  @@index([preferredCourseId])
   greGmatScore            Float?
   quantitativeScore       Float?
   verbalScore             Float?
   analyticalWritingScore  Float?
+  moi String?
   gapsIfAny               String?
   status                  LeadStatus        @default(NEW)
   graduationStatus        GraduationStatus?
@@ -517,10 +528,13 @@ model Country {
   code                String               @unique
   currency            String?
   status              Boolean              @default(true)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
   studentApplications StudentApplication[]
   universities        University[]
+
+  preferredByLeads    Lead[]               @relation("LeadPreferredCountry")
 }
 
 model Intake {
@@ -597,7 +611,7 @@ model University {
   country             Country                 @relation(fields: [countryId], references: [id])
   courses             UniversityCourse[]
   scholarships        UniversityScholarship[]
-
+  preferredByLeads Lead[] @relation("LeadPreferredUniversity")
   @@unique([name, countryId])
   @@index([countryId])
   @@index([countryId, city])
@@ -636,7 +650,7 @@ model UniversityCourse {
   intake              Intake?                 @relation(fields: [intakeId], references: [id])
   university          University              @relation(fields: [universityId], references: [id], onDelete: Cascade)
   scholarships        UniversityScholarship[]
-
+  preferredByLeads    Lead[]                  @relation("LeadPreferredCourse")
   @@index([universityId])
 }
 

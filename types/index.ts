@@ -51,12 +51,14 @@ export interface Lead {
     id: string;
     name: string;
   };
+
   fintechAssigneeId?: string | null;
 
   fintechAssignee?: {
     id: string;
     name: string;
   } | null;
+
   counselors?: {
     isPrimary: boolean;
     counselor: {
@@ -65,12 +67,50 @@ export interface Lead {
     };
   }[];
 
-  preferredCountry?: string;
-  preferredIntake?: string;
-  preferredCourse?: string;
-  preferredTiers?: string[];
+  // ==============================
+  // PREFERRED STUDY DETAILS
+  // ==============================
+
+  preferredCountryId?: string | null;
+
+  preferredCountry?: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
+
+  preferredIntake?: string | null;
+
+
+  preferredUniversityId?: string | null;
+
+  preferredUniversity?: {
+    id: string;
+    name: string;
+    countryId: string;
+    tier: string;
+  } | null;
+
+  preferredUniversityName?: string;
+
+  preferredCourseId?: string | null;
+
+  preferredCourse?: {
+    id: string;
+    name: string;
+    universityId: string;
+  } | null;
+
+  preferredCourseName?: string;
+
+
+
+  // ==============================
+  // EDUCATION
+  // ==============================
 
   graduationStatus?: "completed" | "pursuing" | null;
+
   loanRequirement?: boolean;
 
   tenthPercentage?: number;
@@ -92,6 +132,7 @@ export interface Lead {
   quantitativeScore?: number;
   verbalScore?: number;
   analyticalWritingScore?: number;
+  moi?: string;
 
   englishTests?: LeadEnglishTest[];
 
@@ -116,6 +157,7 @@ export interface Lead {
   status: LeadStatus;
 
   isConverted?: boolean;
+
   loanApplication?: {
     loanStatus?: string | null;
     loanCategory?: string | null;
@@ -123,15 +165,18 @@ export interface Lead {
     disbursementDate?: string | null;
     depositStatus?: string | null;
     depositDate?: string | null;
+
     fintechAssignee?: {
       name: string;
     };
+
     sanctionBankApplication?: {
       bank?: {
         name?: string;
       } | null;
     } | null;
   } | null;
+
   createdAt: string;
 }
 

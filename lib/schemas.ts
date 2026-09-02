@@ -13,6 +13,13 @@ import { z } from "zod";
 // ---------------------------------------------------------------------------
 const uuid = z.string().uuid();
 const optUuid = uuid.optional();
+const nullableUuid = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) {
+    return null;
+  }
+
+  return value;
+}, z.string().uuid().nullable().optional());
 const optStr = z.string().nullable().optional();
 const optFloat = z.number().nullable().optional();
 const optInt = z.number().int().nullable().optional();
@@ -145,14 +152,14 @@ export const LeadCreateSchema = z.object({
   backlogs: optInt,
   workExperience: optStr,
 
-  preferredCountry: optStr,
+  preferredCountryId: nullableUuid,
   preferredIntake: optStr,
-  preferredCourse: optStr,
 
-  preferredTiers: z
-    .array(z.enum(["T1", "T2", "T3", "T4"]))
-    .optional()
-    .default([]),
+  preferredUniversityId: nullableUuid,
+  preferredUniversityName: z.string().optional(),
+
+  preferredCourseId: nullableUuid,
+  preferredCourseName: z.string().optional(),
 
   greGmatScore: optFloat,
   quantitativeScore: optFloat,
@@ -174,6 +181,7 @@ export const LeadCreateSchema = z.object({
     )
     .optional()
     .default([]),
+  moi: z.string().optional(),
   gapsIfAny: optStr,
 
   status: LeadStatusEnum.default("NEW"),
@@ -211,7 +219,7 @@ export const LeadUpdateSchema = LeadCreateSchema.partial()
   .extend({
     // Remove defaults for updates
     leadType: LeadTypeEnum.optional(),
-    preferredTiers: z.array(z.enum(["T1", "T2", "T3", "T4"])).optional(),
+    // preferredTiers: z.array(z.enum(["T1", "T2", "T3", "T4"])).optional(),
     englishTests: z.array(LeadEnglishTestSchema).optional(),
     status: LeadStatusEnum.optional(),
     loanRequirement: z.boolean().optional(),

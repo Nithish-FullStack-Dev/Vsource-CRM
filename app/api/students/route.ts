@@ -144,7 +144,6 @@ export async function GET(req: NextRequest) {
               preferredCountry: true,
               preferredIntake: true,
               preferredCourse: true,
-              preferredTiers: true,
               bachelorsCourse: true,
               twelfthPercentage: true,
               twelfthYearOfPassing: true,

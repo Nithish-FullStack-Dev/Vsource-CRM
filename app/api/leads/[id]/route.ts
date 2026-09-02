@@ -56,16 +56,42 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
       include: {
         branch: true,
+
+        preferredCountry: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+
+        preferredUniversity: {
+          select: {
+            id: true,
+            name: true,
+            countryId: true,
+            tier: true,
+          },
+        },
+
+        preferredCourse: {
+          select: {
+            id: true,
+            name: true,
+            universityId: true,
+          },
+        },
+
         fintechAssignee: {
           select: {
             id: true,
             name: true,
           },
         },
+
         counselors: {
           select: {
             isPrimary: true,
-
             counselor: {
               select: {
                 id: true,
@@ -89,7 +115,6 @@ export async function GET(req: NextRequest, { params }: Ctx) {
                 name: true,
               },
             },
-
             updatedBy: {
               select: {
                 id: true,
@@ -97,7 +122,6 @@ export async function GET(req: NextRequest, { params }: Ctx) {
               },
             },
           },
-
           orderBy: {
             createdAt: "desc",
           },
@@ -136,6 +160,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       followupDate,
       followupNote,
       branchId,
+
+      preferredCountryId,
+      preferredUniversityId,
+      preferredUniversityName,
+      preferredCourseId,
+      preferredCourseName,
+
       ...leadData
     } = body;
 
@@ -178,20 +209,206 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const fintechAssigned =
       fintechAssigneeId && fintechAssigneeId !== existingLead.fintechAssigneeId;
     const lead = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+      let resolvedCountryId = preferredCountryId;
+      let resolvedUniversityId = preferredUniversityId;
+      let resolvedCourseId = preferredCourseId;
+
+      // ---------------------------------------------------------
+      // COUNTRY
+      // ---------------------------------------------------------
+      if (resolvedUniversityId && resolvedCountryId) {
+        const university = await tx.university.findUnique({
+          where: {
+            id: resolvedUniversityId,
+          },
+          select: {
+            id: true,
+            countryId: true,
+          },
+        });
+
+        if (!university) {
+          throw new Error("Preferred university not found");
+        }
+
+        if (university.countryId !== resolvedCountryId) {
+          throw new Error(
+            "Preferred university does not belong to the selected country",
+          );
+        }
+      }
+
+      // ---------------------------------------------------------
+      // UNIVERSITY
+      // Existing university OR create new university
+      // ---------------------------------------------------------
+      if (!resolvedUniversityId && preferredUniversityName?.trim()) {
+        if (!resolvedCountryId) {
+          throw new Error(
+            "Preferred country is required when entering a university",
+          );
+        }
+
+        const universityName = preferredUniversityName.trim();
+
+        const existingUniversity = await tx.university.findFirst({
+          where: {
+            countryId: resolvedCountryId,
+            name: {
+              equals: universityName,
+              mode: "insensitive",
+            },
+          },
+          select: {
+            id: true,
+            countryId: true,
+          },
+        });
+
+        if (existingUniversity) {
+          resolvedUniversityId = existingUniversity.id;
+        } else {
+          const newUniversity = await tx.university.create({
+            data: {
+              name: universityName,
+              countryId: resolvedCountryId,
+              tier: "T4",
+              status: "active",
+            },
+            select: {
+              id: true,
+              countryId: true,
+            },
+          });
+
+          resolvedUniversityId = newUniversity.id;
+        }
+      }
+
+      // ---------------------------------------------------------
+      // COURSE
+      // Existing course OR create new course
+      // ---------------------------------------------------------
+      if (!resolvedCourseId && preferredCourseName?.trim()) {
+        if (!resolvedUniversityId) {
+          throw new Error(
+            "Preferred university is required when entering a course",
+          );
+        }
+
+        const courseName = preferredCourseName.trim();
+
+        const existingCourse = await tx.universityCourse.findFirst({
+          where: {
+            universityId: resolvedUniversityId,
+            name: {
+              equals: courseName,
+              mode: "insensitive",
+            },
+          },
+          select: {
+            id: true,
+            universityId: true,
+          },
+        });
+
+        if (existingCourse) {
+          resolvedCourseId = existingCourse.id;
+        } else {
+          const newCourse = await tx.universityCourse.create({
+            data: {
+              name: courseName,
+              universityId: resolvedUniversityId,
+              status: true,
+            },
+            select: {
+              id: true,
+              universityId: true,
+            },
+          });
+
+          resolvedCourseId = newCourse.id;
+        }
+      }
+
+      // ---------------------------------------------------------
+      // Validate course belongs to university
+      // ---------------------------------------------------------
+      if (resolvedCourseId && resolvedUniversityId) {
+        const course = await tx.universityCourse.findUnique({
+          where: {
+            id: resolvedCourseId,
+          },
+          select: {
+            id: true,
+            universityId: true,
+          },
+        });
+
+        if (!course) {
+          throw new Error("Preferred course not found");
+        }
+
+        if (course.universityId !== resolvedUniversityId) {
+          throw new Error(
+            "Preferred course does not belong to the selected university",
+          );
+        }
+      }
+
       const updateData: Prisma.LeadUpdateInput = {
         ...leadData,
+
+        ...(preferredCountryId !== undefined && {
+          preferredCountry: resolvedCountryId
+            ? {
+                connect: {
+                  id: resolvedCountryId,
+                },
+              }
+            : {
+                disconnect: true,
+              },
+        }),
+
+        ...((preferredUniversityId !== undefined ||
+          preferredUniversityName !== undefined) && {
+          preferredUniversity: resolvedUniversityId
+            ? {
+                connect: {
+                  id: resolvedUniversityId,
+                },
+              }
+            : {
+                disconnect: true,
+              },
+        }),
+
+        ...((preferredCourseId !== undefined ||
+          preferredCourseName !== undefined) && {
+          preferredCourse: resolvedCourseId
+            ? {
+                connect: {
+                  id: resolvedCourseId,
+                },
+              }
+            : {
+                disconnect: true,
+              },
+        }),
 
         ...(body.status !== undefined && {
           status: body.status,
         }),
 
-        ...(branchId && {
-          branch: {
-            connect: {
-              id: branchId,
+        ...(branchId !== undefined &&
+          branchId && {
+            branch: {
+              connect: {
+                id: branchId,
+              },
             },
-          },
-        }),
+          }),
 
         fintechAssignee:
           fintechAssigneeId === undefined
@@ -298,6 +515,30 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               id: true,
               name: true,
               code: true,
+            },
+          },
+          preferredCountry: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+
+          preferredUniversity: {
+            select: {
+              id: true,
+              name: true,
+              countryId: true,
+              tier: true,
+            },
+          },
+
+          preferredCourse: {
+            select: {
+              id: true,
+              name: true,
+              universityId: true,
             },
           },
           fintechAssignee: {

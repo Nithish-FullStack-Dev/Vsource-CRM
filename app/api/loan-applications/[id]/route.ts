@@ -475,6 +475,35 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       });
 
       if (existingApplication.leadId) {
+        // Look up country and course by name to get their IDs for relations
+        const preferredCountryRecord = values.country
+          ? await tx.country.findFirst({
+              where: {
+                name: {
+                  equals: values.country,
+                  mode: "insensitive",
+                },
+              },
+              select: {
+                id: true,
+              },
+            })
+          : null;
+
+        const preferredCourseRecord = values.courseName
+          ? await tx.universityCourse.findFirst({
+              where: {
+                name: {
+                  equals: values.courseName,
+                  mode: "insensitive",
+                },
+              },
+              select: {
+                id: true,
+              },
+            })
+          : null;
+
         await tx.lead.update({
           where: {
             id: existingApplication.leadId,
@@ -499,11 +528,31 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
             workExperience: normalizeOptionalString(values.workExperience),
 
-            preferredCountry: normalizeOptionalString(values.country),
-
-            preferredCourse: normalizeOptionalString(values.courseName),
-
             preferredIntake: normalizeOptionalString(values.intake),
+
+            ...(preferredCountryRecord
+              ? {
+                  preferredCountry: {
+                    connect: {
+                      id: preferredCountryRecord.id,
+                    },
+                  },
+                }
+              : values.country === null
+                ? { preferredCountry: { disconnect: true } }
+                : {}),
+
+            ...(preferredCourseRecord
+              ? {
+                  preferredCourse: {
+                    connect: {
+                      id: preferredCourseRecord.id,
+                    },
+                  },
+                }
+              : values.courseName === null
+                ? { preferredCourse: { disconnect: true } }
+                : {}),
           },
         });
         const student = await tx.student.findUnique({

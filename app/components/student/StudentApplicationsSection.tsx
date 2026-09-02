@@ -252,7 +252,11 @@ export default function StudentApplicationsSection({
 
                 <input
                   disabled
-                  value={student.lead?.preferredCountry ?? ""}
+                  value={
+                    typeof student.lead?.preferredCountry === "object"
+                      ? (student.lead?.preferredCountry?.name ?? "")
+                      : (student.lead?.preferredCountry ?? "")
+                  }
                   className="w-full h-11 px-4 rounded-2xl border bg-muted"
                 />
               </div>
@@ -265,16 +269,6 @@ export default function StudentApplicationsSection({
                 <input
                   disabled
                   value={student.lead?.preferredIntake ?? ""}
-                  className="w-full h-11 px-4 rounded-2xl border bg-muted"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold mb-2 block">Tier</label>
-
-                <input
-                  disabled
-                  value={student.lead?.preferredTiers?.join(", ") ?? ""}
                   className="w-full h-11 px-4 rounded-2xl border bg-muted"
                 />
               </div>

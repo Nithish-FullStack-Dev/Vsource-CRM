@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") as LeadStatus | null;
     const leadType = searchParams.get("leadType") as LeadType | null;
     const source = searchParams.get("source") ?? undefined;
-    const preferredCountry = searchParams.get("preferredCountry") ?? undefined;
-
+    const preferredCountryId =
+      searchParams.get("preferredCountryId") ?? undefined;
     const isConverted =
       searchParams.get("isConverted") !== null
         ? searchParams.get("isConverted") === "true"
@@ -88,7 +88,11 @@ export async function GET(req: NextRequest) {
       ...(leadType ? { leadType } : {}),
       ...(isConverted !== undefined ? { isConverted } : {}),
       ...(source ? { source } : {}),
-      ...(preferredCountry ? { preferredCountry } : {}),
+      ...(preferredCountryId
+        ? {
+            preferredCountryId,
+          }
+        : {}),
       ...(from || to
         ? {
             createdAt: {
@@ -159,6 +163,30 @@ export async function GET(req: NextRequest) {
                   name: true,
                 },
               },
+            },
+          },
+          preferredCountry: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+
+          preferredUniversity: {
+            select: {
+              id: true,
+              name: true,
+              countryId: true,
+              tier: true,
+            },
+          },
+
+          preferredCourse: {
+            select: {
+              id: true,
+              name: true,
+              universityId: true,
             },
           },
           fintechAssignee: {
@@ -296,13 +324,115 @@ export async function POST(req: NextRequest) {
     );
 
     const lead = await db.$transaction(async (tx) => {
+      let preferredUniversityId = leadData.preferredUniversityId ?? null;
+      let preferredCourseId = leadData.preferredCourseId ?? null;
+
+
+      // ---------------------------------------------------------
+      // Resolve / create preferred university
+      // ---------------------------------------------------------
+      if (!preferredUniversityId && leadData.preferredUniversityName?.trim()) {
+        if (!leadData.preferredCountryId) {
+          throw new Error(
+            "Preferred country is required when entering a university",
+          );
+        }
+
+        const universityName = leadData.preferredUniversityName.trim();
+
+        const existingUniversity = await tx.university.findFirst({
+          where: {
+            countryId: leadData.preferredCountryId,
+            name: {
+              equals: universityName,
+              mode: "insensitive",
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (existingUniversity) {
+          preferredUniversityId = existingUniversity.id;
+        } else {
+          const newUniversity = await tx.university.create({
+            data: {
+              name: universityName,
+              countryId: leadData.preferredCountryId,
+              tier: "T4",
+              status: "active",
+            },
+            select: {
+              id: true,
+            },
+          });
+
+          preferredUniversityId = newUniversity.id;
+        }
+      }
+
+      // ---------------------------------------------------------
+      // Resolve / create preferred course
+      // ---------------------------------------------------------
+      if (!preferredCourseId && leadData.preferredCourseName?.trim()) {
+        if (!preferredUniversityId) {
+          throw new Error(
+            "Preferred university is required when entering a course",
+          );
+        }
+
+        const courseName = leadData.preferredCourseName.trim();
+
+        const existingCourse = await tx.universityCourse.findFirst({
+          where: {
+            universityId: preferredUniversityId,
+            name: {
+              equals: courseName,
+              mode: "insensitive",
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (existingCourse) {
+          preferredCourseId = existingCourse.id;
+        } else {
+          const newCourse = await tx.universityCourse.create({
+            data: {
+              name: courseName,
+              universityId: preferredUniversityId,
+              status: true,
+            },
+            select: {
+              id: true,
+            },
+          });
+
+          preferredCourseId = newCourse.id;
+        }
+      }
+
+      const {
+        preferredUniversityName: _preferredUniversityName,
+        preferredCourseName: _preferredCourseName,
+        ...cleanLeadData
+      } = leadData;
+
       const createdLead = await tx.lead.create({
         data: {
-          ...leadData,
+          ...cleanLeadData,
+
+          preferredUniversityId,
+          preferredCourseId,
+
           leadNumber,
           createdById: currentUser.id,
           updatedById: currentUser.id,
           fintechAssigneeId: fintechId,
+
           counselors:
             selectedCounselorIds.length > 0
               ? {
@@ -313,6 +443,7 @@ export async function POST(req: NextRequest) {
                   })),
                 }
               : undefined,
+
           englishTests:
             englishTests && englishTests.length > 0
               ? {
@@ -327,6 +458,7 @@ export async function POST(req: NextRequest) {
                 }
               : undefined,
         },
+
         include: {
           branch: {
             select: {
@@ -335,6 +467,26 @@ export async function POST(req: NextRequest) {
               code: true,
             },
           },
+
+    
+
+          preferredUniversity: {
+            select: {
+              id: true,
+              name: true,
+              countryId: true,
+              tier: true,
+            },
+          },
+
+          preferredCourse: {
+            select: {
+              id: true,
+              name: true,
+              universityId: true,
+            },
+          },
+
           counselors: {
             select: {
               isPrimary: true,
@@ -346,6 +498,7 @@ export async function POST(req: NextRequest) {
               },
             },
           },
+
           englishTests: {
             orderBy: {
               createdAt: "asc",
