@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -178,8 +178,18 @@ export default function LoanApplicationsPage() {
   );
 
   const pc = Math.max(1, Math.ceil(filtered.length / perPage));
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
+  const safePage = Math.min(page, pc);
+
+  const startIndex = (safePage - 1) * perPage;
+  const endIndex = Math.min(startIndex + perPage, filtered.length);
+
+  const paged = filtered.slice(startIndex, endIndex);
+  useEffect(() => {
+    if (page > pc) {
+      setPage(pc);
+    }
+  }, [page, pc]);
   const upd = (fn: (v: string) => void) => (v: string) => {
     fn(v);
     setPage(1);
@@ -234,74 +244,74 @@ export default function LoanApplicationsPage() {
         </div>
 
         <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-       {/* Filters */}
-<div className="border-b p-4">
-  <div className="flex flex-col gap-4">
-    {/* Search */}
-    <div className="w-full">
-      <div className="flex h-11 items-center rounded-lg border bg-background px-3">
-        <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+          {/* Filters */}
+          <div className="border-b p-4">
+            <div className="flex flex-col gap-4">
+              {/* Search */}
+              <div className="w-full">
+                <div className="flex h-11 items-center rounded-lg border bg-background px-3">
+                  <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
 
-        <Input
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
-          placeholder="Search name, application ID, mobile, email..."
-          className="h-full border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-        />
-      </div>
-    </div>
+                  <Input
+                    value={q}
+                    onChange={(e) => {
+                      setQ(e.target.value);
+                      setPage(1);
+                    }}
+                    placeholder="Search name, application ID, mobile, email..."
+                    className="h-full border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                  />
+                </div>
+              </div>
 
-    {/* Filters */}
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-      <FilterSelect
-        value={cat}
-        onChange={upd(setCat)}
-        placeholder="Applicant Category"
-        options={APPLICANT_CATEGORIES}
-      />
+              {/* Filters */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                <FilterSelect
+                  value={cat}
+                  onChange={upd(setCat)}
+                  placeholder="Applicant Category"
+                  options={APPLICANT_CATEGORIES}
+                />
 
-      <FilterSelect
-        value={loan}
-        onChange={upd(setLoan)}
-        placeholder="Loan Category"
-        options={LOAN_CATEGORIES}
-      />
+                <FilterSelect
+                  value={loan}
+                  onChange={upd(setLoan)}
+                  placeholder="Loan Category"
+                  options={LOAN_CATEGORIES}
+                />
 
-      <FilterSelect
-        value={status}
-        onChange={upd(setStatus)}
-        placeholder="Status"
-        options={LOAN_STATUSES}
-      />
+                <FilterSelect
+                  value={status}
+                  onChange={upd(setStatus)}
+                  placeholder="Status"
+                  options={LOAN_STATUSES}
+                />
 
-      <FilterSelect
-        value={user}
-        onChange={upd(setUser)}
-        placeholder="Assignee"
-        options={users}
-      />
+                <FilterSelect
+                  value={user}
+                  onChange={upd(setUser)}
+                  placeholder="Assignee"
+                  options={users}
+                />
 
-      <FilterSelect
-        value={b}
-        onChange={upd(setB)}
-        placeholder="Bank / NBFC"
-        options={banks}
-      />
+                <FilterSelect
+                  value={b}
+                  onChange={upd(setB)}
+                  placeholder="Bank / NBFC"
+                  options={banks}
+                />
 
-      <Button
-        variant="outline"
-        onClick={clear}
-        className="h-10 w-full"
-      >
-        <Filter className="mr-2 h-4 w-4" />
-        Clear
-      </Button>
-    </div>
-  </div>
-</div>
+                <Button
+                  variant="outline"
+                  onClick={clear}
+                  className="h-10 w-full"
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Clear
+                </Button>
+              </div>
+            </div>
+          </div>
 
           {/* ======================================================== */}
           {/* MOBILE VIEW: Cards (Shown on screens smaller than `md`)  */}
@@ -629,15 +639,25 @@ export default function LoanApplicationsPage() {
           {/* Pagination */}
           <div className="flex flex-col items-center gap-4 border-t p-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
             <div className="text-center sm:text-left">
-              Showing{" "}
-              <span className="font-medium text-foreground">
-                {paged.length}
-              </span>{" "}
-              of{" "}
-              <span className="font-medium text-foreground">
-                {filtered.length}
-              </span>{" "}
-              results
+              {filtered.length === 0 ? (
+                "No results"
+              ) : (
+                <>
+                  Showing{" "}
+                  <span className="font-medium text-foreground">
+                    {startIndex + 1}
+                  </span>
+                  {"–"}
+                  <span className="font-medium text-foreground">
+                    {endIndex}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-medium text-foreground">
+                    {filtered.length}
+                  </span>{" "}
+                  results
+                </>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-end">
