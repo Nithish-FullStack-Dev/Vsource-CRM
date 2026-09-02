@@ -441,7 +441,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
 
   if (documentsQuery.isLoading) {
     return (
-      <div className="grid min-h-[720px] grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-[720px] xl:grid-cols-[420px_minmax(0,1fr)]">
+      <div className="grid min-h-180 grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-180 xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="animate-pulse rounded-[28px] bg-slate-100 dark:bg-slate-900" />
         <div className="animate-pulse rounded-[28px] bg-slate-100 dark:bg-slate-900" />
       </div>
@@ -450,7 +450,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
 
   if (documentsQuery.isError) {
     return (
-      <div className="flex min-h-[460px] items-center justify-center rounded-[28px] border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
+      <div className="flex min-h-115 items-center justify-center rounded-[28px] border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
         <div>
           <AlertCircle className="mx-auto h-10 w-10 text-rose-500" />
           <h4 className="mt-4 text-sm font-black text-rose-700 dark:text-rose-300">
@@ -472,8 +472,8 @@ export function DMSSection({ studentId }: DMSSectionProps) {
   }
 
   return (
-    <div className="grid min-h-[720px] grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-[720px] xl:grid-cols-[420px_minmax(0,1fr)]">
-      <aside className="flex min-h-[520px] flex-col overflow-hidden rounded-[20px] sm:rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
+    <div className="grid min-h-180 grid-cols-1 gap-6 xl:h-[calc(100vh-120px)] xl:min-h-180 xl:grid-cols-[420px_minmax(0,1fr)]">
+      <aside className="flex min-h-130 flex-col overflow-hidden rounded-[20px] sm:rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
         <div className="border-b border-slate-100 px-3 py-3 sm:px-5 sm:py-5 dark:border-slate-800">
           <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
             <button
@@ -573,8 +573,8 @@ export function DMSSection({ studentId }: DMSSectionProps) {
           ) : null}
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-2 sm:px-4 sm:pb-4 xl:px-7 xl:pb-7 [scrollbar-color:rgb(148_163_184)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 [&::-webkit-scrollbar-track]:bg-transparent">
-          <div className="pointer-events-none absolute bottom-8 left-[30px] sm:left-[36px] top-3 w-px bg-slate-300 dark:bg-slate-700" />
+        <div className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-2 sm:px-4 sm:pb-4 xl:px-7 xl:pb-7 [scrollbar-color:rgb(148_163_184)_transparent] scrollbar-thin [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 [&::-webkit-scrollbar-track]:bg-transparent">
+          <div className="pointer-events-none absolute bottom-8 left-7.5 sm:left-9 top-3 w-px bg-slate-300 dark:bg-slate-700" />
 
           {visibleChecklist.length === 0 ? (
             <div className="relative rounded-[20px] sm:rounded-[22px] border border-dashed border-slate-300 bg-slate-50 px-4 py-8 sm:px-5 sm:py-10 text-center dark:border-slate-700 dark:bg-slate-900">
@@ -608,7 +608,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                     tabIndex={0}
                     onClick={() => selectChecklistItem(item)}
                     onKeyDown={(event) => handleCardKeyDown(event, item)}
-                    className={`group relative ml-0 flex min-h-[66px] sm:min-h-[82px] cursor-pointer items-center gap-2 sm:gap-3 overflow-hidden rounded-[20px] sm:rounded-[22px] border px-2.5 py-2.5 sm:px-4 sm:py-3.5 outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 ${
+                    className={`group relative ml-0 flex min-h-16.5 sm:min-h-20.5 cursor-pointer items-center gap-2 sm:gap-3 overflow-hidden rounded-[20px] sm:rounded-[22px] border px-2.5 py-2.5 sm:px-4 sm:py-3.5 outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 ${
                       isSelected
                         ? "border-emerald-200 bg-emerald-50/80 shadow-[0_8px_24px_rgba(16,185,129,0.10)] dark:border-emerald-900/70 dark:bg-emerald-950/20"
                         : "border-slate-300 bg-white hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-[0_10px_24px_rgba(15,23,42,0.10)] dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
@@ -634,7 +634,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                             `${itemDocuments.length} uploaded file${itemDocuments.length === 1 ? "" : "s"}`}
                         </p>
                       ) : (
-                        <p className="mt-0.5 sm:mt-1 flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.05em] sm:tracking-[0.08em] text-rose-500">
+                        <p className="mt-0.5 sm:mt-1 flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-wider sm:tracking-[0.08em] text-rose-500">
                           <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
                           <span className="truncate">
                             {isOptionalItem(item)
@@ -673,7 +673,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
         </div>
       </aside>
 
-      <section className="flex min-h-[720px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
+      <section className="flex min-h-180 flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 xl:h-full xl:min-h-0">
         <input
           ref={fileInputRef}
           type="file"
@@ -740,7 +740,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
             <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-5 dark:bg-slate-900/40 md:p-7">
               <form
                 onSubmit={handleSubmit}
-                className="mx-auto flex min-h-[620px] max-w-[760px] flex-col rounded-[26px] border border-slate-300 bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.14)] dark:border-slate-700 dark:bg-slate-950 md:p-7"
+                className="mx-auto flex min-h-155 max-w-190 flex-col rounded-[26px] border border-slate-300 bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.14)] dark:border-slate-700 dark:bg-slate-950"
               >
                 {activeDocument ? (
                   <div className="group relative">
@@ -903,7 +903,7 @@ export function DMSSection({ studentId }: DMSSectionProps) {
                         <button
                           type="submit"
                           disabled={isSaving}
-                          className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl bg-rose-500 px-5 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex min-w-42.5 items-center justify-center gap-2 rounded-xl bg-rose-500 px-5 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {isSaving ? (
                             <>

@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
         lead: {
           select: {
             preferredCountry: true,
-            preferredTiers: true,
           },
         },
       },
@@ -31,8 +30,6 @@ export async function GET(req: NextRequest) {
     }
 
     const preferredCountry = student.lead?.preferredCountry;
-    const preferredTiers =
-      (student.lead?.preferredTiers as UniversityTier[]) || [];
 
     const universities = await prisma.university.findMany({
       where: {
@@ -40,13 +37,10 @@ export async function GET(req: NextRequest) {
 
         ...(preferredCountry && {
           country: {
-            name: preferredCountry,
-          },
-        }),
-
-        ...(preferredTiers.length > 0 && {
-          tier: {
-            in: preferredTiers,
+            name:
+              typeof preferredCountry === "object"
+                ? preferredCountry.name
+                : preferredCountry,
           },
         }),
       },

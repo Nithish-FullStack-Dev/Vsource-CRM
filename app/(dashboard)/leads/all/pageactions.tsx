@@ -139,6 +139,17 @@ export default function PageActions(props: PageActionsProps) {
   const fintechUsers = counselors;
   const [universityOpen, setUniversityOpen] = useState(false);
   const [universitySearch, setUniversitySearch] = useState("");
+  const [preferredUniversityOpen, setPreferredUniversityOpen] = useState(false);
+  const [preferredUniversitySearch, setPreferredUniversitySearch] =
+    useState("");
+
+  const [preferredCourseOpen, setPreferredCourseOpen] = useState(false);
+  const [preferredCourseSearch, setPreferredCourseSearch] = useState("");
+
+  const [creatingPreferredUniversity, setCreatingPreferredUniversity] =
+    useState(false);
+
+  const [creatingPreferredCourse, setCreatingPreferredCourse] = useState(false);
   const { data: intakes = [], isLoading: intakeLoad } = useQuery({
     queryKey: ["intake"],
     queryFn: async () => {
@@ -164,6 +175,67 @@ export default function PageActions(props: PageActionsProps) {
       return data?.data || [];
     },
   });
+  const resolvedPreferredCountryId =
+    editingLead?.preferredCountryId ||
+    editingLead?.preferredCountry?.id ||
+    (editingLead?.preferredUniversity as any)?.countryId ||
+    "";
+
+  const resolvedPreferredUniversityId =
+    editingLead?.preferredUniversityId ||
+    editingLead?.preferredUniversity?.id ||
+    "";
+
+  const resolvedPreferredCourseId =
+    editingLead?.preferredCourseId || editingLead?.preferredCourse?.id || "";
+  const selectedPreferredCountryId = editingLead?.preferredCountryId || "";
+
+  const {
+    data: preferredUniversities = [],
+    isLoading: preferredUniversityLoad,
+  } = useQuery({
+    queryKey: ["preferred-universities", resolvedPreferredCountryId],
+    enabled: Boolean(resolvedPreferredCountryId),
+    queryFn: async () => {
+      if (!resolvedPreferredCountryId) {
+        return [];
+      }
+
+      const { data } = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/universities`,
+        {
+          params: {
+            countryId: resolvedPreferredCountryId,
+            status: "active",
+            page: 1,
+            limit: 100,
+          },
+          withCredentials: true,
+        },
+      );
+
+      return Array.isArray(data?.data) ? data.data : [];
+    },
+  });
+  const { data: preferredCourses = [], isLoading: preferredCourseLoad } =
+    useQuery({
+      queryKey: ["preferred-courses", resolvedPreferredUniversityId],
+      enabled: Boolean(resolvedPreferredUniversityId),
+      queryFn: async () => {
+        if (!resolvedPreferredUniversityId) {
+          return [];
+        }
+
+        const { data } = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/universities/${resolvedPreferredUniversityId}`,
+          {
+            withCredentials: true,
+          },
+        );
+
+        return Array.isArray(data?.data?.courses) ? data.data.courses : [];
+      },
+    });
   const createUniversity = async (name: string) => {
     const { data } = await axios.post(
       `${process.env.NEXT_PUBLIC_API_URL}/lead-universities`,
@@ -206,6 +278,7 @@ export default function PageActions(props: PageActionsProps) {
       return data?.data || [];
     },
   });
+
   const { data: lead_sources = [], isLoading: lead_sourcesLoad } = useQuery({
     queryKey: ["lead-sources"],
     queryFn: async () => {
@@ -257,7 +330,7 @@ export default function PageActions(props: PageActionsProps) {
           {label}
         </p>
 
-        <p className="break-words text-sm font-medium">{displayValue}</p>
+        <p className="wrap-break-word text-sm font-medium">{displayValue}</p>
       </div>
     );
   }
@@ -378,6 +451,98 @@ export default function PageActions(props: PageActionsProps) {
       englishTests: tests,
     });
   };
+  useEffect(() => {
+    if (!editingLead) {
+      return;
+    }
+
+    const countryId =
+      editingLead.preferredCountryId ||
+      editingLead.preferredCountry?.id ||
+      (editingLead.preferredUniversity as any)?.countryId ||
+      "";
+
+    const universityId =
+      editingLead.preferredUniversityId ||
+      editingLead.preferredUniversity?.id ||
+      "";
+
+    const courseId =
+      editingLead.preferredCourseId || editingLead.preferredCourse?.id || "";
+
+    const country =
+      editingLead.preferredCountry ||
+      countries.find((item: { id: string }) => item.id === countryId) ||
+      null;
+
+    const university =
+      editingLead.preferredUniversity ||
+      preferredUniversities.find(
+        (item: { id: string }) => item.id === universityId,
+      ) ||
+      null;
+
+    const course =
+      editingLead.preferredCourse ||
+      preferredCourses.find((item: { id: string }) => item.id === courseId) ||
+      null;
+
+    const needsSync =
+      editingLead.preferredCountryId !== countryId ||
+      editingLead.preferredUniversityId !== universityId ||
+      editingLead.preferredCourseId !== courseId ||
+      (!editingLead.preferredCountry && country) ||
+      (!editingLead.preferredUniversity && university) ||
+      (!editingLead.preferredCourse && course);
+
+    if (!needsSync) {
+      return;
+    }
+
+    setEditingLead((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return {
+        ...current,
+
+        preferredCountryId: countryId || null,
+        preferredCountry: country
+          ? {
+              id: country.id,
+              name: country.name,
+              code: country.code || "",
+            }
+          : current.preferredCountry,
+
+        preferredUniversityId: universityId || null,
+        preferredUniversity: university
+          ? {
+              id: university.id,
+              name: university.name,
+              countryId: university.countryId || countryId || "",
+              tier: university.tier || "T4",
+            }
+          : current.preferredUniversity,
+
+        preferredCourseId: courseId || null,
+        preferredCourse: course
+          ? {
+              id: course.id,
+              name: course.name,
+              universityId: course.universityId || universityId || "",
+            }
+          : current.preferredCourse,
+      };
+    });
+  }, [
+    editingLead,
+    countries,
+    preferredUniversities,
+    preferredCourses,
+    setEditingLead,
+  ]);
   return (
     <>
       {/* 1. DETAILED RECORD VIEW SHEET */}
@@ -389,14 +554,14 @@ export default function PageActions(props: PageActionsProps) {
           }
         }}
       >
-        <SheetContent className="w-full z-102 overflow-y-auto sm:max-w-4xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <SheetContent className="w-full z-102 overflow-y-auto sm:max-w-4xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none">
           {selected && (
             <>
               {/* HEADER */}
               <SheetHeader className="border-b pb-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <SheetTitle className="break-words text-2xl font-bold">
+                    <SheetTitle className="wrap-break-word text-2xl font-bold">
                       {selected.studentName || "Unnamed Student"}
                     </SheetTitle>
 
@@ -699,6 +864,13 @@ export default function PageActions(props: PageActionsProps) {
                       </div>
                     )}
                   </div>
+                  {/* MOI */}
+                  <div className="mb-5  p-4">
+                    <DetailItem
+                      label="Medium of Instruction (MOI)"
+                      value={selected.moi}
+                    />
+                  </div>
                 </section>
 
                 {/* GRE / GMAT */}
@@ -748,7 +920,16 @@ export default function PageActions(props: PageActionsProps) {
                   <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
                     <DetailItem
                       label="Preferred Country"
-                      value={selected.preferredCountry}
+                      value={
+                        selected.preferredCountry?.name ||
+                        (selected.preferredUniversity as any)?.country?.name ||
+                        countries.find(
+                          (country: { id: string; name: string }) =>
+                            country.id ===
+                            (selected.preferredCountryId ||
+                              (selected.preferredUniversity as any)?.countryId),
+                        )?.name
+                      }
                     />
 
                     <DetailItem
@@ -757,30 +938,20 @@ export default function PageActions(props: PageActionsProps) {
                     />
 
                     <DetailItem
-                      label="Preferred Course"
-                      value={selected.preferredCourse}
+                      label="Preferred University"
+                      value={
+                        selected.preferredUniversity?.name ||
+                        selected.preferredUniversityName
+                      }
                     />
 
-                    {/* PREFERRED TIERS */}
-                    <div className="sm:col-span-2 lg:col-span-3">
-                      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Preferred University Tiers
-                      </p>
-
-                      <div className="flex flex-wrap gap-2">
-                        {selected.preferredTiers?.length ? (
-                          selected.preferredTiers.map((tier) => (
-                            <Badge key={tier} variant="secondary">
-                              {tier}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            No university tiers selected
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <DetailItem
+                      label="Preferred Course"
+                      value={
+                        selected.preferredCourse?.name ||
+                        selected.preferredCourseName
+                      }
+                    />
                   </div>
 
                   <div className="border-t p-5">
@@ -869,7 +1040,7 @@ export default function PageActions(props: PageActionsProps) {
                                     : "Follow-up Note"}
                                 </p>
 
-                                <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+                                <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm text-muted-foreground">
                                   {timeline.description || "No description"}
                                 </p>
                               </div>
@@ -918,7 +1089,7 @@ export default function PageActions(props: PageActionsProps) {
         open={!!editingLead}
         onOpenChange={(value) => !value && setEditingLead(null)}
       >
-        <SheetContent className="w-full sm:max-w-4xl overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <SheetContent className="w-full sm:max-w-4xl overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none">
           {editingLead && (
             <form
               onSubmit={handleUpdateLead}
@@ -1249,14 +1420,43 @@ export default function PageActions(props: PageActionsProps) {
                     >
                       Preferred Country
                     </Label>
+
                     <Select
-                      value={editingLead.preferredCountry || ""}
-                      onValueChange={(val) =>
+                      value={resolvedPreferredCountryId}
+                      onValueChange={(countryId) => {
+                        const country = countries.find(
+                          (item: { id: string; name: string; code?: string }) =>
+                            item.id === countryId,
+                        );
+
                         setEditingLead({
                           ...editingLead,
-                          preferredCountry: val,
-                        })
-                      }
+
+                          preferredCountryId: countryId || null,
+
+                          preferredCountry: country
+                            ? {
+                                id: country.id,
+                                name: country.name,
+                                code: country.code || "",
+                              }
+                            : null,
+
+                          // Country changed → reset dependent fields
+                          preferredUniversityId: null,
+                          preferredUniversity: null,
+                          preferredUniversityName: "",
+
+                          preferredCourseId: null,
+                          preferredCourse: null,
+                          preferredCourseName: "",
+                        });
+
+                        setPreferredUniversitySearch("");
+                        setPreferredCourseSearch("");
+                        setPreferredUniversityOpen(false);
+                        setPreferredCourseOpen(false);
+                      }}
                     >
                       <SelectTrigger
                         id="edit-country"
@@ -1264,21 +1464,24 @@ export default function PageActions(props: PageActionsProps) {
                       >
                         <SelectValue placeholder="Select Country" />
                       </SelectTrigger>
+
                       <SelectContent>
                         {countryLoad ? (
                           <SelectItem value="loading" disabled>
                             Loading countries...
                           </SelectItem>
+                        ) : countries.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            No countries found
+                          </SelectItem>
                         ) : (
-                          (countries || [])?.map(
-                            (
-                              country: { id: string; name: string },
-                              idx: number,
-                            ) => (
-                              <SelectItem
-                                key={country.id || idx}
-                                value={country.name}
-                              >
+                          countries.map(
+                            (country: {
+                              id: string;
+                              name: string;
+                              code?: string;
+                            }) => (
+                              <SelectItem key={country.id} value={country.id}>
                                 {country.name}
                               </SelectItem>
                             ),
@@ -1328,42 +1531,7 @@ export default function PageActions(props: PageActionsProps) {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-1.5 sm:col-span-2">
-                    <Label className="text-sm font-medium">
-                      Preferred University Tiers
-                    </Label>
 
-                    <div className="flex flex-wrap gap-2">
-                      {["T1", "T2", "T3", "T4"].map((tier) => {
-                        const selectedTier =
-                          editingLead.preferredTiers?.includes(tier);
-
-                        return (
-                          <Button
-                            key={tier}
-                            type="button"
-                            size="sm"
-                            variant={selectedTier ? "default" : "outline"}
-                            onClick={() =>
-                              setEditingLead({
-                                ...editingLead,
-                                preferredTiers: selectedTier
-                                  ? editingLead.preferredTiers?.filter(
-                                      (t) => t !== tier,
-                                    )
-                                  : [
-                                      ...(editingLead.preferredTiers || []),
-                                      tier,
-                                    ],
-                              })
-                            }
-                          >
-                            {tier}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </div>
                   {/* Lead Source */}
                   <div className="grid gap-1.5 sm:col-span-2">
                     <Label
@@ -1600,7 +1768,7 @@ export default function PageActions(props: PageActionsProps) {
                         </Button>
                       </PopoverTrigger>
 
-                      <PopoverContent className="w-[450px] p-0">
+                      <PopoverContent className="w-112.5 p-0">
                         <Command>
                           <CommandInput
                             placeholder="Search university..."
@@ -1881,7 +2049,7 @@ export default function PageActions(props: PageActionsProps) {
                           addEnglishTest(value as EnglishTestType)
                         }
                       >
-                        <SelectTrigger className="w-full sm:w-[220px]">
+                        <SelectTrigger className="w-full sm:w-55">
                           <SelectValue placeholder="Add English Test" />
                         </SelectTrigger>
 
@@ -2053,6 +2221,30 @@ export default function PageActions(props: PageActionsProps) {
                         </div>
                       </div>
                     )}
+                  </div>
+                  {/* Medium of Instruction */}
+                  <div className=" p-2">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="edit-moi"
+                        className="text-sm font-semibold"
+                      >
+                        Medium of Instruction (MOI)
+                      </Label>
+
+                      <Input
+                        id="edit-moi"
+                        placeholder="e.g. English"
+                        value={editingLead.moi ?? ""}
+                        onChange={(event) =>
+                          setEditingLead({
+                            ...editingLead,
+                            moi: event.target.value,
+                          })
+                        }
+                        className="h-11 rounded-xl bg-background"
+                      />
+                    </div>
                   </div>
                   <div className="sm:col-span-2 border-t pt-4">
                     <h3 className="font-semibold text-base">GRE / GMAT</h3>
@@ -2241,17 +2433,246 @@ export default function PageActions(props: PageActionsProps) {
                     />
                   </div>
                   <div className="grid gap-1.5 sm:col-span-2">
+                    <Label className="text-sm font-medium">
+                      Preferred University
+                    </Label>
+
+                    <Popover
+                      open={preferredUniversityOpen}
+                      onOpenChange={setPreferredUniversityOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          disabled={!resolvedPreferredCountryId}
+                          className="w-full h-11 justify-between font-normal rounded-xl"
+                        >
+                          <span className="truncate">
+                            {editingLead.preferredUniversity?.name ||
+                              editingLead.preferredUniversityName ||
+                              "Select or Type University"}
+                          </span>
+
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent
+                        align="start"
+                        className="w-(--radix-popover-trigger-width) p-0"
+                      >
+                        <Command>
+                          <CommandInput
+                            placeholder="Search or type university..."
+                            value={preferredUniversitySearch}
+                            onValueChange={setPreferredUniversitySearch}
+                          />
+
+                          <CommandList>
+                            <CommandEmpty>
+                              {preferredUniversitySearch.trim() ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  className="w-full justify-start"
+                                  disabled={creatingPreferredUniversity}
+                                  onClick={() => {
+                                    const name =
+                                      preferredUniversitySearch.trim();
+
+                                    if (!editingLead.preferredCountryId) {
+                                      toast.error(
+                                        "Please select Preferred Country first",
+                                      );
+                                      return;
+                                    }
+
+                                    if (!name) {
+                                      return;
+                                    }
+
+                                    // Do NOT create immediately.
+                                    // Store the typed university name.
+                                    // Backend will create it when Save Updates is clicked.
+                                    setEditingLead({
+                                      ...editingLead,
+                                      preferredUniversityId: null,
+                                      preferredUniversity: null,
+                                      preferredUniversityName: name,
+
+                                      preferredCourseId: null,
+                                      preferredCourse: null,
+                                      preferredCourseName: "",
+                                    });
+
+                                    setPreferredUniversitySearch("");
+                                    setPreferredCourseSearch("");
+                                    setPreferredUniversityOpen(false);
+
+                                    toast.success(
+                                      "New university selected. It will be added when you save.",
+                                    );
+                                  }}
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+
+                                  {creatingPreferredUniversity
+                                    ? "Adding..."
+                                    : `Add "${preferredUniversitySearch.trim()}"`}
+                                </Button>
+                              ) : (
+                                <div className="py-6 text-center text-sm text-muted-foreground">
+                                  Type a university name to add it
+                                </div>
+                              )}
+                            </CommandEmpty>
+
+                            <CommandGroup>
+                              {preferredUniversityLoad ? (
+                                <div className="flex items-center justify-center py-6">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <span className="ml-2 text-sm text-muted-foreground">
+                                    Loading universities...
+                                  </span>
+                                </div>
+                              ) : (
+                                preferredUniversities
+                                  .filter(
+                                    (university: {
+                                      id: string;
+                                      name: string;
+                                    }) =>
+                                      university.name
+                                        .toLowerCase()
+                                        .includes(
+                                          preferredUniversitySearch.toLowerCase(),
+                                        ),
+                                  )
+                                  .map(
+                                    (university: {
+                                      id: string;
+                                      name: string;
+                                      countryId: string;
+                                      tier?: string;
+                                    }) => (
+                                      <CommandItem
+                                        key={university.id}
+                                        value={university.name}
+                                        onSelect={() => {
+                                          const countryId =
+                                            university.countryId ||
+                                            resolvedPreferredCountryId ||
+                                            "";
+
+                                          setEditingLead({
+                                            ...editingLead,
+
+                                            preferredUniversityId:
+                                              university.id,
+
+                                            preferredUniversity: {
+                                              id: university.id,
+                                              name: university.name,
+                                              countryId,
+                                              tier: university.tier || "T4",
+                                            },
+
+                                            preferredUniversityName: "",
+
+                                            preferredCourseId: null,
+                                            preferredCourse: null,
+                                            preferredCourseName: "",
+                                          });
+
+                                          setPreferredUniversitySearch("");
+                                          setPreferredCourseSearch("");
+                                          setPreferredUniversityOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            editingLead.preferredUniversityId ===
+                                              university.id
+                                              ? "opacity-100"
+                                              : "opacity-0",
+                                          )}
+                                        />
+
+                                        <span className="truncate">
+                                          {university.name}
+                                        </span>
+                                      </CommandItem>
+                                    ),
+                                  )
+                              )}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+
+                    {!editingLead.preferredCountryId && (
+                      <p className="text-xs text-muted-foreground">
+                        Select Preferred Country first
+                      </p>
+                    )}
+
+                    {editingLead.preferredUniversityName && (
+                      <p className="text-xs text-amber-600">
+                        New university will be created when you save.
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid gap-1.5 sm:col-span-2">
                     <Label>Preferred Course</Label>
-                    <Input
-                      placeholder="Data Science.."
-                      value={editingLead.preferredCourse || ""}
-                      onChange={(e) =>
+
+                    <Select
+                      value={editingLead.preferredCourseId || ""}
+                      onValueChange={(value) =>
                         setEditingLead({
                           ...editingLead,
-                          preferredCourse: e.target.value,
+                          preferredCourseId: value,
                         })
                       }
-                    />
+                      disabled={!editingLead.preferredUniversityId}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue
+                          placeholder={
+                            editingLead.preferredUniversityId
+                              ? "Select Preferred Course"
+                              : "Select university first"
+                          }
+                        />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {preferredCourseLoad ? (
+                          <SelectItem value="loading" disabled>
+                            Loading courses...
+                          </SelectItem>
+                        ) : preferredCourses.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            No courses found for this university
+                          </SelectItem>
+                        ) : (
+                          preferredCourses.map(
+                            (course: {
+                              id: string;
+                              name: string;
+                              universityId: string;
+                            }) => (
+                              <SelectItem key={course.id} value={course.id}>
+                                {course.name}
+                              </SelectItem>
+                            ),
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="grid gap-1.5 sm:col-span-2">
@@ -2305,7 +2726,7 @@ export default function PageActions(props: PageActionsProps) {
                 <Button
                   type="submit"
                   disabled={isUpdating}
-                  className="w-full sm:w-auto min-w-[150px]"
+                  className="w-full sm:w-auto min-w-37.5"
                 >
                   {isUpdating ? (
                     <>

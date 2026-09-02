@@ -34,7 +34,6 @@ export async function GET(
             preferredCountry: true,
             preferredIntake: true,
             preferredCourse: true,
-            preferredTiers: true,
             bachelorsCourse: true,
             twelfthPercentage: true,
             twelfthYearOfPassing: true,

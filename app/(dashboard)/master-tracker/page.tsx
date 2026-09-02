@@ -499,7 +499,10 @@ export default function ApplicationsTrackerPage() {
         !filters.stage || mapStageToKanban(item) === filters.stage;
 
       const matchesCountry =
-        !filters.country || item.lead?.preferredCountry === filters.country;
+        !filters.country ||
+        (typeof item.lead?.preferredCountry === "object"
+          ? item.lead?.preferredCountry?.name === filters.country
+          : item.lead?.preferredCountry === filters.country);
 
       const matchesIntake =
         !filters.intake || item.lead?.preferredIntake === filters.intake;
@@ -576,7 +579,10 @@ export default function ApplicationsTrackerPage() {
     () => [
       ...new Set(
         students
-          .map((student) => student.lead?.preferredCountry)
+          .map((student) => {
+            const country = student.lead?.preferredCountry;
+            return typeof country === "object" ? country?.name : country;
+          })
           .filter((value): value is string => Boolean(value)),
       ),
     ],
@@ -707,22 +713,24 @@ export default function ApplicationsTrackerPage() {
   };
   const renderStageContent = (student: StudentRecord, stage: KanbanStage) => {
     if (stage === "Inquiry") {
+      const countryValue =
+        typeof student.lead?.preferredCountry === "object"
+          ? student.lead?.preferredCountry?.name
+          : student.lead?.preferredCountry;
+      const courseValue =
+        typeof student.lead?.preferredCourse === "object"
+          ? student.lead?.preferredCourse?.name
+          : student.lead?.preferredCourse;
       return (
         <>
-          <InfoRow
-            label="Country"
-            value={student.lead?.preferredCountry || "-"}
-          />
+          <InfoRow label="Country" value={countryValue || "-"} />
 
           <InfoRow
             label="Intake"
             value={student.lead?.preferredIntake || "-"}
           />
 
-          <InfoRow
-            label="Course"
-            value={student.lead?.preferredCourse || "-"}
-          />
+          <InfoRow label="Course" value={courseValue || "-"} />
 
           <InfoRow
             label="Education"
@@ -850,7 +858,7 @@ export default function ApplicationsTrackerPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[500px] items-center justify-center">
+      <div className="flex min-h-125 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
@@ -965,7 +973,7 @@ export default function ApplicationsTrackerPage() {
         </AlertDialogContent>
       </AlertDialog>
       <div className="w-full overflow-x-auto overscroll-x-contain pb-4">
-        <div className="grid min-w-[1400px] grid-cols-5 items-stretch gap-4">
+        <div className="grid min-w-350 grid-cols-5 items-stretch gap-4">
           {KANBAN_COLUMNS.map((column) => {
             const columnStudents = filteredTrackerData.filter(
               (student) => mapStageToKanban(student) === column.id,
@@ -1021,7 +1029,7 @@ export default function ApplicationsTrackerPage() {
                 }}
                 onDragOver={(event) => handleDragOver(event, column.id)}
                 onDrop={(event) => handleDrop(event, column.id)}
-                className={`flex min-h-[600px] min-w-0 flex-col self-stretch rounded-2xl border p-4 transition-colors ${
+                className={`flex min-h-150 min-w-0 flex-col self-stretch rounded-2xl border p-4 transition-colors ${
                   isDragOver
                     ? "border-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/20"
                     : isValidDropColumn
@@ -1084,7 +1092,7 @@ export default function ApplicationsTrackerPage() {
                               router.push(`/student-profiles/${student.id}`);
                             }
                           }}
-                          className={`relative flex h-[390px] min-w-0 flex-col rounded-2xl border p-4 shadow-sm transition-shadow ${getCardClasses(
+                          className={`relative flex h-97.5 min-w-0 flex-col rounded-2xl border p-4 shadow-sm transition-shadow ${getCardClasses(
                             color,
                           )} ${
                             draggable
@@ -1112,14 +1120,16 @@ export default function ApplicationsTrackerPage() {
                             </div>
 
                             <span className="shrink-0 rounded-full bg-background/70 px-2 py-1 text-[10px] font-bold uppercase">
-                              {(student.lead?.preferredCountry ?? "---").slice(
-                                0,
-                                3,
-                              )}
+                              {String(
+                                typeof student.lead?.preferredCountry ===
+                                  "object"
+                                  ? student.lead?.preferredCountry?.name
+                                  : (student.lead?.preferredCountry ?? "---"),
+                              ).slice(0, 3)}
                             </span>
                           </div>
 
-                          <div className="mt-4 flex h-[174px] shrink-0 flex-col gap-2 overflow-hidden">
+                          <div className="mt-4 flex h-43.5 shrink-0 flex-col gap-2 overflow-hidden">
                             {renderStageContent(student, stage)}
                           </div>
 

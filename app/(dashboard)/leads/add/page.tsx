@@ -1,6 +1,5 @@
-// crm-frontend-next\app\(dashboard)\leads\add\page.tsx
+// app\(dashboard)\leads\add\page.tsx
 "use client";
-
 import { z } from "zod";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,8 +30,8 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { Branch, getBranches } from "@/lib/branches";
-import { useEffect, useState } from "react";
+import { Branch } from "@/lib/branches";
+import { type FormEvent, useEffect, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -58,7 +57,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-
 import {
   Popover,
   PopoverContent,
@@ -81,7 +79,18 @@ type EnglishTestScoreLimit = {
   section: number;
   decimals: number;
 };
+type PreferredUniversity = {
+  id: string;
+  name: string;
+  countryId: string;
+  tier: "T1" | "T2" | "T3" | "T4";
+};
 
+type PreferredCourse = {
+  id: string;
+  name: string;
+  universityId: string;
+};
 const englishTestScoreLimits: Record<EnglishTestType, EnglishTestScoreLimit> = {
   IELTS: {
     total: 9,
@@ -209,7 +218,10 @@ const leadFormSchema = z.object({
   workExperience: z.string().optional(),
   preferredCountry: z.string().optional(),
   preferredIntake: z.string().optional(),
-  preferredCourse: z.string().optional(),
+
+  preferredUniversityId: z.string().uuid().optional().or(z.literal("")),
+  preferredCourseId: z.string().uuid().optional().or(z.literal("")),
+
   preferredTiers: z.array(z.string()).optional(),
   greGmatScore: optionalNumber,
   quantitativeScore: optionalNumber,
@@ -219,6 +231,7 @@ const leadFormSchema = z.object({
     .array(englishTestSchema)
     .max(4, "Maximum 4 English proficiency tests are allowed")
     .default([]),
+  moi: z.string().optional(),
   gapsIfAny: z.string().optional(),
   status: z.string().optional(),
   source: z.string().optional(),
@@ -251,8 +264,19 @@ export default function AddLeadPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [universityOpen, setUniversityOpen] = useState(false);
-  const [universitySearch, setUniversitySearch] = useState("");
+  const [bachelorsUniversityOpen, setBachelorsUniversityOpen] = useState(false);
+
+  const [bachelorsUniversitySearch, setBachelorsUniversitySearch] =
+    useState("");
+
+  const [preferredUniversityOpen, setPreferredUniversityOpen] = useState(false);
+
+  const [preferredUniversitySearch, setPreferredUniversitySearch] =
+    useState("");
+
+  const [preferredCourseOpen, setPreferredCourseOpen] = useState(false);
+
+  const [preferredCourseSearch, setPreferredCourseSearch] = useState("");
   const [countries, setCountries] = useState<Country[]>([]);
   const [intakes, setIntakes] = useState<Intake[]>([]);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
@@ -260,7 +284,20 @@ export default function AddLeadPage() {
 
   const branches = user?.branches ?? [];
   const [isSaving, setIsSaving] = useState(false);
-  const { data: universities = [], isLoading: universitiesLoad } = useQuery({
+  const [preferredUniversities, setPreferredUniversities] = useState<
+    PreferredUniversity[]
+  >([]);
+
+  const [preferredCourses, setPreferredCourses] = useState<PreferredCourse[]>(
+    [],
+  );
+
+  const [loadingUniversities, setLoadingUniversities] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+
+  const [creatingUniversity, setCreatingUniversity] = useState(false);
+  const [creatingCourse, setCreatingCourse] = useState(false);
+  const { data: universities = [] } = useQuery({
     queryKey: ["universities"],
     queryFn: async () => {
       const { data } = await axios.get(
@@ -301,6 +338,268 @@ export default function AddLeadPage() {
       return data?.data || [];
     },
   });
+  const loadPreferredUniversities = async (countryId: string) => {
+    if (!countryId) {
+      setPreferredUniversities([]);
+      return;
+    }
+
+    try {
+      setLoadingUniversities(true);
+
+      const params = new URLSearchParams({
+        countryId,
+        status: "active",
+        page: "1",
+        limit: "100",
+      });
+
+      const response = await fetch(`/api/universities?${params.toString()}`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load universities");
+      }
+
+      const result = await response.json();
+
+      const universitiesData: PreferredUniversity[] = Array.isArray(
+        result?.data,
+      )
+        ? result.data
+        : [];
+
+      setPreferredUniversities(universitiesData);
+    } catch (error) {
+      console.error("Failed to load preferred universities:", error);
+
+      setPreferredUniversities([]);
+
+      toast.error("Failed to load universities");
+    } finally {
+      setLoadingUniversities(false);
+    }
+  };
+  const loadPreferredCourses = async (universityId: string) => {
+    if (!universityId) {
+      setPreferredCourses([]);
+      return;
+    }
+
+    try {
+      setLoadingCourses(true);
+
+      const response = await fetch(`/api/universities/${universityId}`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load courses");
+      }
+
+      const result = await response.json();
+
+      setPreferredCourses(
+        Array.isArray(result.data?.courses) ? result.data.courses : [],
+      );
+    } catch (error) {
+      console.error("Failed to load preferred courses:", error);
+      setPreferredCourses([]);
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
+  const createPreferredUniversity = async () => {
+    const name = preferredUniversitySearch.trim();
+
+    const countryName = watch("preferredCountry");
+
+    const selectedCountry = countries.find(
+      (country) => country.name === countryName,
+    );
+
+    const countryId = selectedCountry?.id;
+
+    if (!countryId) {
+      toast.error("Please select Preferred Country first");
+      return;
+    }
+
+    if (!name) {
+      toast.error("Please enter university name");
+      return;
+    }
+
+    try {
+      setCreatingUniversity(true);
+
+      const existing = preferredUniversities.find(
+        (university) =>
+          university.name.trim().toLowerCase() === name.toLowerCase(),
+      );
+
+      if (existing) {
+        setValue("preferredUniversityId", existing.id, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+
+        await loadPreferredCourses(existing.id);
+
+        setPreferredUniversityOpen(false);
+        setPreferredUniversitySearch("");
+
+        return;
+      }
+
+      const response = await fetch("/api/universities", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          countryId,
+          tier: "T4",
+          status: "active",
+          courses: [],
+          scholarships: [],
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to create university");
+      }
+
+      const university: PreferredUniversity = result.data;
+
+      setPreferredUniversities((current) => [...current, university]);
+
+      setValue("preferredUniversityId", university.id, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+
+      setPreferredCourses([]);
+
+      setValue("preferredCourseId", "", {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+
+      setPreferredUniversitySearch("");
+      setPreferredUniversityOpen(false);
+
+      toast.success("University added successfully");
+    } catch (error) {
+      console.error("Create university error:", error);
+
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add university",
+      );
+    } finally {
+      setCreatingUniversity(false);
+    }
+  };
+  const createPreferredCourse = async () => {
+    const name = preferredCourseSearch.trim();
+    const universityId = watch("preferredUniversityId");
+
+    if (!universityId) {
+      toast.error("Please select Preferred University first");
+      return;
+    }
+
+    if (!name) {
+      toast.error("Please enter course name");
+      return;
+    }
+
+    try {
+      setCreatingCourse(true);
+
+      const existing = preferredCourses.find(
+        (course) => course.name.trim().toLowerCase() === name.toLowerCase(),
+      );
+
+      if (existing) {
+        setValue("preferredCourseId", existing.id, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+
+        setPreferredCourseOpen(false);
+        setPreferredCourseSearch("");
+
+        return;
+      }
+
+      const response = await fetch(`/api/universities/${universityId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          courses: [
+            ...preferredCourses.map((course) => ({
+              id: course.id,
+              name: course.name,
+              universityId,
+            })),
+            {
+              name,
+              universityId,
+            },
+          ],
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to create course");
+      }
+
+      await loadPreferredCourses(universityId);
+
+      const createdCourse = result.data?.courses?.find(
+        (course: PreferredCourse) =>
+          course.name.trim().toLowerCase() === name.toLowerCase(),
+      );
+
+      if (createdCourse) {
+        setValue("preferredCourseId", createdCourse.id, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      }
+
+      setPreferredCourseSearch("");
+      setPreferredCourseOpen(false);
+
+      toast.success("Course added successfully");
+    } catch (error) {
+      console.error("Create course error:", error);
+
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add course",
+      );
+    } finally {
+      setCreatingCourse(false);
+    }
+  };
   const getCurrentDateTimeLocal = () => {
     const now = new Date();
 
@@ -320,7 +619,7 @@ export default function AddLeadPage() {
     reset,
     watch,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
@@ -352,6 +651,7 @@ export default function AddLeadPage() {
       bachelorsPercentage: undefined,
       bachelorsYearOfPassing: undefined,
       backlogs: 0,
+      moi: "",
       gapsIfAny: "",
 
       englishTests: [],
@@ -363,7 +663,8 @@ export default function AddLeadPage() {
 
       preferredCountry: "",
       preferredIntake: "",
-      preferredCourse: "",
+      preferredUniversityId: "",
+      preferredCourseId: "",
       preferredTiers: [],
       workExperience: "",
 
@@ -399,7 +700,7 @@ export default function AddLeadPage() {
   }
   const buildScoreInputHandler =
     (maxScore: number, decimals: number) =>
-    (event: React.FormEvent<HTMLInputElement>) => {
+    (event: FormEvent<HTMLInputElement>) => {
       const input = event.currentTarget;
 
       let value = input.value.replace(/[^0-9.]/g, "");
@@ -651,7 +952,7 @@ export default function AddLeadPage() {
                           maxLength={10}
                           min={0}
                           // This event handler ensures only numbers are accepted
-                          onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                          onInput={(e: FormEvent<HTMLInputElement>) => {
                             e.currentTarget.value =
                               e.currentTarget.value.replace(/[^0-9]/g, "");
                           }}
@@ -1055,8 +1356,8 @@ export default function AddLeadPage() {
                           name="bachelorsUniversityName"
                           render={({ field }) => (
                             <Popover
-                              open={universityOpen}
-                              onOpenChange={setUniversityOpen}
+                              open={bachelorsUniversityOpen}
+                              onOpenChange={setBachelorsUniversityOpen}
                             >
                               <PopoverTrigger asChild>
                                 <Button
@@ -1071,12 +1372,12 @@ export default function AddLeadPage() {
                                 </Button>
                               </PopoverTrigger>
 
-                              <PopoverContent className="w-[450px] p-0">
+                              <PopoverContent className="w-112.5 p-0">
                                 <Command>
                                   <CommandInput
                                     placeholder="Search university..."
-                                    value={universitySearch}
-                                    onValueChange={setUniversitySearch}
+                                    value={bachelorsUniversitySearch}
+                                    onValueChange={setBachelorsUniversitySearch}
                                   />
 
                                   <CommandList>
@@ -1086,7 +1387,8 @@ export default function AddLeadPage() {
                                         variant="ghost"
                                         className="w-full justify-start"
                                         onClick={async () => {
-                                          const value = universitySearch.trim();
+                                          const value =
+                                            bachelorsUniversitySearch.trim();
 
                                           if (!value) return;
 
@@ -1095,9 +1397,9 @@ export default function AddLeadPage() {
 
                                             field.onChange(value);
 
-                                            setUniversityOpen(false);
+                                            setBachelorsUniversityOpen(false);
 
-                                            setUniversitySearch("");
+                                            setBachelorsUniversitySearch("");
 
                                             toast.success(
                                               "University added successfully",
@@ -1110,7 +1412,7 @@ export default function AddLeadPage() {
                                         }}
                                       >
                                         <Plus className="mr-2 h-4 w-4" />
-                                        Add "{universitySearch}"
+                                        Add "{bachelorsUniversitySearch}"
                                       </Button>
                                     </CommandEmpty>
 
@@ -1123,7 +1425,7 @@ export default function AddLeadPage() {
                                             onSelect={(currentValue) => {
                                               field.onChange(currentValue);
 
-                                              setUniversityOpen(false);
+                                              setBachelorsUniversityOpen(false);
                                             }}
                                           >
                                             <Check
@@ -1401,7 +1703,24 @@ export default function AddLeadPage() {
                             Add one or more tests completed by the student.
                           </p>
                         </div>
+                        {/* Medium of Instruction */}
+                        <div className="border-b pb-3">
+                          <div className="space-y-6">
+                            <Label
+                              htmlFor="moi"
+                              className="text-sm font-semibold"
+                            >
+                              Medium of Instruction (MOI)
+                            </Label>
 
+                            <Input
+                              id="moi"
+                              placeholder="e.g. English"
+                              {...register("moi")}
+                              className="h-11 rounded-xl"
+                            />
+                          </div>
+                        </div>
                         {/* Available Tests */}
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                           {englishTestOptions.map((testType) => {
@@ -1913,21 +2232,61 @@ export default function AddLeadPage() {
                       </h3>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-6 p-6">
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-                      <div className="space-y-2">
-                        <Label>Preferred Country</Label>
+                  <AccordionContent className="px-4 pb-6 pt-2 sm:px-6">
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                      {/* Preferred Country */}
+                      <div className="min-w-0 space-y-2">
+                        <Label
+                          htmlFor="preferred-country"
+                          className="text-sm font-medium"
+                        >
+                          Preferred Country
+                        </Label>
+
                         <Controller
                           control={control}
                           name="preferredCountry"
                           render={({ field }) => (
                             <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
+                              value={field.value ?? ""}
+                              onValueChange={(countryName) => {
+                                field.onChange(countryName);
+
+                                const selectedCountry = countries.find(
+                                  (country) => country.name === countryName,
+                                );
+
+                                setValue("preferredUniversityId", "", {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                });
+
+                                setValue("preferredCourseId", "", {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                });
+
+                                setPreferredUniversities([]);
+                                setPreferredCourses([]);
+
+                                setPreferredUniversitySearch("");
+                                setPreferredCourseSearch("");
+
+                                setPreferredUniversityOpen(false);
+                                setPreferredCourseOpen(false);
+
+                                if (selectedCountry?.id) {
+                                  loadPreferredUniversities(selectedCountry.id);
+                                }
+                              }}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger
+                                id="preferred-country"
+                                className="h-11 w-full min-w-0"
+                              >
                                 <SelectValue placeholder="Select Country" />
                               </SelectTrigger>
+
                               <SelectContent>
                                 {countries.map((country) => (
                                   <SelectItem
@@ -1943,19 +2302,30 @@ export default function AddLeadPage() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Preferred Intake</Label>
+                      {/* Preferred Intake */}
+                      <div className="min-w-0 space-y-2">
+                        <Label
+                          htmlFor="preferred-intake"
+                          className="text-sm font-medium"
+                        >
+                          Preferred Intake
+                        </Label>
+
                         <Controller
                           control={control}
                           name="preferredIntake"
                           render={({ field }) => (
                             <Select
+                              value={field.value ?? ""}
                               onValueChange={field.onChange}
-                              value={field.value}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger
+                                id="preferred-intake"
+                                className="h-11 w-full min-w-0"
+                              >
                                 <SelectValue placeholder="Select Intake" />
                               </SelectTrigger>
+
                               <SelectContent>
                                 {intakes.map((intake) => (
                                   <SelectItem
@@ -1970,81 +2340,323 @@ export default function AddLeadPage() {
                           )}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Preferred University Tiers</Label>
+
+                      {/* Preferred University */}
+                      <div className="min-w-0 space-y-2">
+                        <Label className="text-sm font-medium">
+                          Preferred University
+                        </Label>
 
                         <Controller
                           control={control}
-                          name="preferredTiers"
-                          defaultValue={[]}
+                          name="preferredUniversityId"
                           render={({ field }) => {
-                            const selected = field.value || [];
-
-                            const tiers = ["T1", "T2", "T3", "T4"];
-
-                            const addTier = (tier: string) => {
-                              if (!selected.includes(tier)) {
-                                field.onChange([...selected, tier]);
-                              }
-                            };
-
-                            const removeTier = (tier: string) => {
-                              field.onChange(
-                                selected.filter((item) => item !== tier),
+                            const selectedUniversity =
+                              preferredUniversities.find(
+                                (university) => university.id === field.value,
                               );
-                            };
+
+                            const filteredUniversities =
+                              preferredUniversities.filter((university) =>
+                                university.name
+                                  .toLowerCase()
+                                  .includes(
+                                    preferredUniversitySearch.toLowerCase(),
+                                  ),
+                              );
+
+                            const countrySelected = Boolean(
+                              watch("preferredCountry"),
+                            );
 
                             return (
-                              <div className="space-y-2">
-                                <Select onValueChange={addTier}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select University Tier(s)" />
-                                  </SelectTrigger>
+                              <Popover
+                                open={preferredUniversityOpen}
+                                onOpenChange={setPreferredUniversityOpen}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={preferredUniversityOpen}
+                                    disabled={!countrySelected}
+                                    className="h-11 w-full min-w-0 justify-between gap-2 font-normal"
+                                  >
+                                    <span className="min-w-0 flex-1 truncate text-left">
+                                      {selectedUniversity?.name ||
+                                        (countrySelected
+                                          ? "Select or type university"
+                                          : "Select country first")}
+                                    </span>
 
-                                  <SelectContent>
-                                    {tiers
-                                      .filter(
-                                        (tier) => !selected.includes(tier),
-                                      )
-                                      .map((tier) => (
-                                        <SelectItem key={tier} value={tier}>
-                                          {tier}
-                                        </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                                </Select>
+                                    <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </PopoverTrigger>
 
-                                {selected.length > 0 && (
-                                  <div className="flex flex-wrap gap-2">
-                                    {selected.map((tier) => (
-                                      <Badge
-                                        key={tier}
-                                        variant="secondary"
-                                        className="gap-1 px-3 py-1"
-                                      >
-                                        {tier}
+                                <PopoverContent
+                                  className="w-(--radix-popover-trigger-width) min-w-70 max-w-[calc(100vw-2rem)] p-0"
+                                  align="start"
+                                  sideOffset={6}
+                                >
+                                  <Command shouldFilter={false}>
+                                    <CommandInput
+                                      placeholder="Search or type university..."
+                                      value={preferredUniversitySearch}
+                                      onValueChange={
+                                        setPreferredUniversitySearch
+                                      }
+                                    />
 
-                                        <button
-                                          type="button"
-                                          onClick={() => removeTier(tier)}
-                                          className="ml-1 text-xs"
-                                        >
-                                          ✕
-                                        </button>
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
+                                    <CommandList className="max-h-72">
+                                      {loadingUniversities && (
+                                        <CommandEmpty>
+                                          Loading universities...
+                                        </CommandEmpty>
+                                      )}
+
+                                      {!loadingUniversities &&
+                                        filteredUniversities.length === 0 &&
+                                        !preferredUniversitySearch.trim() && (
+                                          <CommandEmpty>
+                                            No universities found.
+                                          </CommandEmpty>
+                                        )}
+
+                                      {!loadingUniversities &&
+                                        filteredUniversities.length > 0 && (
+                                          <CommandGroup heading="Universities">
+                                            {filteredUniversities.map(
+                                              (university) => (
+                                                <CommandItem
+                                                  key={university.id}
+                                                  value={university.id}
+                                                  onSelect={() => {
+                                                    field.onChange(
+                                                      university.id,
+                                                    );
+
+                                                    setValue(
+                                                      "preferredCourseId",
+                                                      "",
+                                                      {
+                                                        shouldDirty: true,
+                                                        shouldValidate: true,
+                                                      },
+                                                    );
+
+                                                    setPreferredCourseSearch(
+                                                      "",
+                                                    );
+                                                    setPreferredUniversityOpen(
+                                                      false,
+                                                    );
+
+                                                    loadPreferredCourses(
+                                                      university.id,
+                                                    );
+                                                  }}
+                                                  className="flex min-w-0 items-center gap-2"
+                                                >
+                                                  <Check
+                                                    className={`h-4 w-4 shrink-0 ${
+                                                      field.value ===
+                                                      university.id
+                                                        ? "opacity-100"
+                                                        : "opacity-0"
+                                                    }`}
+                                                  />
+
+                                                  <span className="min-w-0 flex-1 truncate">
+                                                    {university.name}
+                                                  </span>
+
+                                                  <span className="shrink-0 text-xs text-muted-foreground">
+                                                    {university.tier}
+                                                  </span>
+                                                </CommandItem>
+                                              ),
+                                            )}
+                                          </CommandGroup>
+                                        )}
+
+                                      {preferredUniversitySearch.trim() &&
+                                        !filteredUniversities.some(
+                                          (university) =>
+                                            university.name
+                                              .trim()
+                                              .toLowerCase() ===
+                                            preferredUniversitySearch
+                                              .trim()
+                                              .toLowerCase(),
+                                        ) && (
+                                          <CommandGroup>
+                                            <CommandItem
+                                              value={`add-${preferredUniversitySearch}`}
+                                              onSelect={
+                                                createPreferredUniversity
+                                              }
+                                              disabled={creatingUniversity}
+                                              className="min-w-0"
+                                            >
+                                              <Plus className="mr-2 h-4 w-4 shrink-0" />
+
+                                              <span className="min-w-0 truncate">
+                                                {creatingUniversity
+                                                  ? "Adding..."
+                                                  : `Add "${preferredUniversitySearch.trim()}"`}
+                                              </span>
+                                            </CommandItem>
+                                          </CommandGroup>
+                                        )}
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
                             );
                           }}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Preferred Course</Label>
-                        <Input
-                          placeholder="e.g. MS in Data Science"
-                          {...register("preferredCourse")}
+
+                      {/* Preferred Course */}
+                      <div className="min-w-0 space-y-2">
+                        <Label className="text-sm font-medium">
+                          Preferred Course
+                        </Label>
+
+                        <Controller
+                          control={control}
+                          name="preferredCourseId"
+                          render={({ field }) => {
+                            const selectedCourse = preferredCourses.find(
+                              (course) => course.id === field.value,
+                            );
+
+                            const filteredCourses = preferredCourses.filter(
+                              (course) =>
+                                course.name
+                                  .toLowerCase()
+                                  .includes(
+                                    preferredCourseSearch.toLowerCase(),
+                                  ),
+                            );
+
+                            const universityId = watch("preferredUniversityId");
+                            const universitySelected = Boolean(universityId);
+
+                            return (
+                              <Popover
+                                open={preferredCourseOpen}
+                                onOpenChange={setPreferredCourseOpen}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={preferredCourseOpen}
+                                    disabled={!universitySelected}
+                                    className="h-11 w-full min-w-0 justify-between gap-2 font-normal"
+                                  >
+                                    <span className="min-w-0 flex-1 truncate text-left">
+                                      {selectedCourse?.name ||
+                                        (universitySelected
+                                          ? "Select or type course"
+                                          : "Select university first")}
+                                    </span>
+
+                                    <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </PopoverTrigger>
+
+                                <PopoverContent
+                                  className="w-(--radix-popover-trigger-width) min-w-70 max-w-[calc(100vw-2rem)] p-0"
+                                  align="start"
+                                  sideOffset={6}
+                                >
+                                  <Command shouldFilter={false}>
+                                    <CommandInput
+                                      placeholder="Search or type course..."
+                                      value={preferredCourseSearch}
+                                      onValueChange={setPreferredCourseSearch}
+                                    />
+
+                                    <CommandList className="max-h-72">
+                                      {loadingCourses && (
+                                        <CommandEmpty>
+                                          Loading courses...
+                                        </CommandEmpty>
+                                      )}
+
+                                      {!loadingCourses &&
+                                        filteredCourses.length === 0 &&
+                                        !preferredCourseSearch.trim() && (
+                                          <CommandEmpty>
+                                            No courses found.
+                                          </CommandEmpty>
+                                        )}
+
+                                      {!loadingCourses &&
+                                        filteredCourses.length > 0 && (
+                                          <CommandGroup heading="Courses">
+                                            {filteredCourses.map((course) => (
+                                              <CommandItem
+                                                key={course.id}
+                                                value={course.id}
+                                                onSelect={() => {
+                                                  field.onChange(course.id);
+                                                  setPreferredCourseOpen(false);
+                                                  setPreferredCourseSearch("");
+                                                }}
+                                                className="flex min-w-0 items-center gap-2"
+                                              >
+                                                <Check
+                                                  className={`h-4 w-4 shrink-0 ${
+                                                    field.value === course.id
+                                                      ? "opacity-100"
+                                                      : "opacity-0"
+                                                  }`}
+                                                />
+
+                                                <span className="min-w-0 flex-1 truncate">
+                                                  {course.name}
+                                                </span>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        )}
+
+                                      {preferredCourseSearch.trim() &&
+                                        !filteredCourses.some(
+                                          (course) =>
+                                            course.name.trim().toLowerCase() ===
+                                            preferredCourseSearch
+                                              .trim()
+                                              .toLowerCase(),
+                                        ) && (
+                                          <CommandGroup>
+                                            <CommandItem
+                                              value={`add-${preferredCourseSearch}`}
+                                              onSelect={createPreferredCourse}
+                                              disabled={creatingCourse}
+                                              className="min-w-0"
+                                            >
+                                              <Plus className="mr-2 h-4 w-4 shrink-0" />
+
+                                              <span className="min-w-0 truncate">
+                                                {creatingCourse
+                                                  ? "Adding..."
+                                                  : `Add "${preferredCourseSearch.trim()}"`}
+                                              </span>
+                                            </CommandItem>
+                                          </CommandGroup>
+                                        )}
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            );
+                          }}
                         />
                       </div>
                     </div>
@@ -2055,7 +2667,15 @@ export default function AddLeadPage() {
                     type="button"
                     variant="outline"
                     disabled={isSaving}
-                    onClick={() => reset()}
+                    onClick={() => {
+                      reset();
+                      setPreferredUniversities([]);
+                      setPreferredCourses([]);
+                      setPreferredUniversitySearch("");
+                      setPreferredCourseSearch("");
+                      setPreferredUniversityOpen(false);
+                      setPreferredCourseOpen(false);
+                    }}
                   >
                     Reset Form
                   </Button>

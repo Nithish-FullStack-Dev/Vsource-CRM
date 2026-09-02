@@ -237,7 +237,7 @@ export default function UniversitiesPage() {
 
         <div className="flex flex-col gap-2 sm:flex-row md:w-auto">
           {/* Country Selector */}
-          <div className="w-full sm:w-[180px]">
+          <div className="w-full sm:w-45">
             <Select
               value={countryFilter}
               onValueChange={(val) => {
@@ -260,7 +260,7 @@ export default function UniversitiesPage() {
           </div>
 
           {/* Status Selector */}
-          <div className="w-full sm:w-[160px]">
+          <div className="w-full sm:w-40">
             <Select
               value={statusFilter}
               onValueChange={(value) => {
@@ -279,7 +279,7 @@ export default function UniversitiesPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-full sm:w-[160px]">
+          <div className="w-full sm:w-40">
             <Select
               value={tierFilter}
               onValueChange={(value) => {
@@ -316,7 +316,7 @@ export default function UniversitiesPage() {
 
       {/* Main Grid display / Loading states */}
       {isLoading ? (
-        <div className="flex h-[400px] flex-col items-center justify-center rounded-2xl border border-dashed bg-card/50">
+        <div className="flex h-100 flex-col items-center justify-center rounded-2xl border border-dashed bg-card/50">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           <h3 className="mt-4 text-lg font-semibold">
             Loading Universities...
@@ -326,7 +326,7 @@ export default function UniversitiesPage() {
           </p>
         </div>
       ) : universities.length === 0 ? (
-        <div className="flex h-[400px] flex-col items-center justify-center rounded-2xl border border-dashed bg-card/50 px-4 text-center">
+        <div className="flex h-100 flex-col items-center justify-center rounded-2xl border border-dashed bg-card/50 px-4 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/50 mb-4">
             <SlidersHorizontal className="h-6 w-6 text-muted-foreground" />
           </div>
@@ -388,7 +388,7 @@ export default function UniversitiesPage() {
                     setPage(1);
                   }}
                 >
-                  <SelectTrigger className="h-7 w-[70px] rounded-lg">
+                  <SelectTrigger className="h-7 w-17.5 rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

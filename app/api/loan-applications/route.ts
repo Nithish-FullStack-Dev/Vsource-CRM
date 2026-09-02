@@ -226,9 +226,17 @@ async function syncLoanRequiredLeads() {
           // STUDY / ABROAD INFORMATION
           studyDestination: lead.preferredCountry ? "Abroad" : null,
 
-          country: lead.preferredCountry || null,
+          country: lead.preferredCountry
+            ? typeof lead.preferredCountry === "object"
+              ? lead.preferredCountry.name
+              : lead.preferredCountry
+            : null,
 
-          courseName: lead.preferredCourse || null,
+          courseName: lead.preferredCourse
+            ? typeof lead.preferredCourse === "object"
+              ? lead.preferredCourse.name
+              : lead.preferredCourse
+            : null,
 
           intake: lead.preferredIntake || null,
         },

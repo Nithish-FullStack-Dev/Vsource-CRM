@@ -10,15 +10,13 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 
 import db from "@/lib/prisma";
-import {
-  badRequest,
-  handleError,
-  notFound,
-  ok,
-} from "@/lib/api-helpers";
+import { badRequest, handleError, notFound, ok } from "@/lib/api-helpers";
 import { MODULES, PERMISSIONS } from "@/lib/module-codes";
 import { getAuthorizedUser } from "@/lib/rbac";
-import { notifyLeadConverted, notifyStudentCreated } from "@/lib/notification.service";
+import {
+  notifyLeadConverted,
+  notifyStudentCreated,
+} from "@/lib/notification.service";
 
 type Ctx = {
   params: Promise<{
@@ -45,9 +43,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
     const { id: leadId } = await params;
 
-    const body = ConvertSchema.parse(
-      await req.json().catch(() => ({})),
-    );
+    const body = ConvertSchema.parse(await req.json().catch(() => ({})));
 
     const lead = await db.lead.findUnique({
       where: {
@@ -62,6 +58,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         emailId: true,
         branchId: true,
         isConverted: true,
+        moi: true,
 
         student: {
           select: {
@@ -106,12 +103,10 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     }
 
     const primaryCounselorId =
-      lead.counselors.find(
-        (assignment) => assignment.isPrimary,
-      )?.counselorId ?? null;
+      lead.counselors.find((assignment) => assignment.isPrimary)?.counselorId ??
+      null;
 
-    const firstAssignedCounselorId =
-      lead.counselors[0]?.counselorId ?? null;
+    const firstAssignedCounselorId = lead.counselors[0]?.counselorId ?? null;
 
     const counselorId =
       body.counselorId ??
@@ -144,6 +139,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           studentName,
           mobileNumber,
           emailId,
+          moi: lead.moi,
 
           // Add this only when Student has a studentNumber field:
           // studentNumber: body.studentNumber,
@@ -179,10 +175,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       currentUser.id,
     );
 
-    return ok(
-      result,
-      "Lead converted to student successfully",
-    );
+    return ok(result, "Lead converted to student successfully");
   } catch (error) {
     return handleError(error);
   }

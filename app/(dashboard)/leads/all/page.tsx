@@ -102,7 +102,9 @@ export default function AllLeadsPage() {
   const [quickFollowupDate, setQuickFollowupDate] = useState("");
   const [quickFollowupNote, setQuickFollowupNote] = useState("");
   const [isSavingFollowup, setIsSavingFollowup] = useState(false);
+  const [preferredUniversityOpen, setPreferredUniversityOpen] = useState(false);
 
+  const [preferredCourseOpen, setPreferredCourseOpen] = useState(false);
   const [editingLeadStatus, setEditingLeadStatus] = useState<Lead | null>(null);
   const [leadIdToDelete, setLeadIdToDelete] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -207,10 +209,22 @@ export default function AllLeadsPage() {
 
         counselorIds: selectedCounselors,
         fintechAssigneeId: editingLead.fintechAssigneeId,
-        preferredCountry: editingLead.preferredCountry || undefined,
+
+        preferredCountryId: editingLead.preferredCountryId || undefined,
+
         preferredIntake: editingLead.preferredIntake || undefined,
-        preferredCourse: editingLead.preferredCourse || undefined,
-        preferredTiers: editingLead.preferredTiers || [],
+
+        preferredUniversityId: editingLead.preferredUniversityId || undefined,
+
+        preferredUniversityName: !editingLead.preferredUniversityId
+          ? editingLead.preferredUniversityName?.trim() || undefined
+          : undefined,
+
+        preferredCourseId: editingLead.preferredCourseId || undefined,
+
+        preferredCourseName: !editingLead.preferredCourseId
+          ? editingLead.preferredCourseName?.trim() || undefined
+          : undefined,
 
         graduationStatus: editingLead.graduationStatus || null,
         loanRequirement: editingLead.loanRequirement ?? false,
@@ -222,8 +236,10 @@ export default function AllLeadsPage() {
         twelfthYearOfPassing: editingLead.twelfthYearOfPassing,
 
         bachelorsCourse: editingLead.bachelorsCourse || undefined,
+
         bachelorsUniversityName:
           editingLead.bachelorsUniversityName || undefined,
+
         bachelorsPercentage: editingLead.bachelorsPercentage,
         bachelorsYearOfPassing: editingLead.bachelorsYearOfPassing,
 
@@ -235,6 +251,8 @@ export default function AllLeadsPage() {
         quantitativeScore: editingLead.quantitativeScore,
         verbalScore: editingLead.verbalScore,
         analyticalWritingScore: editingLead.analyticalWritingScore,
+
+        moi: editingLead.moi?.trim() || null,
 
         englishTests: (editingLead.englishTests || []).map((test) => ({
           testType: test.testType,
@@ -576,9 +594,15 @@ export default function AllLeadsPage() {
                           </p>
                           <p
                             className="truncate"
-                            title={lead.preferredCountry || "—"}
+                            title={
+                              typeof lead.preferredCountry === "object"
+                                ? lead.preferredCountry?.name || "—"
+                                : lead.preferredCountry || "—"
+                            }
                           >
-                            {lead.preferredCountry || "—"}
+                            {typeof lead.preferredCountry === "object"
+                              ? lead.preferredCountry?.name || "—"
+                              : lead.preferredCountry || "—"}
                           </p>
                         </div>
 
@@ -865,9 +889,15 @@ export default function AllLeadsPage() {
                           <td className="px-2 py-3 align-middle xl:px-3">
                             <span
                               className="block truncate"
-                              title={lead.preferredCountry || "—"}
+                              title={
+                                typeof lead.preferredCountry === "object"
+                                  ? lead.preferredCountry?.name || "—"
+                                  : lead.preferredCountry || "—"
+                              }
                             >
-                              {lead.preferredCountry || "—"}
+                              {typeof lead.preferredCountry === "object"
+                                ? lead.preferredCountry?.name || "—"
+                                : lead.preferredCountry || "—"}
                             </span>
                           </td>
 

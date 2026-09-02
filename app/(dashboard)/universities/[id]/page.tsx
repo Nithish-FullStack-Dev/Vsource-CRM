@@ -222,7 +222,7 @@ export default function UniversityDetailsPage() {
 
   return (
     <div className="min-h-screen bg-muted/20">
-      <div className="mx-auto w-full max-w-[1440px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-360 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {/* Top navigation */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button
@@ -292,12 +292,12 @@ export default function UniversityDetailsPage() {
           <div className="h-2 bg-primary" />
 
           <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[330px_minmax(0,1fr)] lg:items-stretch lg:p-8">
-            <div className="flex min-h-[160px] items-center justify-center rounded-2xl border bg-white px-8 py-7 shadow-sm">
+            <div className="flex min-h-40 items-center justify-center rounded-2xl border bg-white px-8 py-7 shadow-sm">
               {university.logo ? (
                 <img
                   src={university.logo}
                   alt={`${university.name} logo`}
-                  className="max-h-24 w-full max-w-[275px] object-contain"
+                  className="max-h-24 w-full max-w-68.75 object-contain"
                 />
               ) : (
                 <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground">
@@ -578,7 +578,7 @@ export default function UniversityDetailsPage() {
 
 function PageLoadingState() {
   return (
-    <div className="flex min-h-[500px] items-center justify-center px-4">
+    <div className="flex min-h-125 items-center justify-center px-4">
       <div className="flex flex-col items-center gap-3 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm font-medium">Loading university details...</p>
@@ -589,7 +589,7 @@ function PageLoadingState() {
 
 function PageErrorState() {
   return (
-    <div className="mx-auto flex min-h-[500px] max-w-lg items-center px-4">
+    <div className="mx-auto flex min-h-125 max-w-lg items-center px-4">
       <Card className="w-full rounded-2xl">
         <CardContent className="flex flex-col items-center p-8 text-center">
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
@@ -818,7 +818,7 @@ function ScholarshipCard({
         </div>
 
         {(hasAmount || hasPercentage) && (
-          <div className="flex shrink-0 flex-wrap gap-2 md:max-w-[210px] md:justify-end">
+          <div className="flex shrink-0 flex-wrap gap-2 md:max-w-52.5 md:justify-end">
             {hasAmount && (
               <Badge className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400">
                 {formatCurrency(scholarship.amount, currency)}

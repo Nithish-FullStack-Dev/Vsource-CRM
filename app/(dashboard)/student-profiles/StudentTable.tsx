@@ -342,7 +342,12 @@ export function StudentTable({
                       />
                       <MobileInfoItem
                         label="Country"
-                        value={getText(lead?.preferredCountry, "Not selected")}
+                        value={getText(
+                          typeof lead?.preferredCountry === "object"
+                            ? lead?.preferredCountry?.name
+                            : lead?.preferredCountry,
+                          "Not selected",
+                        )}
                       />
                       <MobileInfoItem
                         label="Visa Email"
@@ -907,7 +912,12 @@ export function StudentTable({
                     <td
                       className={`${normalCellClass} text-slate-600 dark:text-slate-300`}
                     >
-                      {getText(lead?.preferredCountry, "Not selected")}
+                      {getText(
+                        typeof lead?.preferredCountry === "object"
+                          ? lead?.preferredCountry?.name
+                          : lead?.preferredCountry,
+                        "Not selected",
+                      )}
                     </td>
 
                     <td className={`${normalCellClass} text-center font-bold`}>
