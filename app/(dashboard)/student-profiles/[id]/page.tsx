@@ -698,7 +698,10 @@ export default function Home() {
                             },
                             {
                               label: "MOI",
-                              val: selectedStudent?.moi ?? "-",
+                              val:
+                                selectedStudent?.moi ??
+                                selectedStudent?.lead?.moi ??
+                                "-",
                               icon: GraduationCap,
                             },
                             {
