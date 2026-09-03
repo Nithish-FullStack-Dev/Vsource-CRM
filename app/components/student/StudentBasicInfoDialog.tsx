@@ -1,3 +1,4 @@
+// app\components\student\StudentBasicInfoDialog.tsx
 "use client";
 
 import {
@@ -83,7 +84,7 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
 
       // status: student.status ?? undefined,
 
-      moi: student.moi ?? "",
+      moi: student.moi ?? student.lead?.moi ?? "",
 
       undergraduate: student.undergraduate ?? undefined,
     });
@@ -257,26 +258,7 @@ export function StudentBasicInfoDialog({ open, onClose, student }: Props) {
               )}
             />
 
-            {/* <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Student Status</FormLabel>
-
-                  <select
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    className="w-full h-10 rounded-md border px-3"
-                  >
-                    <option value="">Select Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="drop">Drop</option>
-                  </select>
-                </FormItem>
-              )}
-            /> */}
+      
 
             <FormField
               control={form.control}
