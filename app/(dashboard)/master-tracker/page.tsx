@@ -1,38 +1,17 @@
 // app\(dashboard)\master-tracker\page.tsx
 "use client";
-
-import React, {
-  DragEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { ArrowRight, GripVertical, Loader2, LockKeyhole } from "lucide-react";
+import React, { DragEvent, useCallback, useEffect, useMemo, useRef, useState,} from "react";
+import { ArrowRight, GripVertical, Loader2, LockKeyhole, ChevronLeft, ChevronRight, } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,} from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-
 import TrackerFilter from "./TrackerFilter";
 import { useMasterTracker } from "@/hooks/application-tracker/useMasterTracker";
-
-import type {
-  StudentModuleStatus,
-  StudentModuleType,
-  StudentRecord,
-} from "@/types/student";
+import type { StudentModuleStatus, StudentModuleType, StudentRecord,} from "@/types/student";
 import { toast } from "sonner";
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 type KanbanStage =
   | "Inquiry"
   | "Documents"
@@ -155,6 +134,8 @@ export default function ApplicationsTrackerPage() {
   const dragRef = useRef<DraggedStudent | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
 
   const [draggedStudent, setDraggedStudent] = useState<DraggedStudent | null>(
     null,
@@ -552,7 +533,26 @@ export default function ApplicationsTrackerPage() {
       );
     });
   }, [filters, getCurrentModuleStatus, mapStageToKanban, trackerData]);
+const totalFiltered = filteredTrackerData.length;
 
+const pageCount = Math.max(
+  1,
+  Math.ceil(totalFiltered / perPage)
+);
+
+const startIndex = (page - 1) * perPage;
+const endIndex = Math.min(
+  startIndex + perPage,
+  totalFiltered
+);
+
+const paginatedTrackerData = useMemo(() => {
+  return filteredTrackerData.slice(startIndex, endIndex);
+}, [filteredTrackerData, startIndex, endIndex]);
+
+useEffect(() => {
+  setPage(1);
+}, [filters, perPage]);
   const branchOptions = useMemo(
     () => [
       ...new Set(
@@ -874,6 +874,98 @@ export default function ApplicationsTrackerPage() {
         countryOptions={countryOptions}
         intakeOptions={intakeOptions}
       />
+      {/* Pagination */}
+<div className="flex flex-col items-center gap-4 border-t p-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+  <div className="text-center sm:text-left">
+    {totalFiltered === 0 ? (
+      "No results"
+    ) : (
+      <>
+        Showing{" "}
+        <span className="font-medium text-foreground">
+          {startIndex + 1}
+        </span>
+        {"–"}
+        <span className="font-medium text-foreground">
+          {endIndex}
+        </span>{" "}
+        of{" "}
+        <span className="font-medium text-foreground">
+          {totalFiltered}
+        </span>{" "}
+        results
+      </>
+    )}
+  </div>
+
+  <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-end">
+    {/* Rows per page */}
+    <div className="flex items-center gap-2">
+      Rows per page:
+
+      <Select
+        value={String(perPage)}
+        onValueChange={(value) => {
+          setPerPage(Number(value));
+          setPage(1);
+        }}
+      >
+        <SelectTrigger className="h-8 w-16">
+          <SelectValue />
+        </SelectTrigger>
+
+        <SelectContent>
+          {[10, 25, 50, 100].map((n) => (
+            <SelectItem
+              key={n}
+              value={String(n)}
+            >
+              {n}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+
+    {/* Page navigation */}
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        disabled={page === 1 || totalFiltered === 0}
+        onClick={() => {
+          setPage((currentPage) =>
+            Math.max(1, currentPage - 1)
+          );
+        }}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+
+      <span className="w-20 text-center">
+        Page {page} of {pageCount}
+      </span>
+
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        disabled={
+          page === pageCount ||
+          totalFiltered === 0
+        }
+        onClick={() => {
+          setPage((currentPage) =>
+            Math.min(pageCount, currentPage + 1)
+          );
+        }}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  </div>
+</div>
       <AlertDialog
         open={pendingStageMove !== null}
         onOpenChange={(open) => {
@@ -975,7 +1067,7 @@ export default function ApplicationsTrackerPage() {
       <div className="w-full overflow-x-auto overscroll-x-contain pb-4">
         <div className="grid min-w-350 grid-cols-5 items-stretch gap-4">
           {KANBAN_COLUMNS.map((column) => {
-            const columnStudents = filteredTrackerData.filter(
+            const columnStudents = paginatedTrackerData.filter(
               (student) => mapStageToKanban(student) === column.id,
             );
 
@@ -1179,6 +1271,7 @@ export default function ApplicationsTrackerPage() {
           })}
         </div>
       </div>
+      
     </div>
   );
 }
